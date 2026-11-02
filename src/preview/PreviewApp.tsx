@@ -1,4 +1,7 @@
+import { AddSheet } from '../AddSheet';
+import { Browse } from '../Browse';
 import { Drafts } from '../Drafts';
+import { Upcoming } from '../Upcoming';
 import { Thread } from '../Thread';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
@@ -31,6 +34,15 @@ export function PreviewApp() {
   const card = FIXTURES[1] as Card;
   if (which === 'thread') {
     return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} onDone={() => {}} onLater={() => {}} />;
+  }
+  if (which === 'upcoming') {
+    return (<><Upcoming cards={FIXTURES} now={NOW} onDone={() => {}} /><TabBar current="upcoming" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'browse') {
+    return (<><Browse nexoCount={1} draftCount={DRAFTS.length} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'add') {
+    return (<><Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><AddSheet onAdd={() => {}} onClose={() => {}} /></>);
   }
   if (which === 'drafts') {
     return (

@@ -40,14 +40,14 @@ export function markLater(uid: string, card: Card): Promise<void> {
  * one made without a date lands on today; the entry count and last entry are
  * written with it so a list never needs the entries subcollection.
  */
-export function addCard(uid: string, text: string, forWho: 'you' | 'nexo'): Promise<void> {
+export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null): Promise<void> {
   const now = new Date();
   const ts = now.toISOString();
   const id = `n${now.getTime().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const entry = { by: 'eduardo', text, ts };
   const batch = writeBatch(db);
   batch.set(doc(db, ...root(uid), 'cards', id), {
-    status: 'open', for: forWho, type: 'TASK', title: text, due: todayYmd(now), ts,
+    status: 'open', for: forWho, type: 'TASK', title: text, due: due ?? todayYmd(now), ts,
     entryCount: 1, last: entry, hasEntries: true,
   });
   batch.set(doc(db, ...root(uid), 'cards', id, 'entries', String(now.getTime())), entry);

@@ -5,17 +5,21 @@ import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthS
 import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, watchDrafts, watchEntries, watchOpenCards } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { TabBar } from './TabBar';
+import { Browse } from './Browse';
 import { Drafts } from './Drafts';
 import { Thread } from './Thread';
+import { Upcoming } from './Upcoming';
 import { Today } from './Today';
 import type { Card, Draft, Entry } from './types';
 import { useRoute } from './useHash';
 
 function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
   return (
-    <main className="screen center">
-      <h1>Nexo</h1>
-      <button className="send-wide" onClick={onSignIn}>Sign in with Google</button>
+    <main className="screen center signin">
+      <div className="mark" aria-hidden="true"><i /></div>
+      <h1>One queue for what needs you.</h1>
+      <p className="lede">Your tasks, drafts and assistant in one place. Works offline.</p>
+      <button className="send-wide" onClick={onSignIn}>Continue with Google</button>
       {error ? <p className="notice">{error}</p> : null}
     </main>
   );
@@ -76,7 +80,11 @@ export function App() {
   const tab = route.name;
   return (
     <>
-      {tab === 'drafts' ? (
+      {tab === 'upcoming' ? (
+        <Upcoming cards={cards} now={new Date()} onDone={done} />
+      ) : tab === 'browse' ? (
+        <Browse nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} />
+      ) : tab === 'drafts' ? (
         <Drafts drafts={drafts}
           onCopied={(id) => { void markCopied(user.uid, id); }}
           onSent={(id) => { void markSent(user.uid, id); }}
@@ -90,8 +98,8 @@ export function App() {
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       ) : null}
-      <TabBar current={tab} draftCount={drafts.length} />
-      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w) => { void addCard(user.uid, t, w); }} /> : null}
+      <TabBar current={tab === 'nexo' ? 'browse' : tab} draftCount={drafts.length} />
+      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due) => { void addCard(user.uid, t, w, due); }} /> : null}
     </>
   );
 }
