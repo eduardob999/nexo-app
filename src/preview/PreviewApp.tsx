@@ -1,6 +1,7 @@
 import { AddSheet } from '../AddSheet';
 import { Browse } from '../Browse';
 import { Drafts } from '../Drafts';
+import { Search } from '../Search';
 import { Upcoming } from '../Upcoming';
 import { Thread } from '../Thread';
 import { Today } from '../Today';
@@ -39,7 +40,10 @@ export function PreviewApp() {
     return (<><Upcoming cards={FIXTURES} now={NOW} onDone={() => {}} /><TabBar current="upcoming" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'browse') {
-    return (<><Browse nexoCount={1} draftCount={DRAFTS.length} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+    return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'search') {
+    return (<><Search cards={FIXTURES} now={NOW} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'add') {
     return (<><Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><AddSheet onAdd={() => {}} onClose={() => {}} /></>);

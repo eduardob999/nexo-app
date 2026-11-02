@@ -4,6 +4,8 @@ import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
 import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, watchDrafts, watchEntries, watchOpenCards } from './cards';
 import { isFirebaseConfigured } from './firebase';
+import { Search } from './Search';
+import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
 import { Drafts } from './Drafts';
@@ -43,6 +45,15 @@ export function App() {
   const [adding, setAdding] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const route = useRoute();
+  const [settings, setSettings] = useState<Settings>(() => loadSettings());
+  const changeSettings = (next: Settings) => { setSettings(next); saveSettings(next); applySettings(next); };
+
+  useEffect(() => {
+    applySettings(settings);
+    if (!window.location.hash && settings.start === 'upcoming') window.location.hash = '#/upcoming';
+    // Run once at launch: later changes to the setting must not move him off the screen he is on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     void completeRedirectSignIn();
@@ -80,10 +91,12 @@ export function App() {
   const tab = route.name;
   return (
     <>
-      {tab === 'upcoming' ? (
+      {tab === 'search' ? (
+        <Search cards={cards} now={new Date()} />
+      ) : tab === 'upcoming' ? (
         <Upcoming cards={cards} now={new Date()} onDone={done} />
       ) : tab === 'browse' ? (
-        <Browse nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} />
+        <Browse nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} settings={settings} onSettings={changeSettings} />
       ) : tab === 'drafts' ? (
         <Drafts drafts={drafts}
           onCopied={(id) => { void markCopied(user.uid, id); }}
@@ -98,7 +111,7 @@ export function App() {
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       ) : null}
-      <TabBar current={tab === 'nexo' ? 'browse' : tab} draftCount={drafts.length} />
+      <TabBar current={tab === 'nexo' || tab === 'search' ? 'browse' : tab} draftCount={drafts.length} />
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due) => { void addCard(user.uid, t, w, due); }} /> : null}
     </>
   );

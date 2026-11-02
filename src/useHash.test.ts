@@ -11,6 +11,7 @@ describe('parseHash', () => {
     expect(parseHash('#/nexo')).toEqual({ name: 'nexo' });
     expect(parseHash('#/upcoming')).toEqual({ name: 'upcoming' });
     expect(parseHash('#/browse')).toEqual({ name: 'browse' });
+    expect(parseHash('#/search')).toEqual({ name: 'search' });
     expect(parseHash('#/card/n-abc')).toEqual({ name: 'card', id: 'n-abc' });
   });
   it('ignores a card route with no id', () => {
