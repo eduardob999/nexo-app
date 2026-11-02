@@ -1,0 +1,41 @@
+/* Placeholder styling until the design pass lands. Tokens only, so a theme is one block. */
+:root {
+  --bg: #f6f5f1; --surface: #ffffff; --ink: #1b1d21; --muted: #6b6f76; --line: #e4e2dc;
+  --accent: #1f3a5f; --now: #c2410c; --today: #b7791f; --later: #4b7f52; --assign: #6d28d9;
+  --radius: 14px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14161a; --surface: #1c1f24; --ink: #ecebe6; --muted: #9a9ea6; --line: #2a2e35; --accent: #8ab4f8; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+.screen { max-width: 640px; margin: 0 auto; padding: 16px 16px calc(88px + env(safe-area-inset-bottom)); }
+.screen.center { min-height: 100dvh; display: grid; place-content: center; text-align: center; gap: 16px; }
+.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+h1 { font-size: 28px; margin: 0; }
+.call { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 10px 16px; min-height: 44px; font: inherit; }
+.notice { color: var(--muted); font-size: 14px; }
+.empty { color: var(--muted); text-align: center; margin-top: 48px; }
+.band-title { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; margin: 24px 0 8px; color: var(--muted); }
+.band-title span { opacity: .7; }
+.cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--later); border-radius: var(--radius); display: grid; grid-template-columns: 1fr auto; align-items: center; }
+.card.band-now { border-left-color: var(--now); }
+.card.band-today { border-left-color: var(--today); }
+.card.band-assignment { border-left-color: var(--assign); }
+.card-main { all: unset; box-sizing: border-box; display: grid; gap: 4px; padding: 14px; cursor: pointer; min-height: 44px; }
+.card-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.tag { font-weight: 600; letter-spacing: .04em; }
+.count { background: var(--line); border-radius: 999px; padding: 0 7px; }
+.title { font-weight: 600; }
+.last { color: var(--muted); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.last b { color: var(--ink); font-weight: 600; }
+.place { font-size: 14px; }
+.card-actions { padding-right: 10px; }
+.act { border: 0; border-radius: 10px; padding: 10px 14px; min-height: 44px; min-width: 44px; font: inherit; cursor: pointer; }
+.act.primary { background: var(--accent); color: var(--bg); }
+.act.big { padding: 14px 22px; font-size: 18px; }
+.tabs { position: fixed; inset: auto 0 0 0; display: grid; grid-template-columns: repeat(4, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+.tabs button { all: unset; box-sizing: border-box; text-align: center; padding: 14px 0; min-height: 48px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.tabs button[aria-current='page'] { color: var(--ink); font-weight: 600; }
