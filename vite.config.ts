@@ -42,7 +42,7 @@ function serviceWorkerManifest(): Plugin {
       outDir = resolve(config.root, config.build.outDir);
     },
     writeBundle(_options, bundle) {
-      bundledAssets = Object.keys(bundle).filter((file) => /\.(js|css)$/.test(file));
+      bundledAssets = Object.keys(bundle).filter((file) => /\.(js|css|woff2)$/.test(file));
     },
     closeBundle() {
       const swPath = resolve(outDir, 'service-worker.js');

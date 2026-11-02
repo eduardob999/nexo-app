@@ -1,4 +1,5 @@
 import { Today } from '../Today';
+import { TabBar } from '../TabBar';
 import type { Card } from '../types';
 
 /** Invented cards, so the screens can be rendered without signing in or touching real data. */
@@ -15,10 +16,8 @@ const FIXTURES: Card[] = [
 export function PreviewApp() {
   return (
     <>
-      <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onCallNexo={() => {}} />
-      <nav className="tabs" aria-label="Sections">
-        <button aria-current="page">Today</button><button>Nexo</button><button>Drafts</button><button>More</button>
-      </nav>
+      <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} />
+      <TabBar current="today" />
     </>
   );
 }

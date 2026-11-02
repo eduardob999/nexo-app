@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandOf, sortQueue } from './urgency';
+import { bandOf, postpone, sortQueue } from './urgency';
 import type { Card } from './types';
 
 const now = new Date('2026-11-02T12:00:00+09:00');
@@ -28,5 +28,18 @@ describe('sortQueue', () => {
       now,
     ).map((x) => x.id);
     expect(out).toEqual(['hw', 'overdue', 'tomorrow', 'undated']);
+  });
+});
+
+describe('postpone', () => {
+  it('moves a future date-only due one day on', () => {
+    expect(postpone('2026-11-05', now)).toBe('2026-11-06');
+  });
+  it('keeps the time of day', () => {
+    expect(postpone('2026-11-05T15:00:00+09:00', now)).toBe('2026-11-06T15:00:00+09:00');
+  });
+  it('sends a past or undated card to tomorrow', () => {
+    expect(postpone('2026-10-30', now)).toBe('2026-11-03');
+    expect(postpone(null, now)).toBe('2026-11-03');
   });
 });
