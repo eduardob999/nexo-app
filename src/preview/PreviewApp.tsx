@@ -1,6 +1,8 @@
+import { Drafts } from '../Drafts';
+import { Thread } from '../Thread';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
-import type { Card } from '../types';
+import type { Card, Draft, Entry } from '../types';
 
 /** Invented cards, so the screens can be rendered without signing in or touching real data. */
 const NOW = new Date('2026-11-02T12:00:00+09:00');
@@ -13,11 +15,35 @@ const FIXTURES: Card[] = [
   { id: 'f', status: 'open', for: 'nexo', title: 'Check the bank notice', due: '2026-11-02' },
 ];
 
+const ENTRIES: Entry[] = [
+  { id: '0000', by: 'eduardo', ts: '2026-10-30T10:12:00+09:00', text: 'They asked for the signed form by Monday. Can you check what they still need?' },
+  { id: '0001', by: 'nexo', ts: '2026-10-30T10:31:00+09:00', text: 'They need the signed form and a copy of your residence card. Nothing else is missing.' },
+  { id: '0002', by: 'nexo', ts: '2026-10-31T09:02:00+09:00', text: 'Draft ready, waiting for your approval.' },
+];
+const DRAFTS: Draft[] = [
+  { id: 'd1', linkedNote: 'b', status: 'drafted', to: ['housing@example.org'], subject: 'Re: Lease form for the winter term', text: 'Dear Tanaka-san,\n\nThank you for the reminder. I will bring the signed lease form and a copy of my residence card to the office on Monday morning. Please let me know if anything else is needed.' },
+  { id: 'd2', status: 'drafted', copiedAt: '2026-11-01T10:00:00+09:00', to: ['events@example.org'], subject: 'Re: Thank you for the invitation', text: 'Thank you very much for the invitation. I look forward to the seminar on Monday afternoon.' },
+  { id: 'd3', status: 'needs-info', topic: 'Reply about the bike registration', need: 'the frame number from the registration card' },
+];
+
 export function PreviewApp() {
+  const which = window.location.hash.replace('#/preview', '').replace(/^\//, '');
+  const card = FIXTURES[1] as Card;
+  if (which === 'thread') {
+    return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} onDone={() => {}} onLater={() => {}} />;
+  }
+  if (which === 'drafts') {
+    return (
+      <>
+        <Drafts drafts={DRAFTS} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} />
+        <TabBar current="drafts" draftCount={DRAFTS.length} />
+      </>
+    );
+  }
   return (
     <>
       <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} />
-      <TabBar current="today" />
+      <TabBar current="today" draftCount={DRAFTS.length} />
     </>
   );
 }

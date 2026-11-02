@@ -9,6 +9,7 @@ interface Props {
   onDone: (card: Card) => void;
   onLater: (card: Card) => void;
   onCallNexo: () => void;
+  lane?: 'you' | 'nexo';
 }
 
 const BAND_LABEL: Record<Band, string> = { assignment: 'Assignments', now: 'Now', today: 'Today', later: 'Later' };
@@ -39,6 +40,7 @@ function Row({ card, now, onDone, onLater }: { card: Card; now: Date; onDone: Pr
         </button>
         {open ? (
           <div className="row-actions">
+            <a className="chip-btn link" href={`#/card/${card.id}`}>Open</a>
             <button className="chip-btn" onClick={() => onLater(card)}>Later</button>
           </div>
         ) : null}
@@ -47,8 +49,8 @@ function Row({ card, now, onDone, onLater }: { card: Card; now: Date; onDone: Pr
   );
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo }: Props) {
-  const mine = sortQueue(cards.filter((c) => c.for === 'you'), now);
+export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you' }: Props) {
+  const mine = sortQueue(cards.filter((c) => c.for === lane), now);
   const groups = BANDS.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
   const stamp = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
 
@@ -56,8 +58,8 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo }: Pr
     <main className="screen">
       <header className="top">
         <div>
-          <span className="kicker">{stamp} · {mine.length} LEFT</span>
-          <h1>Today</h1>
+          <span className="kicker">{stamp} · {mine.length} {lane === 'you' ? 'LEFT' : 'WITH NEXO'}</span>
+          <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
         </div>
         <button className="call" onClick={onCallNexo}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>
@@ -65,7 +67,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo }: Pr
         </button>
       </header>
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
-      {groups.length === 0 ? <p className="empty">Nothing needs you.</p> : (
+      {groups.length === 0 ? <p className="empty">{lane === 'you' ? 'Nothing needs you.' : 'Nexo has nothing open.'}</p> : (
         <div className="panel">
           {groups.map((g) => (
             <section key={g.band}>

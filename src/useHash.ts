@@ -1,0 +1,26 @@
+import { useEffect, useState } from 'react';
+
+export type Route =
+  | { name: 'today' }
+  | { name: 'nexo' }
+  | { name: 'drafts' }
+  | { name: 'card'; id: string };
+
+export function parseHash(hash: string): Route {
+  const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  if (parts[0] === 'card' && parts[1]) return { name: 'card', id: decodeURIComponent(parts[1]) };
+  if (parts[0] === 'nexo') return { name: 'nexo' };
+  if (parts[0] === 'drafts') return { name: 'drafts' };
+  return { name: 'today' };
+}
+
+/** The route lives in the URL hash, so the phone's back gesture and a reload both work with no router library. */
+export function useRoute(): Route {
+  const [route, setRoute] = useState<Route>(() => parseHash(window.location.hash));
+  useEffect(() => {
+    const on = () => setRoute(parseHash(window.location.hash));
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  return route;
+}

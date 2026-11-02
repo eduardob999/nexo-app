@@ -71,3 +71,45 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .send { width: 52px; height: 52px; border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
 .send:disabled { opacity: .4; cursor: default; }
 .send-wide { height: 52px; padding: 0 24px; border: 0; border-radius: 26px; background: var(--accent); color: var(--on-accent); font-size: 17px; font-weight: 600; }
+
+/* tab bar links */
+.tabs a { border-radius: 26px; color: var(--muted); text-decoration: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11.5px; font-weight: 500; position: relative; }
+.tabs a[aria-current='page'] { background: var(--chip); color: var(--ink); font-weight: 600; }
+.tabs button:disabled { opacity: .45; cursor: default; }
+.badge { position: absolute; top: 4px; right: calc(50% - 22px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font: 600 11px/18px var(--mono); text-align: center; font-style: normal; }
+.chip-btn.link { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
+.chip-btn.small { height: 36px; padding: 0 12px; font-size: 14px; }
+
+/* thread */
+.thread { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
+.thread-top { display: flex; align-items: center; gap: 8px; }
+.icon-btn { width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; display: grid; place-items: center; }
+.thread-title { font-size: 26px; line-height: 1.15; margin: 6px 8px 0; }
+.bubbles { list-style: none; margin: 20px 8px 0; padding: 0; display: grid; gap: 16px; }
+.bubble-wrap { display: flex; flex-direction: column; gap: 6px; }
+.bubble-wrap.you { align-items: flex-start; }
+.bubble-wrap.nexo { align-items: flex-end; }
+.who { font-size: 12px; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
+.who .mono, .mono { font-family: var(--mono); font-weight: 400; }
+.bubble { max-width: 300px; padding: 12px 14px; font-size: 15px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.you .bubble { border-radius: 16px 16px 16px 4px; background: var(--surface); border: 1px solid var(--edge); }
+.nexo .bubble { border-radius: 16px 16px 4px 16px; background: var(--assign-tint); color: var(--ink); }
+.draft-link { display: inline-flex; margin: 16px 8px 0; padding: 12px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--edge); font-weight: 600; text-decoration: none; color: var(--ink); min-height: 44px; align-items: center; }
+.reply-bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg); border-top: 1px solid var(--edge); padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); display: grid; gap: 10px; max-width: 640px; margin: 0 auto; }
+.reply-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.act-ink { height: 44px; border: 0; border-radius: 12px; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 15px; }
+.reply-form { display: flex; gap: 8px; }
+.reply-input { flex: 1; height: 44px; padding: 0 14px; border: 1px solid var(--edge); border-radius: 22px; background: var(--surface); color: var(--ink); font: 16px var(--sans); }
+.send.small { width: 44px; height: 44px; }
+
+/* drafts */
+.drafts { list-style: none; margin: 16px 0 0; padding: 0 8px; display: grid; gap: 14px; }
+.draft { background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 16px; display: grid; gap: 12px; }
+.draft-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.draft-title { margin: 2px 0 0; font-size: 17px; line-height: 1.25; }
+.draft-body { padding: 12px 14px; border-radius: 12px; background: var(--bg); font-size: 15px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 16em; overflow: auto; }
+.need { margin: 0; color: var(--now); font-size: 15px; }
+.draft-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.copy-main { height: 48px; border: 0; border-radius: 12px; background: var(--accent); color: var(--on-accent); font-size: 16px; font-weight: 600; }
+.draft-more { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill-ok { padding: 4px 10px; border-radius: 999px; background: var(--later-tint); color: var(--later); font-size: 12px; font-weight: 600; letter-spacing: .03em; }

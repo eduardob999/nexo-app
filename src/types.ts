@@ -20,3 +20,24 @@ export interface Card {
   entryCount?: number;
   last?: LastEntry;
 }
+
+export interface Entry {
+  id: string;
+  by: string;
+  text: string;
+  ts: string;
+}
+
+/** A reply the loop has drafted. Sending is always his act, never the app's. */
+export interface Draft {
+  id: string;
+  linkedNote?: string;
+  status: 'drafted' | 'needs-info' | 'sent' | 'discarded';
+  topic?: string;
+  subject?: string;
+  to?: string[];
+  text?: string;
+  need?: string;
+  copiedAt?: string;
+  ts?: string;
+}
