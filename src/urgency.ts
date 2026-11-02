@@ -3,7 +3,10 @@ import type { Card } from './types';
 export type Band = 'assignment' | 'urgent' | 'overdue' | 'today' | 'prep' | 'other';
 
 const DAY = 86_400_000;
+/** How far ahead each kind of card is allowed to appear under Preparation. */
 const PREP_DAYS = 7;
+const PREP_DAYS_TRIP = 14;
+const NOTICE_DAYS = 2;
 
 /** A date with no time means any time that day, so it runs to the end of it. */
 function parseDue(raw: string): Date {
@@ -14,11 +17,14 @@ function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-/** Needs thinking about before the day: a trip, anything with a bring list or a plan, or a plain task. Classes, notices and holidays do not. */
-function needsPrep(card: Card): boolean {
-  if (card.type === 'TRIP') return true;
-  if ((card.bring?.length ?? 0) > 0 || card.plan) return true;
-  return card.type !== 'INFO' && card.type !== 'HOLIDAY';
+/** A trip, a bring list or a plan: these need work before the day, so they show earlier. */
+function isPlanned(card: Card): boolean {
+  return card.type === 'TRIP' || (card.bring?.length ?? 0) > 0 || Boolean(card.plan);
+}
+
+/** A class or a holiday needs no work, but the day before it must not come as a surprise. */
+function isNotice(card: Card): boolean {
+  return card.type === 'INFO' || card.type === 'HOLIDAY';
 }
 
 /**
@@ -27,21 +33,28 @@ function needsPrep(card: Card): boolean {
  * Assignments come first at any distance. Urgent is the old board's rule: marked
  * `high` and either undated or due by the end of today, so a card whose date he
  * has since moved does not keep shouting. Overdue is a date before today, Today
- * is today. Preparation is what falls in the next seven days and needs thought
- * ahead of time. Everything else is `other`: it lives in Upcoming and Search.
+ * is today. Preparation is what falls ahead and needs thought: seven days for a
+ * plain task, fourteen for a trip, bring list or plan, two for a class or holiday
+ * notice, or whatever the card's own `lead` says. Everything else is `other`: it
+ * lives in Upcoming and Search.
  */
 export function bandOf(card: Card, now: Date): Band {
-  if (card.type === 'HOLIDAY') return 'other';
   if (card.type === 'ASSIGNMENT') return 'assignment';
   const due = card.due ? parseDue(card.due) : null;
   const valid = due !== null && !Number.isNaN(due.getTime());
   const days = valid ? Math.floor((startOfDay(due) - startOfDay(now)) / DAY) : null;
-  if (card.prio === 'high' && (days === null || days <= 0)) return 'urgent';
+  if (card.prio === 'high' && !isNotice(card) && (days === null || days <= 0)) return 'urgent';
   if (days === null) return 'other';
+  const lead = typeof card.lead === 'number' && card.lead > 0 ? card.lead : null;
+  // A notice that has passed asks nothing of him; one that is today is on the banner or the day's list.
+  if (isNotice(card) && !isPlanned(card) && lead === null) {
+    if (days === 0 && card.type === 'INFO') return 'today';
+    return days >= 1 && days <= NOTICE_DAYS ? 'prep' : 'other';
+  }
   if (days < 0) return 'overdue';
   if (days === 0) return 'today';
-  if (days <= PREP_DAYS && needsPrep(card)) return 'prep';
-  return 'other';
+  const horizon = lead ?? (isPlanned(card) ? PREP_DAYS_TRIP : PREP_DAYS);
+  return days <= horizon ? 'prep' : 'other';
 }
 
 const ORDER: Record<Band, number> = { assignment: 0, urgent: 1, overdue: 2, today: 3, prep: 4, other: 5 };

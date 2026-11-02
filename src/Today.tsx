@@ -79,6 +79,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane
   const count = groups.reduce((n, g) => n + g.items.length, 0);
   const stamp = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
   const holiday = lane === 'you' ? todayHoliday(cards, now) : undefined;
+  const hidden = lane === 'you' ? mine.filter((c) => bandOf(c, now) === 'other').length : 0;
 
   return (
     <main className="screen">
@@ -106,6 +107,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane
           ))}
         </div>
       )}
+      {hidden > 0 ? <a className="more-link" href="#/upcoming">{hidden} more in Upcoming</a> : null}
     </main>
   );
 }
