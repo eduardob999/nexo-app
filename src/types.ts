@@ -15,7 +15,11 @@ export interface Card {
   /** ISO date or date-time. */
   due?: string | null;
   place?: string;
+  /** `high` is the old board's Urgent flag; `normal`, `med` and `low` carry no queue meaning. */
   prio?: string;
+  /** Things to bring and a plan: either marks a card as needing preparation. */
+  bring?: unknown[];
+  plan?: unknown;
   /** Denormalised by the writer so a list never has to read the entries subcollection. */
   entryCount?: number;
   last?: LastEntry;

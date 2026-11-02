@@ -1,8 +1,9 @@
 import type { Card } from './types';
 
-export type Band = 'assignment' | 'now' | 'today' | 'later';
+export type Band = 'assignment' | 'urgent' | 'overdue' | 'today' | 'prep' | 'other';
 
 const DAY = 86_400_000;
+const PREP_DAYS = 7;
 
 /** A date with no time means any time that day, so it runs to the end of it. */
 function parseDue(raw: string): Date {
@@ -13,22 +14,37 @@ function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-/**
- * Where a card sits in the queue. Assignments are always on top, at any
- * distance, because a deadline that is weeks away is still the one that costs
- * him most if it is missed. Everything else is decided by the due date alone.
- */
-export function bandOf(card: Card, now: Date): Band {
-  if (card.type === 'ASSIGNMENT') return 'assignment';
-  if (!card.due) return 'later';
-  const due = parseDue(card.due);
-  if (Number.isNaN(due.getTime())) return 'later';
-  const days = Math.floor((startOfDay(due) - startOfDay(now)) / DAY);
-  if (days < 0 || (days === 0 && due.getTime() <= now.getTime())) return 'now';
-  return days === 0 ? 'today' : 'later';
+/** Needs thinking about before the day: a trip, anything with a bring list or a plan, or a plain task. Classes, notices and holidays do not. */
+function needsPrep(card: Card): boolean {
+  if (card.type === 'TRIP') return true;
+  if ((card.bring?.length ?? 0) > 0 || card.plan) return true;
+  return card.type !== 'INFO' && card.type !== 'HOLIDAY';
 }
 
-const ORDER: Record<Band, number> = { assignment: 0, now: 1, today: 2, later: 3 };
+/**
+ * Where a card sits on the Today tab.
+ *
+ * Assignments come first at any distance. Urgent is the old board's rule: marked
+ * `high` and either undated or due by the end of today, so a card whose date he
+ * has since moved does not keep shouting. Overdue is a date before today, Today
+ * is today. Preparation is what falls in the next seven days and needs thought
+ * ahead of time. Everything else is `other`: it lives in Upcoming and Search.
+ */
+export function bandOf(card: Card, now: Date): Band {
+  if (card.type === 'HOLIDAY') return 'other';
+  if (card.type === 'ASSIGNMENT') return 'assignment';
+  const due = card.due ? parseDue(card.due) : null;
+  const valid = due !== null && !Number.isNaN(due.getTime());
+  const days = valid ? Math.floor((startOfDay(due) - startOfDay(now)) / DAY) : null;
+  if (card.prio === 'high' && (days === null || days <= 0)) return 'urgent';
+  if (days === null) return 'other';
+  if (days < 0) return 'overdue';
+  if (days === 0) return 'today';
+  if (days <= PREP_DAYS && needsPrep(card)) return 'prep';
+  return 'other';
+}
+
+const ORDER: Record<Band, number> = { assignment: 0, urgent: 1, overdue: 2, today: 3, prep: 4, other: 5 };
 
 /** Queue order: band, then soonest due, then title. Cards with no date go last in their band. */
 export function sortQueue(cards: Card[], now: Date): Card[] {

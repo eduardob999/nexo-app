@@ -104,6 +104,7 @@ export function App() {
           onDiscard={(id) => { void discardDraft(user.uid, id); }} />
       ) : (
         <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
+          withDraft={new Set(drafts.map((d) => d.linkedNote ?? ''))}
           onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); }} />
       )}
       {tab === 'today' ? (

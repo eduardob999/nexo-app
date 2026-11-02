@@ -10,10 +10,16 @@ interface Props {
   onLater: (card: Card) => void;
   onCallNexo: () => void;
   lane?: 'you' | 'nexo';
+  /** Ids of cards that have a draft waiting, shown as a small envelope instead of a line of text. */
+  withDraft?: Set<string>;
 }
 
-const BAND_LABEL: Record<Band, string> = { assignment: 'Assignments', now: 'Now', today: 'Today', later: 'Later' };
-const BANDS: Band[] = ['assignment', 'now', 'today', 'later'];
+const BAND_LABEL: Record<Band, string> = {
+  assignment: 'Assignments', urgent: 'Urgent', overdue: 'Overdue', today: 'Today', prep: 'Preparation', other: 'Later',
+};
+/** Today shows five groups. Nexo's own lane has no date rules of its own, so it also shows the rest. */
+const YOU_BANDS: Band[] = ['assignment', 'urgent', 'overdue', 'today', 'prep'];
+const NEXO_BANDS: Band[] = [...YOU_BANDS, 'other'];
 
 function CalendarIcon() {
   return (
@@ -23,7 +29,15 @@ function CalendarIcon() {
   );
 }
 
-function Row({ card, now, onDone, onLater }: { card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater'] }) {
+function MailIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" role="img">
+      <title>Draft ready</title><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m4 8 8 6 8-6" />
+    </svg>
+  );
+}
+
+function Row({ card, now, onDone, onLater, hasDraft }: { card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean }) {
   const [open, setOpen] = useState(false);
   const band = bandOf(card, now);
   const title = card.title ?? card.id;
@@ -33,10 +47,14 @@ function Row({ card, now, onDone, onLater }: { card: Card; now: Date; onDone: Pr
       <div className="row-body">
         <button className="row-main" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span className="row-title">{title}</span>
-          {card.last ? (
+          <span className="row-meta">
+            <CalendarIcon />{dueText(card, now)}
+            {hasDraft ? <span className="draft-flag"><MailIcon />Draft</span> : null}
+          </span>
+          {open && card.last ? (
             <span className="row-last"><b>{card.last.by === 'eduardo' ? 'You' : 'Nexo'}</b> {card.last.text}</span>
           ) : null}
-          <span className="row-meta"><CalendarIcon />{dueText(card, now)}{card.place ? ` · ${card.place}` : ''}</span>
+          {open && card.place ? <span className="row-place">{card.place}</span> : null}
         </button>
         {open ? (
           <div className="row-actions">
@@ -49,16 +67,24 @@ function Row({ card, now, onDone, onLater }: { card: Card; now: Date; onDone: Pr
   );
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you' }: Props) {
+function todayHoliday(cards: Card[], now: Date): Card | undefined {
+  const k = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
+}
+
+export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you', withDraft }: Props) {
   const mine = sortQueue(cards.filter((c) => c.for === lane), now);
-  const groups = BANDS.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
+  const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
+  const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
+  const count = groups.reduce((n, g) => n + g.items.length, 0);
   const stamp = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+  const holiday = lane === 'you' ? todayHoliday(cards, now) : undefined;
 
   return (
     <main className="screen">
       <header className="top">
         <div>
-          <span className="kicker">{stamp} · {mine.length} {lane === 'you' ? 'LEFT' : 'WITH NEXO'}</span>
+          <span className="kicker">{stamp} · {count} {lane === 'you' ? 'LEFT' : 'WITH NEXO'}</span>
           <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
         </div>
         <button className="call" onClick={onCallNexo}>
@@ -66,14 +92,15 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane
           Call Nexo
         </button>
       </header>
+      {holiday ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
       {groups.length === 0 ? <p className="empty">{lane === 'you' ? 'Nothing needs you.' : 'Nexo has nothing open.'}</p> : (
         <div className="panel">
           {groups.map((g) => (
             <section key={g.band}>
-              <h2 className={`band-title band-${g.band}`}>{BAND_LABEL[g.band]}</h2>
+              <h2 className={`band-title band-${g.band}`}>{BAND_LABEL[g.band]} <span>{g.items.length}</span></h2>
               <ul className="rows">
-                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} />)}
+                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} />)}
               </ul>
             </section>
           ))}
