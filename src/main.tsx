@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { PreviewApp } from './preview/PreviewApp';
 import { captureInstallPrompt } from './install';
+import { ensureBaseline } from './seen';
 import { registerServiceWorker } from './pwa/registerServiceWorker';
 import '@fontsource/instrument-sans/latin-400.css';
 import '@fontsource/instrument-sans/latin-600.css';
@@ -19,5 +20,6 @@ const previewing = import.meta.env.DEV && window.location.hash.startsWith('#/pre
 
 createRoot(container).render(<StrictMode>{previewing ? <PreviewApp /> : <App />}</StrictMode>);
 
+ensureBaseline();
 captureInstallPrompt();
 registerServiceWorker();

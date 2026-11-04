@@ -13,6 +13,8 @@ import { TabBar } from './TabBar';
 import { Browse } from './Browse';
 import { Drafts } from './Drafts';
 import { Thread } from './Thread';
+import { ToastHost } from './Toast';
+import { flash } from './toast';
 import { Trips } from './Trips';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
@@ -39,7 +41,7 @@ function ThreadView({ uid, card, drafts, onDone, onLater }: { uid: string; card:
   return (
     <Thread card={card} entries={entries} pics={pics} drafts={drafts} now={new Date()}
       onBack={() => { window.location.hash = '#/'; }}
-      onReply={(t) => { void addEntry(uid, card, t); }} onDone={onDone} onLater={onLater}
+      onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }} onDone={onDone} onLater={onLater}
       onPriority={() => { void cyclePriority(uid, card); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} />
   );
 }
@@ -133,8 +135,8 @@ export function App() {
   if (user === null) {
     return <SignIn error={error} onSignIn={() => { signInWithGoogle().catch((e: unknown) => setError(describeAuthError(e))); }} />;
   }
-  const done = (c: Card) => { void markDone(user.uid, c.id); };
-  const later = (c: Card) => { void markLater(user.uid, c); };
+  const done = (c: Card) => { void markDone(user.uid, c.id); flash('Marked done'); };
+  const later = (c: Card) => { void markLater(user.uid, c); flash('Moved one day on'); };
   const card = route.name === 'card' ? cards.find((c) => c.id === route.id) : undefined;
 
   if (route.name === 'card') {
@@ -152,6 +154,7 @@ export function App() {
   const syncLate = syncAt !== undefined && (syncAt === null || clock - syncAt > 5 * 60_000);
   return (
     <>
+      <ToastHost />
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
       {tab === 'money' ? (
         <Money allocations={allocs} onAdd={(a) => { void addAlloc(user.uid, a); }} onToggle={(a) => { void toggleAlloc(user.uid, a); }}
@@ -173,11 +176,11 @@ export function App() {
           onSleep={(until) => { void setSleep(user.uid, until); }} />
       ) : tab === 'drafts' ? (
         <Drafts drafts={drafts}
-          onCopied={(id) => { void markCopied(user.uid, id); }}
+          onCopied={(id) => { void markCopied(user.uid, id); flash('Copied'); }}
           onSent={(id) => { void markSent(user.uid, id); }}
           onDiscard={(id) => { void discardDraft(user.uid, id); }}
           nexo={nexo} onMailCheck={() => { void requestMailCheck(user.uid); }}
-          onSend={(d) => { void requestSend(user.uid, d); }}
+          onSend={(d) => { void requestSend(user.uid, d); flash('Send requested. Nexo sends it on its next run.'); }}
           onEdit={(d, t) => { void editDraft(user.uid, d, t); }}
           onRevise={(d, t) => { void reviseDraft(user.uid, d, t); }}
           onAnswer={(d, t) => { void answerDraft(user.uid, d, t); }} />
@@ -186,7 +189,7 @@ export function App() {
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info}
           relays={relays} onAnswerRelay={(r, t) => { void answerRelay(user.uid, r, t); }} onCloseRelay={(r) => { void closeRelay(user.uid, r); }}
-          onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); }} onWake={() => { void setSleep(user.uid, null); }} />
+          onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); flash('Nexo called'); }} onWake={() => { void setSleep(user.uid, null); }} />
       )}
       {tab === 'today' ? (
         <button className="fab" aria-label="Add a task" onClick={() => setAdding(true)}>

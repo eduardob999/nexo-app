@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { usePersisted } from './persist';
+import { markSeen } from './seen';
 import type { Card, CardFile, Draft, Entry } from './types';
 import { calendarLabel, cardTag, priorityLabel } from './cardmeta';
 import { Checklists } from './Checklists';
@@ -36,7 +38,8 @@ function stamp(ts: string): string {
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
 export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {} }: Props) {
-  const [text, setText] = useState('');
+  const [text, setText] = usePersisted(`reply-${card.id}`);
+  useEffect(() => { markSeen(card.id); }, [card.id, entries.length]);
   const mine = drafts.filter((d) => d.linkedNote === card.id);
   const send = () => {
     const t = text.trim();

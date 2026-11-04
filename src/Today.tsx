@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cardTag, placeLabel } from './cardmeta';
 import { isHis, nexoSection, SECTION_LABEL, SECTION_ORDER } from './nexo';
 import { NexoPanel } from './NexoPanel';
+import { isNewCard } from './seen';
 import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
 import { Relays } from './Relays';
@@ -64,11 +65,11 @@ function Row({ card, now, onDone, onLater, hasDraft, closeable = false }: { card
   const band = bandOf(card, now);
   const title = card.title ?? card.id;
   return (
-    <li className={`row band-${band}`}>
+    <li className={`row band-${band}${isNewCard(card) ? ' is-new' : ''}`}>
       <button className="ring" aria-label={`Mark done: ${title}`} onClick={() => onDone(card)} />
       <div className="row-body">
         <button className="row-main" aria-expanded={open} onClick={() => setOpen(!open)}>
-          <span className="row-title">{title}</span>
+          <span className="row-title">{isNewCard(card) ? <i className="new-dot" aria-label="New message from Nexo" /> : null}{title}</span>
           <span className="row-meta">
             {cardTag(card) ? <span className="tagchip">{cardTag(card)}</span> : null}
             <CalendarIcon />{dueText(card, now)}

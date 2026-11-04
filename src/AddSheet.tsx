@@ -1,5 +1,6 @@
 import type React from 'react';
 import { useState } from 'react';
+import { usePersisted } from './persist';
 import { parseQuickAdd } from './parse';
 import { dueText } from './urgency';
 
@@ -22,7 +23,7 @@ function Mirror({ text, tokens }: { text: string; tokens: { start: number; end: 
 }
 
 export function AddSheet({ onAdd, onClose }: Props) {
-  const [text, setText] = useState('');
+  const [text, setText] = usePersisted('add');
   const [forWho, setForWho] = useState<'you' | 'nexo'>('you');
   const [prio, setPrio] = useState<'high' | 'normal' | 'low'>('normal');
   const now = new Date();

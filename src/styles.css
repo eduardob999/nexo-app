@@ -356,3 +356,8 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .cladd { display: flex; gap: 8px; margin-top: 8px; } .cladd .search-input { margin-top: 0; height: 44px; }
 .prio-btn { all: unset; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; font-size: 15px; } .sheet .seg { justify-self: start; }
 .bubble a, .ask-block a, .row-last a { color: var(--accent); overflow-wrap: anywhere; text-decoration: underline; }
+
+/* new marker and toast */
+.new-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: 2px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom)); max-width: min(92vw, 420px); padding: 12px 18px; border-radius: 14px; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 15px; z-index: 60; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.toast.warn { background: var(--now); color: var(--bg); }

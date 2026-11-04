@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { usePersisted } from './persist';
 import { groupMemos, parseTags } from './notes';
 import type { Memo } from './types';
 
 export function Notes({ memos, onKeep }: { memos: Memo[]; onKeep: (text: string, tags: string[]) => void }) {
-  const [text, setText] = useState('');
+  const [text, setText] = usePersisted('memo');
   const [tags, setTags] = useState('');
   const [q, setQ] = useState('');
   const groups = groupMemos(memos, q);
