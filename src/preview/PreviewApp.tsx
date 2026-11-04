@@ -7,6 +7,7 @@ import { Thread } from '../Thread';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
 import type { Card, Draft, Entry, NexoStatus } from '../types';
+import type { TodayInfo } from '../strip';
 
 /** Invented cards, so the screens can be rendered without signing in or touching real data. */
 const NOW = new Date('2026-11-02T12:00:00+09:00');
@@ -36,6 +37,16 @@ const DRAFTS: Draft[] = [
   { id: 'd6', status: 'drafted', to: ['dojo@example.org'], subject: 'Re: Shift on Tuesday', text: 'I can take the Tuesday shift.', revise: { text: 'mention that I arrive at 18:15', at: new Date(Date.now() - 6 * 60_000).toISOString(), by: 'eduardo' } },
   { id: 'd3', status: 'needs-info', topic: 'Reply about the bike registration', need: 'the frame number from the registration card' },
 ];
+
+const INFO: TodayInfo = {
+  updated: new Date(Date.now() - 40 * 60_000).toISOString(),
+  weather: { place: 'Uji', now: { temp: 12, text: 'partly cloudy' }, days: [
+    { date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }), text: 'heavy drizzle', min: 12, max: 19, rain: 64, sunset: '17:00' },
+    { date: new Date(Date.now() + 86_400_000).toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }), text: 'rain', min: 14, max: 22, rain: 75 }] },
+  transit: [{ line: '京阪宇治線', status: '平常運転', ok: true }, { line: '京阪本線', status: '遅延 15分', ok: false }],
+  nextFree: { start: new Date(Date.now() + 16 * 86_400_000).toISOString().slice(0, 10), name: 'November Festival', kind: 'university', lab: 'confirm' },
+  birthdays: [{ name: 'Carla', date: new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10) }],
+};
 
 const WORKING: NexoStatus = {
   phase: 'working', startedAt: new Date(Date.now() - 3 * 60_000).toISOString(), queuedAt: null, total: 4, answered: 2, lastOutcome: null, lastEndedAt: null,
@@ -82,7 +93,7 @@ export function PreviewApp() {
   }
   return (
     <>
-      <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} withDraft={new Set(['b'])} waiting={3}
+      <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} withDraft={new Set(['b'])} waiting={3} info={INFO}
         relays={[{ id: 'P-016', target: 'Perplexity', mode: 'Pro Search', status: 'open', topic: 'Visa renewal: which documents and where', prompt: 'P-016\n\nWhat documents does a status extension need in Kyoto?' }]} />
       <TabBar current="today" draftCount={DRAFTS.length} />
     </>

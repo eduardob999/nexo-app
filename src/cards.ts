@@ -1,6 +1,6 @@
 import { collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Card, Draft, Entry, NexoStatus, Relay } from './types';
+import type { Card, Draft, Entry, NexoStatus, Relay, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 
 const root = (uid: string) => ['users', uid] as const;
@@ -199,4 +199,12 @@ export function closeRelay(uid: string, relay: Relay): Promise<void> {
   batch.update(doc(db, ...root(uid), 'relays', relay.id), { status: 'closed' });
   intent(batch, uid, { type: 'relay', action: 'close', relayId: relay.id });
   return batch.commit();
+}
+
+/** The info strip's data, which board/today_strip.py writes and the sync copies to `meta/today`. */
+export function watchTodayInfo(uid: string, onInfo: (t: TodayInfo | null) => void): () => void {
+  return onSnapshot(doc(db, ...root(uid), 'meta', 'today'), (snap) => {
+    const v = snap.exists() ? (snap.data() as { value?: TodayInfo }).value : null;
+    onInfo(v ?? null);
+  }, () => onInfo(null));
 }

@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { cardTag, placeLabel } from './cardmeta';
 import { NexoPanel } from './NexoPanel';
+import { TodayStrip } from './TodayStrip';
 import { Relays } from './Relays';
-import type { Card, NexoStatus, Relay } from './types';
+import type { Card, NexoStatus, Relay, TodayInfo } from './types';
 import { bandOf, dueText, onTodayBoard, sortQueue, type Band } from './urgency';
 
 interface Props {
@@ -18,6 +19,7 @@ interface Props {
   /** Open cards whose last entry is his: what Nexo has to read and answer when called. */
   waiting?: number;
   nexo?: NexoStatus | null | undefined;
+  info?: TodayInfo | null | undefined;
   relays?: Relay[];
   onAnswerRelay?: (relay: Relay, text: string) => void;
   onCloseRelay?: (relay: Relay) => void;
@@ -93,7 +95,7 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
   return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you', withDraft, waiting = 0, nexo, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {} }: Props) {
+export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {} }: Props) {
   const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane)), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
@@ -121,7 +123,8 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane
       </header>
       <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
       {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : null}
-      {holiday ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
+      {lane === 'you' ? <TodayStrip info={info} now={now} /> : null}
+      {holiday && !info ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
       {groups.length === 0 ? <p className="empty">{lane === 'you' ? 'Nothing needs you.' : 'Nexo has nothing open.'}</p> : (
         <div className="panel">

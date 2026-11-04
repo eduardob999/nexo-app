@@ -67,6 +67,8 @@ export interface Draft {
   ts?: string;
 }
 
+export type { TodayInfo } from './strip';
+
 /** What the sync service publishes at meta/nexo. */
 export interface NexoStatus {
   phase: 'idle' | 'queued' | 'working';
