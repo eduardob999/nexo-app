@@ -203,17 +203,24 @@ self.addEventListener('message', (event) => {
   // A test of the wake-up alarm: shown after a short delay so the phone can be locked first, exactly as the real one is.
   if (event.data?.type === 'TEST_ALARM') {
     const delay = Math.min(Math.max(Number(event.data.delay) || 5000, 0), 20000);
-    event.waitUntil(new Promise((resolve) => setTimeout(resolve, delay)).then(() => self.registration.showNotification('Wake up (test)', {
-      body: 'This is a test of the wake-up alarm. Dismiss it to stop.',
-      tag: 'wake-test',
-      icon: 'icons/icon-192.png',
-      badge: 'icons/icon-192.png',
-      requireInteraction: true,
-      renotify: true,
-      vibrate: ALARM_PATTERNS[event.data.pattern] || ALARM_PATTERNS.strong,
-      data: { url: '#/' },
-    })));
-  }
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    // Five alerts, eight seconds apart, the way the real alarm repeats, so the repeat can be heard.
+    event.waitUntil((async () => {
+      await wait(delay);
+      for (let i = 1; i <= 5; i += 1) {
+        await self.registration.showNotification('Wake up (test ' + i + ' of 5)', {
+          body: 'This is a test of the wake-up alarm. Dismiss it to stop.',
+          tag: 'wake-test',
+          icon: 'icons/icon-192.png',
+          badge: 'icons/icon-192.png',
+          requireInteraction: true,
+          renotify: true,
+          vibrate: ALARM_PATTERNS[event.data.pattern] || ALARM_PATTERNS.strong,
+          data: { url: '#/' },
+        });
+        if (i < 5) await wait(8000);
+      }
+    })());
 });
 
 /**

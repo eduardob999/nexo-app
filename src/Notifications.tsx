@@ -37,7 +37,7 @@ export function Notifications({ uid }: { uid: string }) {
               </div>
             </div>
             <div className="setting"><span>Test the wake-up alarm</span>
-              <button className="chip-btn small" disabled={testing} onClick={() => { setTesting(true); void testAlarm(pattern).finally(() => setTimeout(() => setTesting(false), 7000)); }}>{testing ? 'Coming in 6 s' : 'Trigger in 6 s'}</button>
+              <button className="chip-btn small" disabled={testing} onClick={() => { setTesting(true); void testAlarm(pattern).finally(() => setTimeout(() => setTesting(false), 50000)); }}>{testing ? 'Running, about 45 s' : 'Trigger in 6 s'}</button>
             </div>
             <p className="mut">Lock the phone after pressing Trigger. The sound is the one Android uses for Nexo notifications: press and hold the test notification, open its settings, and choose Sound and importance there. A web app cannot pick a ringtone itself.</p>
           </>
