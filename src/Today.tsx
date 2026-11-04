@@ -30,11 +30,11 @@ interface Props {
 }
 
 const BAND_LABEL: Record<Band, string> = {
-  assignment: 'Assignments', urgent: 'Urgent', overdue: 'Overdue', today: 'Today', prep: 'Preparation', other: 'Later',
+  assignment: 'Assignments', qa: 'Questions and answers', urgent: 'Urgent', overdue: 'Overdue', today: 'Today', prep: 'Preparation', other: 'Later',
 };
 /** Today shows five groups. Nexo's own lane has no date rules of its own, so it also shows the rest. */
 const HEALTH_LABEL = { ok: 'online', late: 'late', offline: 'OFFLINE', blocked: 'BLOCKED', asleep: 'asleep' } as const;
-const YOU_BANDS: Band[] = ['assignment', 'urgent', 'overdue', 'today', 'prep'];
+const YOU_BANDS: Band[] = ['assignment', 'qa', 'urgent', 'overdue', 'today', 'prep'];
 const NEXO_BANDS: Band[] = [...YOU_BANDS, 'other'];
 
 function CalendarIcon() {

@@ -91,3 +91,22 @@ describe('postpone', () => {
     expect(postpone(null, now)).toBe('2026-11-03');
   });
 });
+
+describe('questions and answers', () => {
+  it('pins a QUESTION or ANSWER card on Today whatever its date or lane', () => {
+    const q = c('q', { for: 'nexo', type: 'QUESTION', due: '2027-03-01' });
+    const a = c('a', { for: 'nexo', type: 'ANSWER', due: '2027-03-01' });
+    const asked = c('s', { for: 'nexo', ask: 'Which one?' });
+    for (const card of [q, a, asked]) {
+      expect(bandOf(card, now)).toBe('qa');
+      expect(onTodayBoard(card, now)).toBe(true);
+    }
+  });
+  it('lists them after assignments and before urgent', () => {
+    const order = sortQueue([c('u', { prio: 'high' }), c('q', { type: 'QUESTION' }), c('s', { type: 'ASSIGNMENT', due: '2026-12-01' })], now).map((x) => x.id);
+    expect(order).toEqual(['s', 'q', 'u']);
+  });
+  it('leaves a finished one alone', () => {
+    expect(bandOf(c('d', { status: 'done', type: 'ANSWER', due: '2026-11-02' }), now)).toBe('today');
+  });
+});

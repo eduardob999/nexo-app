@@ -1,7 +1,7 @@
 import { isHis } from './nexo';
 import type { Card } from './types';
 
-export type Band = 'assignment' | 'urgent' | 'overdue' | 'today' | 'prep' | 'other';
+export type Band = 'assignment' | 'qa' | 'urgent' | 'overdue' | 'today' | 'prep' | 'other';
 
 const DAY = 86_400_000;
 /** How far ahead each kind of card is allowed to appear under Preparation. */
@@ -41,6 +41,7 @@ function isNotice(card: Card): boolean {
  */
 export function bandOf(card: Card, now: Date): Band {
   if (card.type === 'ASSIGNMENT') return 'assignment';
+  if (isQA(card)) return 'qa';
   const due = card.due ? parseDue(card.due) : null;
   const valid = due !== null && !Number.isNaN(due.getTime());
   const days = valid ? Math.floor((startOfDay(due) - startOfDay(now)) / DAY) : null;
@@ -60,7 +61,14 @@ export function bandOf(card: Card, now: Date): Band {
   return days <= horizon ? 'prep' : 'other';
 }
 
-const ORDER: Record<Band, number> = { assignment: 0, urgent: 1, overdue: 2, today: 3, prep: 4, other: 5 };
+const ORDER: Record<Band, number> = { assignment: 0, qa: 1, urgent: 2, overdue: 3, today: 4, prep: 5, other: 6 };
+
+/** A question Nexo put to him, or an answer he asked for: both are highly relevant, so they are pinned on Today at any date. */
+export function isQA(card: Card): boolean {
+  if (card.status === 'done') return false;
+  const t = (card.type ?? '').toUpperCase();
+  return t === 'QUESTION' || t === 'ANSWER' || (!t && !!card.ask);
+}
 
 /** Queue order: band, then soonest due, then title. Cards with no date go last in their band. */
 export function sortQueue(cards: Card[], now: Date): Card[] {
@@ -120,7 +128,7 @@ export function postpone(due: string | null | undefined, now: Date): string {
  * does not make it vanish from the day.
  */
 export function onTodayBoard(card: Card, now: Date): boolean {
-  if (card.for === 'you' || isHis(card)) return true;
+  if (card.for === 'you' || isHis(card) || isQA(card)) return true;
   const band = bandOf(card, now);
   return card.for === 'nexo' && (band === 'urgent' || band === 'today');
 }
