@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePersisted } from './persist';
 import { markSeen } from './seen';
 import type { Card, CardFile, Draft, Entry } from './types';
@@ -23,6 +23,9 @@ interface Props {
   onBring?: (index: number, got: boolean) => void;
   onItem?: (itemId: string, done: boolean) => void;
   onAddItem?: (text: string) => void;
+  /** Other open cards this one can be joined with. */
+  others?: Card[];
+  onJoin?: (others: Card[]) => void;
 }
 
 function Icon({ d }: { d: string }) {
@@ -37,7 +40,10 @@ function stamp(ts: string): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {} }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, others = [], onJoin }: Props) {
+  const [joining, setJoining] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [find, setFind] = useState('');
   const [text, setText] = usePersisted(`reply-${card.id}`);
   useEffect(() => { markSeen(card.id); }, [card.id, entries.length]);
   const mine = drafts.filter((d) => d.linkedNote === card.id);
@@ -105,7 +111,20 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         <div className="reply-actions">
           <button className="act-ink" onClick={onDone}>Done</button>
           <button className="chip-btn" onClick={onLater}>Later</button>
+          {onJoin && others.length > 0 ? <button className="chip-btn" onClick={() => setJoining((j) => !j)}>Join</button> : null}
         </div>
+        {joining ? (
+          <section className="join-pane" aria-label="Join with other cards">
+            <input className="reply-input" placeholder="Find a card to join" value={find} onChange={(e) => setFind(e.target.value)} />
+            <ul>
+              {others.filter((o) => (o.title ?? o.id).toLowerCase().includes(find.trim().toLowerCase())).slice(0, 12).map((o) => (
+                <li key={o.id}><label><input type="checkbox" checked={picked.includes(o.id)} onChange={() => setPicked((p) => (p.includes(o.id) ? p.filter((x) => x !== o.id) : [...p, o.id]))} /> <span>{o.title ?? o.id}</span></label></li>
+              ))}
+            </ul>
+            <p className="mut">The originals are kept and marked done.</p>
+            <button className="act-ink" disabled={picked.length === 0} onClick={() => onJoin?.([card, ...others.filter((o) => picked.includes(o.id))])}>Join {picked.length + 1} cards</button>
+          </section>
+        ) : null}
         <div className="qchips" role="group" aria-label="Quick replies">
           {(card.qreplies && card.qreplies.length > 0 ? card.qreplies : GENERIC_REPLIES).map((q) => (
             <button key={q} type="button" className="qchip" onClick={() => setText(q)}>{q}</button>

@@ -43,6 +43,27 @@ export function callNexo(uid: string): Promise<void> {
 }
 
 /** One day on. */
+/**
+ * Join open cards into one. Nothing is removed: the sources are marked done and point at the new card, which
+ * shows at once with the first card's title and the earliest date; the sync fills in the merged thread.
+ */
+export function joinCards(uid: string, cards: Card[]): Promise<string> {
+  const ids = cards.map((c) => c.id);
+  const newId = `nj${Date.now().toString(36)}`;
+  const at = new Date().toISOString();
+  const dues = cards.map((c) => c.due).filter((d): d is string => !!d).sort();
+  const first = cards[0];
+  const batch = writeBatch(db);
+  const merged: Record<string, unknown> = { id: newId, status: 'open', for: cards.some((c) => c.for === 'you') ? 'you' : 'nexo', title: first?.title ?? newId, prio: first?.prio ?? 'normal', mergedFrom: ids, ts: at };
+  if (dues[0]) merged.due = dues[0];
+  if (first?.type) merged.type = first.type;
+  if (first?.place) merged.place = first.place;
+  batch.set(doc(db, ...root(uid), 'cards', newId), merged);
+  for (const id of ids) batch.update(doc(db, ...root(uid), 'cards', id), { status: 'done', doneAt: at, mergedInto: newId });
+  intent(batch, uid, { type: 'join', ids, newId, at });
+  return batch.commit().then(() => newId);
+}
+
 export function markLater(uid: string, card: Card): Promise<void> {
   const due = postpone(card.due, new Date());
   const batch = writeBatch(db);
