@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { alarmLink, clock, DEFAULT_LEAD, suggestWake } from './alarm';
 import type { Card } from './types';
 
@@ -13,6 +13,8 @@ function readLead(): number {
 export function WakeAlarm({ cards, now }: { cards: Card[]; now: Date }) {
   const [lead, setLead] = useState(readLead());
   const [shift, setShift] = useState(0);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [shift, lead]);
   if (now.getHours() < 18) return null;
   const s = suggestWake(cards, now, lead);
   const minutes = s.minutes + shift;
@@ -33,7 +35,21 @@ export function WakeAlarm({ cards, now }: { cards: Card[]; now: Date }) {
           <button className="chip-btn small" onClick={() => { setLeadSaved(Math.min(240, lead + 15)); setShift(0); }}>more</button>
         </p>
       </div>
-      {isAndroid ? <a className="act-ink" href={alarmLink(minutes)}>Set alarm</a> : <p className="mut">The Set alarm button appears on Android.</p>}
+      {isAndroid ? (
+        <a className="act-ink" href={alarmLink(minutes)} onClick={() => {
+          // If the Clock app opens, this page goes to the background. If it is still showing a moment later, the phone refused.
+          const left = { v: false };
+          const mark = () => { if (document.hidden) left.v = true; };
+          document.addEventListener('visibilitychange', mark);
+          setTimeout(() => { document.removeEventListener('visibilitychange', mark); if (!left.v) setFailed(true); }, 1500);
+        }}>Set alarm</a>
+      ) : <p className="mut">The Set alarm button appears on Android.</p>}
+      {failed ? (
+        <p className="wake-fail" role="status">
+          Your phone would not open Clock from here. Set <b className="mono">{clock(minutes)}</b> in the Clock app by hand.{' '}
+          <button className="chip-btn small" onClick={() => { void navigator.clipboard?.writeText(clock(minutes)); }}>Copy time</button>
+        </p>
+      ) : null}
     </section>
   );
 }

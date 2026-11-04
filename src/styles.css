@@ -384,3 +384,4 @@ a.act-ink { display: inline-flex; align-items: center; text-decoration: none; }
 
 .pin-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 6px 0; font-size: 13px; color: var(--accent); text-decoration: none; }
 .props a { color: var(--accent); text-decoration: none; }
+.wake-fail { margin: 0; font-size: 14px; color: var(--ink); }
