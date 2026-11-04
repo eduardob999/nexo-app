@@ -7,6 +7,7 @@ import { Checklists } from './Checklists';
 import { Linkified } from './Linkified';
 import { TripTicket } from './TripTicket';
 import { dueText } from './urgency';
+import { connectDrive, driveReady } from './drive';
 
 interface Props {
   card: Card;
@@ -26,6 +27,8 @@ interface Props {
   /** Other open cards this one can be joined with. */
   others?: Card[];
   onJoin?: (others: Card[]) => void;
+  /** Upload picked files to Drive and record them on the card. Resolves when all are done. */
+  onAttach?: (files: File[]) => Promise<void>;
 }
 
 function Icon({ d }: { d: string }) {
@@ -40,13 +43,22 @@ function stamp(ts: string): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, others = [], onJoin }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, others = [], onJoin, onAttach }: Props) {
+  const [attaching, setAttaching] = useState(false);
+  const [drive, setDrive] = useState(driveReady());
+  const [busy, setBusy] = useState('');
   const [joining, setJoining] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [find, setFind] = useState('');
   const [text, setText] = usePersisted(`reply-${card.id}`);
   useEffect(() => { markSeen(card.id); }, [card.id, entries.length]);
   const mine = drafts.filter((d) => d.linkedNote === card.id);
+  const pick = (list: FileList | null) => {
+    const files = Array.from(list ?? []);
+    if (files.length === 0 || !onAttach) return;
+    setBusy(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}`);
+    onAttach(files).then(() => setBusy('Attached'), (e: unknown) => { setBusy(e instanceof Error ? e.message : 'Upload failed'); setDrive(driveReady()); });
+  };
   const send = () => {
     const t = text.trim();
     if (!t) return;
@@ -111,8 +123,22 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         <div className="reply-actions">
           <button className="act-ink" onClick={onDone}>Done</button>
           <button className="chip-btn" onClick={onLater}>Later</button>
+          {onAttach ? <button className="chip-btn" onClick={() => setAttaching((a) => !a)}>Attach</button> : null}
           {onJoin && others.length > 0 ? <button className="chip-btn" onClick={() => setJoining((j) => !j)}>Join</button> : null}
         </div>
+        {attaching && onAttach ? (
+          <section className="join-pane" aria-label="Attach a photo or file">
+            {drive ? (
+              <>
+                <label className="chip-btn">Take a photo<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => pick(e.target.files)} /></label>
+                <label className="chip-btn">Choose photos or files<input type="file" accept="image/*,application/pdf" multiple hidden onChange={(e) => pick(e.target.files)} /></label>
+              </>
+            ) : (
+              <button className="act-ink" onClick={() => { setBusy('Opening Google'); connectDrive().then(() => { setDrive(true); setBusy(''); }, (e: unknown) => setBusy(e instanceof Error ? e.message : 'Could not connect')); }}>Connect Google Drive</button>
+            )}
+            {busy ? <p className="mut" role="status">{busy}</p> : <p className="mut">Files go to the Nexo attachments folder in your Drive.</p>}
+          </section>
+        ) : null}
         {joining ? (
           <section className="join-pane" aria-label="Join with other cards">
             <input className="reply-input" placeholder="Find a card to join" value={find} onChange={(e) => setFind(e.target.value)} />

@@ -64,6 +64,17 @@ export function joinCards(uid: string, cards: Card[]): Promise<string> {
   return batch.commit().then(() => newId);
 }
 
+/** Record a file already uploaded to Drive on a card (or a receipt). The picture goes in the files subcollection. */
+export function attachFile(uid: string, target: { cardId?: string; receiptId?: string }, file: { id: string; name: string; type: string; size: number; driveId: string; viewUrl: string }, thumb?: string): Promise<void> {
+  const batch = writeBatch(db);
+  const col = target.receiptId ? 'receipts' : 'cards';
+  const parent = doc(db, ...root(uid), col, (target.receiptId ?? target.cardId) as string);
+  batch.update(parent, { files: arrayUnion({ ...file }) });
+  if (thumb) batch.set(doc(parent, 'files', file.id), { thumb });
+  intent(batch, uid, { type: 'attach', ...(target.receiptId ? { receiptId: target.receiptId } : { cardId: target.cardId }), file, ...(thumb ? { thumb } : {}) });
+  return batch.commit();
+}
+
 export function markLater(uid: string, card: Card): Promise<void> {
   const due = postpone(card.due, new Date());
   const batch = writeBatch(db);

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
+import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addAlloc, addCard, joinCards, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { addAlloc, addCard, attachFile, joinCards, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -46,6 +47,7 @@ function ThreadView({ uid, card, drafts, others, onDone, onLater }: { uid: strin
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }} onDone={onDone} onLater={onLater}
       onPriority={() => { void cyclePriority(uid, card); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }}
+      onAttach={async (files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); } flash('Attached'); }}
       others={others} onJoin={(cs) => { void joinCards(uid, cs).then(() => { flash('Joined into one card'); window.location.hash = '#/'; }); }} />
   );
 }
