@@ -172,12 +172,12 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .props li + li { border-top: 1px solid var(--line); }
 .props svg { color: var(--muted); flex: none; }
 
-/* add sheet */
-.field { position: relative; }
-.mirror, .add-input { font: 600 20px/1.4 var(--sans); padding: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; letter-spacing: normal; }
-.mirror { position: absolute; inset: 0; pointer-events: none; color: var(--ink); }
+/* add sheet: the mirror sets the height, the textarea sits exactly over it, so wrapped text never spills */
+.field { display: grid; }
+.mirror, .add-input { grid-area: 1 / 1; min-width: 0; font: 600 20px/1.4 var(--sans); padding: 8px 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; letter-spacing: normal; }
+.mirror { pointer-events: none; color: var(--ink); min-height: 3.6em; }
 .mirror mark { background: var(--today-tint); color: var(--today); border-radius: 6px; padding: 0 2px; margin: 0 -2px; }
-.add-input { position: relative; width: 100%; min-height: 3.6em; resize: none; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--ink); }
+.add-input { position: relative; width: 100%; height: 100%; overflow: hidden; resize: none; border: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--ink); }
 .add-input::placeholder { color: var(--muted); font-weight: 500; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid var(--edge); border-radius: 18px; font-size: 14px; font-weight: 500; color: var(--muted); }
@@ -291,3 +291,9 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .strip-events a { color: var(--accent); }
 .nexo-panel.asleep { background: var(--assign-tint); border-color: transparent; } .nexo-panel.asleep .np-head { color: var(--assign); }
 .sleep-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 0; } .sleep-opts .chip-btn { height: auto; min-height: 56px; display: grid; gap: 2px; text-align: left; padding: 8px 14px; } .sleep-opts small { color: var(--muted); font-size: 13px; font-weight: 400; }
+
+/* attachments */
+.pics { margin: 14px 8px 0; display: grid; gap: 12px; }
+.pics figure { margin: 0; background: var(--surface); border: 1px solid var(--edge); border-radius: 16px; padding: 10px; }
+.pics img { display: block; width: 100%; max-height: 70vh; object-fit: contain; border-radius: 10px; background: #fff; }
+.pics figcaption { margin-top: 8px; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }

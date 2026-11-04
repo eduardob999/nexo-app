@@ -31,8 +31,18 @@ export interface Card {
   bring?: unknown[];
   plan?: unknown;
   /** Denormalised by the writer so a list never has to read the entries subcollection. */
+  files?: CardFile[];
   entryCount?: number;
   last?: LastEntry;
+}
+
+/** An image attached to a card by the loop (a QR code, a screenshot). The picture itself is in `files/{id}.thumb`. */
+export interface CardFile {
+  id: string;
+  name?: string;
+  type?: string;
+  viewUrl?: string;
+  thumb?: string;
 }
 
 export interface Entry {

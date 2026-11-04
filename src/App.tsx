@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, setSleep, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchRelays, watchSync, watchTodayInfo } from './cards';
+import { addCard, addEntry, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchOpenCards, watchRelays, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -12,7 +12,7 @@ import { Drafts } from './Drafts';
 import { Thread } from './Thread';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
-import type { Card, Draft, Entry, NexoStatus, Relay, TodayInfo } from './types';
+import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, TodayInfo } from './types';
 import { useRoute } from './useHash';
 
 function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
@@ -30,8 +30,10 @@ function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
 function ThreadView({ uid, card, drafts, onDone, onLater }: { uid: string; card: Card; drafts: Draft[]; onDone: () => void; onLater: () => void }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   useEffect(() => watchEntries(uid, card.id, setEntries, (e) => console.warn('[entries]', e)), [uid, card.id]);
+  const [pics, setPics] = useState<CardFile[]>([]);
+  useEffect(() => watchFiles(uid, card.id, setPics, (e) => console.warn('[files]', e)), [uid, card.id]);
   return (
-    <Thread card={card} entries={entries} drafts={drafts} now={new Date()}
+    <Thread card={card} entries={entries} pics={pics} drafts={drafts} now={new Date()}
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); }} onDone={onDone} onLater={onLater} />
   );

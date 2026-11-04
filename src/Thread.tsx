@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import type { Card, Draft, Entry } from './types';
+import type { Card, CardFile, Draft, Entry } from './types';
 import { calendarLabel, cardTag, priorityLabel } from './cardmeta';
 import { dueText } from './urgency';
 
 interface Props {
   card: Card;
   entries: Entry[];
+  /** Picture data for the card's attachments (the card document holds only names). */
+  pics?: CardFile[];
   drafts: Draft[];
   now: Date;
   onBack: () => void;
@@ -26,7 +28,7 @@ function stamp(ts: string): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, drafts, now, onBack, onReply, onDone, onLater }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater }: Props) {
   const [text, setText] = useState('');
   const mine = drafts.filter((d) => d.linkedNote === card.id);
   const send = () => {
@@ -54,6 +56,19 @@ export function Thread({ card, entries, drafts, now, onBack, onReply, onDone, on
         {mine.length > 0 ? <li><Icon d="M3 6h18v12H3zM4 8l8 6 8-6" /><span>{mine.length} draft{mine.length > 1 ? 's' : ''}</span></li> : null}
       </ul>
 
+      {(() => {
+        const shown = (card.files ?? []).map((f) => ({ ...f, thumb: pics.find((p) => p.id === f.id)?.thumb ?? f.thumb })).filter((f) => f.thumb);
+        return shown.length > 0 ? (
+          <section className="pics" aria-label="Attachments">
+            {shown.map((f) => (
+              <figure key={f.id}>
+                <a href={f.thumb} target="_blank" rel="noreferrer"><img src={f.thumb} alt={f.name ?? 'Attachment'} /></a>
+                <figcaption>{f.name ?? 'Attachment'}</figcaption>
+              </figure>
+            ))}
+          </section>
+        ) : null;
+      })()}
       <ol className="bubbles">
         {entries.map((e) => {
           const you = e.by === 'eduardo';

@@ -1,6 +1,6 @@
 import { collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Card, Draft, Entry, NexoStatus, Relay, TodayInfo } from './types';
+import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 
 const root = (uid: string) => ['users', uid] as const;
@@ -71,6 +71,13 @@ export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?:
   batch.set(doc(db, ...root(uid), 'cards', id, 'entries', entryId), entry);
   intent(batch, uid, { type: 'add', cardId: id, text, for: forWho, due: when, ts, entryId });
   return batch.commit();
+}
+
+/** The pictures attached to a card, read from its files subcollection (the card document holds only their names). */
+export function watchFiles(uid: string, cardId: string, onFiles: (f: CardFile[]) => void, onError: (e: Error) => void): () => void {
+  return onSnapshot(collection(db, ...root(uid), 'cards', cardId, 'files'), (snap) => {
+    onFiles(snap.docs.map((d) => ({ ...(d.data() as Omit<CardFile, 'id'>), id: d.id })));
+  }, onError);
 }
 
 /** A card's thread, oldest first. Entry ids sort chronologically (zero padded index, then epoch milliseconds). */
