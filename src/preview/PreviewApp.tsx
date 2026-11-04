@@ -48,7 +48,7 @@ const WORKING: NexoStatus = {
 
 export function PreviewApp() {
   const which = window.location.hash.replace('#/preview', '').replace(/^\//, '');
-  const card = { ...(FIXTURES[2] as Card), ask: 'Should I send the signed form on Monday, or wait for their reply?' };
+  const card = { ...(FIXTURES[2] as Card), ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
   if (which === 'thread') {
     return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} onDone={() => {}} onLater={() => {}} />;
   }

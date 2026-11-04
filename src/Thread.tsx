@@ -23,6 +23,8 @@ function stamp(ts: string): string {
   return d.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
+
 export function Thread({ card, entries, drafts, now, onBack, onReply, onDone, onLater }: Props) {
   const [text, setText] = useState('');
   const mine = drafts.filter((d) => d.linkedNote === card.id);
@@ -72,6 +74,11 @@ export function Thread({ card, entries, drafts, now, onBack, onReply, onDone, on
         <div className="reply-actions">
           <button className="act-ink" onClick={onDone}>Done</button>
           <button className="chip-btn" onClick={onLater}>Later</button>
+        </div>
+        <div className="qchips" role="group" aria-label="Quick replies">
+          {(card.qreplies && card.qreplies.length > 0 ? card.qreplies : GENERIC_REPLIES).map((q) => (
+            <button key={q} type="button" className="qchip" onClick={() => setText(q)}>{q}</button>
+          ))}
         </div>
         <form className="reply-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
           <label className="sr" htmlFor="reply">Reply to this card</label>

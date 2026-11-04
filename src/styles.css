@@ -252,3 +252,7 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .ask-block p { margin: 0; font-size: 16px; line-height: 1.4; font-weight: 500; }
 .reply-bar .ask-block { margin: 0; padding: 10px 14px; } .reply-bar .ask-block p { font-size: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .thread { padding-bottom: calc(260px + env(safe-area-inset-bottom)); }
+.qchips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; } .qchips::-webkit-scrollbar { display: none; }
+.qchip { flex: none; height: 40px; padding: 0 14px; border: 1px solid var(--edge); border-radius: 20px; background: var(--surface); font-size: 15px; font-weight: 500; white-space: nowrap; }
+.qchip:active { background: var(--chip); }
+.thread { padding-bottom: calc(300px + env(safe-area-inset-bottom)); }
