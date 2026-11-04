@@ -373,3 +373,11 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .join-pane { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 14px; background: var(--surface-2, rgba(127,127,127,.1)); }
 .join-pane ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; }
 .join-pane label { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; }
+
+.wake { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin: 8px 16px; padding: 14px; border-radius: 16px; background: var(--chip); }
+.wake-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.wake-main p { margin: 0; }
+.wake-time { display: flex; align-items: center; gap: 10px; }
+.wake-time b { font-size: 32px; letter-spacing: -0.02em; }
+a.act-ink { display: inline-flex; align-items: center; text-decoration: none; }
+.wake a.act-ink { justify-content: center; min-height: 48px; padding: 0 20px; border-radius: 14px; font-size: 16px; white-space: nowrap; }

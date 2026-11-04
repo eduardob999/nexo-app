@@ -7,6 +7,7 @@ import { Notes } from '../Notes';
 import { Shelf } from '../Shelf';
 import { Trips } from '../Trips';
 import { Upcoming } from '../Upcoming';
+import { WakeAlarm } from '../WakeAlarm';
 import { Thread } from '../Thread';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
@@ -68,6 +69,11 @@ export function PreviewApp() {
   const card = { ...(FIXTURES[2] as Card), bring: [{ t: 'Signed lease form', got: true }, { t: 'Residence card' }, { t: 'Pen' }], items: [{ id: 'i1', text: 'Ask about the deposit', done: false }], ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
   if (which === 'thread') {
     return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} onDone={() => {}} onLater={() => {}} />;
+  }
+  if (which === 'alarm') {
+    const evening = new Date('2026-11-04T21:00:00+09:00');
+    const cs: Card[] = [{ id: 'x', status: 'open', for: 'you', title: 'Lab meeting with Mamitsuka-sensei', due: '2026-11-05T09:30', place: 'Uji campus' }];
+    return <WakeAlarm cards={cs} now={evening} />;
   }
   if (which === 'upcoming') {
     return (<><Upcoming cards={FIXTURES} now={NOW} onDone={() => {}} /><TabBar current="upcoming" draftCount={DRAFTS.length} /></>);

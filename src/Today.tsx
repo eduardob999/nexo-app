@@ -5,6 +5,7 @@ import { NexoPanel } from './NexoPanel';
 import { isNewCard } from './seen';
 import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
+import { WakeAlarm } from './WakeAlarm';
 import { Relays } from './Relays';
 import type { Card, NexoStatus, Relay, TodayInfo } from './types';
 import { bandOf, dueText, onTodayBoard, sortQueue, type Band } from './urgency';
@@ -145,6 +146,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
       <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
       {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : null}
       {lane === 'you' ? <TodayStrip info={info} now={now} /> : null}
+      {lane === 'you' ? <WakeAlarm cards={cards} now={now} /> : null}
       {holiday && !info ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
       {lane === 'nexo' && sections.length > 0 ? (
