@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Draft } from './types';
+import type { Draft, NexoStatus } from './types';
 
 interface Props {
   drafts: Draft[];
@@ -10,6 +10,8 @@ interface Props {
   onEdit: (draft: Draft, text: string) => void;
   onRevise: (draft: Draft, instruction: string) => void;
   onAnswer: (draft: Draft, detail: string) => void;
+  onMailCheck?: () => void;
+  nexo?: NexoStatus | null | undefined;
 }
 
 /** Clipboard first; the textarea fallback covers browsers that refuse the async API on a plain page. */
@@ -157,7 +159,9 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
   );
 }
 
-export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer }: Props) {
+export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo }: Props) {
+  const [asked, setAsked] = useState(0);
+  const pending = Boolean(nexo?.mailCheckSince) || Date.now() - asked < 60_000;
   const waiting = drafts.filter((d) => d.status !== 'sent');
   const dayAgo = Date.now() - 24 * 3600_000;
   const sent = drafts.filter((d) => d.status === 'sent' && Date.parse(d.sentAt ?? '') > dayAgo);
@@ -169,6 +173,14 @@ export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, on
           <h1>Drafts</h1>
         </div>
       </header>
+      {onMailCheck ? (
+        <div className="mailbar">
+          <button className="chip-btn" disabled={pending} onClick={() => { setAsked(Date.now()); onMailCheck(); }}>
+            {pending ? 'Mail check requested' : 'Check my mail now'}
+          </button>
+          <span className="mut">{pending ? `since ${hhmm(nexo?.mailCheckSince ?? new Date(asked).toISOString())}, waiting for Nexo` : 'Drafts replies; sends nothing'}</span>
+        </div>
+      ) : null}
       {waiting.length === 0 ? <p className="empty">No drafts waiting.</p> : null}
       <ul className="drafts">
         {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} />)}

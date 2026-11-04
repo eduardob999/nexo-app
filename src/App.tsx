@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchOpenCards, watchRelays, watchSync, watchTodayInfo } from './cards';
+import { addCard, addEntry, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchOpenCards, watchRelays, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -132,6 +132,7 @@ export function App() {
           onCopied={(id) => { void markCopied(user.uid, id); }}
           onSent={(id) => { void markSent(user.uid, id); }}
           onDiscard={(id) => { void discardDraft(user.uid, id); }}
+          nexo={nexo} onMailCheck={() => { void requestMailCheck(user.uid); }}
           onSend={(d) => { void requestSend(user.uid, d); }}
           onEdit={(d, t) => { void editDraft(user.uid, d, t); }}
           onRevise={(d, t) => { void reviseDraft(user.uid, d, t); }}

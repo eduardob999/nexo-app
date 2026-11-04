@@ -222,3 +222,10 @@ export function setSleep(uid: string, until: Date | null): Promise<void> {
   intent(batch, uid, { type: 'sleep', until: until ? until.toISOString() : null });
   return batch.commit();
 }
+
+/** "Check my mail now": the next tick runs the normal mail check, drafting only, instead of waiting for its slot. */
+export function requestMailCheck(uid: string): Promise<void> {
+  const batch = writeBatch(db);
+  intent(batch, uid, { type: 'mailcheck' });
+  return batch.commit();
+}

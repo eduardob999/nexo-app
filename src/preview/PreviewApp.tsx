@@ -89,7 +89,7 @@ export function PreviewApp() {
   if (which === 'drafts') {
     return (
       <>
-        <Drafts drafts={DRAFTS} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} onEdit={() => {}} onRevise={() => {}} onAnswer={() => {}} />
+        <Drafts drafts={DRAFTS} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} onEdit={() => {}} onRevise={() => {}} onAnswer={() => {}} onMailCheck={() => {}} />
         <TabBar current="drafts" draftCount={DRAFTS.length} />
       </>
     );
