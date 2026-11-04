@@ -17,6 +17,10 @@ export interface Card {
   place?: string;
   /** `high` is the old board's Urgent flag; `normal`, `med` and `low` carry no queue meaning. */
   prio?: string;
+  /** A question or decision Nexo has put to him. Present only while it is open. */
+  ask?: string;
+  /** Personalised reply options Nexo wrote for this card. */
+  qreplies?: string[];
   /** Days ahead this card should start showing under Preparation, overriding the default for its kind. */
   lead?: number;
   /** Things to bring and a plan: either marks a card as needing preparation. */

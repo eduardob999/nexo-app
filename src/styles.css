@@ -243,3 +243,12 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .send-wait { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--today-tint); color: var(--today); font-weight: 600; font-size: 15px; }
 .copy-main.alt { background: var(--chip); color: var(--ink); }
 .sent-line { display: grid; gap: 4px; background: transparent; border-style: dashed; font-size: 15px; color: var(--muted); }
+
+/* ask */
+.row-ask { font-size: 15px; line-height: 1.35; color: var(--ink); background: var(--assign-tint); border-radius: 10px; padding: 8px 10px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.row-ask b { color: var(--assign); font-weight: 700; margin-right: 4px; }
+.ask-block { margin: 16px 8px 0; padding: 14px 16px; border-radius: 16px; background: var(--assign-tint); }
+.ask-block b { display: block; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--assign); margin-bottom: 4px; }
+.ask-block p { margin: 0; font-size: 16px; line-height: 1.4; font-weight: 500; }
+.reply-bar .ask-block { margin: 0; padding: 10px 14px; } .reply-bar .ask-block p { font-size: 15px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.thread { padding-bottom: calc(260px + env(safe-area-inset-bottom)); }

@@ -63,6 +63,12 @@ export function Thread({ card, entries, drafts, now, onBack, onReply, onDone, on
       {mine.length > 0 ? <a className="draft-link" href="#/drafts">Open the draft{mine.length > 1 ? 's' : ''}</a> : null}
 
       <div className="reply-bar">
+        {card.ask ? (
+          <aside className="ask-block" aria-label="What Nexo needs from you">
+            <b>What I need from you</b>
+            <p>{card.ask}</p>
+          </aside>
+        ) : null}
         <div className="reply-actions">
           <button className="act-ink" onClick={onDone}>Done</button>
           <button className="chip-btn" onClick={onLater}>Later</button>

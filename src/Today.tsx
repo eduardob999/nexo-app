@@ -56,7 +56,8 @@ function Row({ card, now, onDone, onLater, hasDraft }: { card: Card; now: Date; 
             {card.for === 'nexo' ? <span className="draft-flag">With Nexo</span> : null}
             {hasDraft ? <span className="draft-flag"><MailIcon />Draft</span> : null}
           </span>
-          {open && card.last ? (
+          {card.ask ? <span className="row-ask"><b>Nexo asks</b> {card.ask}</span> : null}
+          {open && card.last && !card.ask ? (
             <span className="row-last"><b>{card.last.by === 'eduardo' ? 'You' : 'Nexo'}</b> {card.last.text}</span>
           ) : null}
           {open && card.place ? <span className="row-place">{card.place}</span> : null}
