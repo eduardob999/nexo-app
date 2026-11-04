@@ -1,6 +1,6 @@
 import { collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
+import type { Alloc, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 
 const root = (uid: string) => ['users', uid] as const;
@@ -271,5 +271,48 @@ export function addMemo(uid: string, text: string, tags: string[]): Promise<void
   const batch = writeBatch(db);
   batch.set(doc(db, ...root(uid), 'memos', id), { id, text, tags, ts: new Date().toISOString() });
   intent(batch, uid, { type: 'memo', action: 'add', memoId: id, text, tags });
+  return batch.commit();
+}
+
+export function watchAllocations(uid: string, onItems: (a: Alloc[]) => void, onError: (e: Error) => void): () => void {
+  return onSnapshot(collection(db, ...root(uid), 'allocations'), (snap) => onItems(snap.docs.map((d) => ({ ...(d.data() as Omit<Alloc, 'id'>), id: d.id }))), onError);
+}
+
+const allocRef = (uid: string, id: string) => doc(db, ...root(uid), 'allocations', id);
+
+export function addAlloc(uid: string, a: { label: string; amount: number; tag: string; month: string }): Promise<void> {
+  const id = `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  const batch = writeBatch(db);
+  batch.set(allocRef(uid, id), { id, label: a.label, amount: a.amount, done: false, recurring: true, month: a.month, ts: new Date().toISOString(), ...(a.tag ? { tag: a.tag } : {}) });
+  intent(batch, uid, { type: 'alloc', action: 'add', allocId: id, ...a });
+  return batch.commit();
+}
+
+export function toggleAlloc(uid: string, a: Alloc): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(allocRef(uid, a.id), { done: !a.done });
+  intent(batch, uid, { type: 'alloc', action: 'toggle', allocId: a.id, done: !a.done });
+  return batch.commit();
+}
+
+export function editAlloc(uid: string, a: Alloc, change: { label?: string; amount?: number; tag?: string }): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(allocRef(uid, a.id), { ...change, editedAt: new Date().toISOString() });
+  intent(batch, uid, { type: 'alloc', action: 'edit', allocId: a.id, ...change });
+  return batch.commit();
+}
+
+export function repeatAlloc(uid: string, a: Alloc): Promise<void> {
+  const next = a.recurring === false;
+  const batch = writeBatch(db);
+  batch.update(allocRef(uid, a.id), { recurring: next });
+  intent(batch, uid, { type: 'alloc', action: 'repeat', allocId: a.id, recurring: next });
+  return batch.commit();
+}
+
+/** The first time the Money tab opens in a month with no lines, ask for the month to be seeded from the last one. */
+export function seedAllocMonth(uid: string, month: string): Promise<void> {
+  const batch = writeBatch(db);
+  intent(batch, uid, { type: 'alloc', action: 'seed', month });
   return batch.commit();
 }

@@ -8,7 +8,7 @@ const ITEMS = [
   { id: 'search', label: 'Search', hint: 'Find an open card', href: '#/search' },
   { id: 'nexo', label: 'Nexo', hint: 'What the assistant is working on', href: '#/nexo' },
   { id: 'notes', label: 'Notes', hint: 'Things worth keeping', href: '#/notes' },
-  { id: 'money', label: 'Money', hint: 'Coming later', href: null },
+  { id: 'money', label: 'Money', hint: 'The set-aside list for the month', href: '#/money' },
   { id: 'trips', label: 'Trips', hint: 'Tickets for the trips ahead', href: '#/trips' },
   { id: 'shelf', label: 'Shelf', hint: 'Resources, done cards and closed threads', href: '#/shelf' },
 ] as const;
@@ -22,11 +22,7 @@ export function Browse({ nexoCount, draftCount, settings, onSettings, onSleep }:
       <ul className="browse panel">
         {ITEMS.map((i) => (
           <li key={i.id}>
-            {i.href ? (
-              <a className="browse-row" href={i.href}><span><b>{i.label}</b><small>{i.hint}</small></span>{i.id === 'nexo' && nexoCount > 0 ? <i className="badge flat">{nexoCount}</i> : null}</a>
-            ) : (
-              <div className="browse-row off"><span><b>{i.label}</b><small>{i.hint}</small></span></div>
-            )}
+            <a className="browse-row" href={i.href}><span><b>{i.label}</b><small>{i.hint}</small></span>{i.id === 'nexo' && nexoCount > 0 ? <i className="badge flat">{nexoCount}</i> : null}</a>
           </li>
         ))}
       </ul>

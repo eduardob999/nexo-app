@@ -133,3 +133,5 @@ export interface Plan {
 }
 
 export interface Memo { id: string; tags: string[]; text: string; ts: string }
+
+export interface Alloc { id: string; label: string; amount: number; done: boolean; ts?: string; month?: string; recurring?: boolean; tag?: string }

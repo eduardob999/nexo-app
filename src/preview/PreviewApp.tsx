@@ -2,6 +2,7 @@ import { AddSheet } from '../AddSheet';
 import { Browse } from '../Browse';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
+import { Money } from '../Money';
 import { Notes } from '../Notes';
 import { Shelf } from '../Shelf';
 import { Trips } from '../Trips';
@@ -72,6 +73,15 @@ export function PreviewApp() {
   }
   if (which === 'browse') {
     return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'money') {
+    const month = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }).slice(0, 7);
+    return (<><Money onAdd={() => {}} onToggle={() => {}} onEdit={() => {}} onRepeat={() => {}} onSeed={() => {}} allocations={[
+      { id: '1', label: 'Groceries', amount: 35000, done: true, month, tag: 'home' },
+      { id: '2', label: 'Rent and utilities', amount: 20000, done: true, month },
+      { id: '3', label: 'Carla (debt)', amount: 5500, done: false, month, tag: 'Carla' },
+      { id: '4', label: 'Motorcycle lessons', amount: 11000, done: false, month, recurring: false },
+      { id: '5', label: 'Old', amount: 9000, done: true, month: '2026-09' }]} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'notes') {
     return (<><Notes onKeep={() => {}} memos={[

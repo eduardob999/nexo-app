@@ -328,3 +328,13 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .tkt { font: 600 13px var(--mono); color: var(--muted); } .tkdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; } .tkline i { color: var(--muted); font-size: 13px; }
 .tkknow { margin: 0; padding-left: 18px; font-size: 15px; display: grid; gap: 4px; } .tkmap { margin: 0; } .tkmap a { color: var(--accent); }
 .memo-form { margin: 14px 8px 0; } .memo-list { padding: 4px 16px; } .memo-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+
+/* money */
+.al-total { margin: 0 0 8px; font-size: 17px; } .al-total b { font: 700 24px var(--mono); }
+.al-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; }
+.al { display: flex; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); align-items: flex-start; } .al.done .al-label { text-decoration: line-through; color: var(--muted); }
+.al-body { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.al-field { all: unset; cursor: pointer; min-height: 32px; display: inline-flex; align-items: center; } .al-field[aria-pressed='false'] { color: var(--muted); }
+.al-label { font-weight: 600; font-size: 16px; } .al-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--muted); } .al-amt { font: 600 15px var(--mono); color: var(--ink); } .al-tag { color: var(--accent); }
+.al-edit { font: 16px var(--sans); padding: 6px 10px; border: 1px solid var(--accent); border-radius: 10px; background: var(--bg); color: var(--ink); min-width: 0; width: 100%; }
+.al-add { display: grid; gap: 8px; margin-top: 14px; } .al-add .search-input { margin-top: 0; } .al-past { margin: 8px 0 0; }
