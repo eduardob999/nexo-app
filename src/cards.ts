@@ -1,6 +1,6 @@
 import { collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, Resource, TodayInfo } from './types';
+import type { Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 
 const root = (uid: string) => ['users', uid] as const;
@@ -258,5 +258,18 @@ export function archiveResource(uid: string, r: Resource, archived: boolean): Pr
   const batch = writeBatch(db);
   batch.update(doc(db, ...root(uid), 'resources', r.id), { archived });
   intent(batch, uid, { type: 'resource', action: archived ? 'archive' : 'restore', resourceId: r.id });
+  return batch.commit();
+}
+
+export function watchMemos(uid: string, onItems: (m: Memo[]) => void, onError: (e: Error) => void): () => void {
+  return onSnapshot(collection(db, ...root(uid), 'memos'), (snap) => onItems(snap.docs.map((d) => ({ ...(d.data() as Omit<Memo, 'id'>), id: d.id }))), onError);
+}
+
+/** Keep a thought. Tags are set by hand now: the old board asked a model on the page to tag it, which the page can no longer do. */
+export function addMemo(uid: string, text: string, tags: string[]): Promise<void> {
+  const id = `m-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  const batch = writeBatch(db);
+  batch.set(doc(db, ...root(uid), 'memos', id), { id, text, tags, ts: new Date().toISOString() });
+  intent(batch, uid, { type: 'memo', action: 'add', memoId: id, text, tags });
   return batch.commit();
 }

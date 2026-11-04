@@ -7,7 +7,7 @@ interface Props { nexoCount: number; draftCount: number; settings: Settings; onS
 const ITEMS = [
   { id: 'search', label: 'Search', hint: 'Find an open card', href: '#/search' },
   { id: 'nexo', label: 'Nexo', hint: 'What the assistant is working on', href: '#/nexo' },
-  { id: 'notes', label: 'Notes', hint: 'Coming later', href: null },
+  { id: 'notes', label: 'Notes', hint: 'Things worth keeping', href: '#/notes' },
   { id: 'money', label: 'Money', hint: 'Coming later', href: null },
   { id: 'trips', label: 'Trips', hint: 'Tickets for the trips ahead', href: '#/trips' },
   { id: 'shelf', label: 'Shelf', hint: 'Resources, done cards and closed threads', href: '#/shelf' },

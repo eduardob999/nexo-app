@@ -2,6 +2,7 @@ import { AddSheet } from '../AddSheet';
 import { Browse } from '../Browse';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
+import { Notes } from '../Notes';
 import { Shelf } from '../Shelf';
 import { Trips } from '../Trips';
 import { Upcoming } from '../Upcoming';
@@ -71,6 +72,13 @@ export function PreviewApp() {
   }
   if (which === 'browse') {
     return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'notes') {
+    return (<><Notes onKeep={() => {}} memos={[
+      { id: 'a', text: 'Try the gradient trick from the OFDFT paper on the small system first.', tags: ['research'], ts: '2026-11-03T10:00:00Z' },
+      { id: 'b', text: 'Kanji for medicine words come up in every lecture: drill them.', tags: ['japan', 'study'], ts: '2026-11-02T10:00:00Z' },
+      { id: 'c', text: 'Ask about the second seminar slot.', tags: ['research'], ts: '2026-11-01T10:00:00Z' },
+      { id: 'd', text: 'Buy a thicker coat before December.', tags: [], ts: '2026-10-30T10:00:00Z' }]} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'trips') {
     const trip: Card = { id: 't1', status: 'open', for: 'you', type: 'TRIP', trip: true, title: 'Trip to the dojo Sat 7 Nov: leave 08:50', due: '2026-11-03T08:50:00+09:00', place: 'Gion',

@@ -131,3 +131,5 @@ export interface Plan {
   est?: string;
   maps?: string;
 }
+
+export interface Memo { id: string; tags: string[]; text: string; ts: string }

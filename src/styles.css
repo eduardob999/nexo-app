@@ -327,3 +327,4 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .tkline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .tkline li { display: grid; grid-template-columns: 52px 12px 1fr; gap: 8px; align-items: baseline; font-size: 15px; }
 .tkt { font: 600 13px var(--mono); color: var(--muted); } .tkdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; } .tkline i { color: var(--muted); font-size: 13px; }
 .tkknow { margin: 0; padding-left: 18px; font-size: 15px; display: grid; gap: 4px; } .tkmap { margin: 0; } .tkmap a { color: var(--accent); }
+.memo-form { margin: 14px 8px 0; } .memo-list { padding: 4px 16px; } .memo-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }

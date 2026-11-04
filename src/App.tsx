@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { addCard, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchMemos, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
+import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -14,7 +15,7 @@ import { Thread } from './Thread';
 import { Trips } from './Trips';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
-import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, Resource, TodayInfo } from './types';
+import type { Card, CardFile, Draft, Entry, Memo, NexoStatus, Relay, Resource, TodayInfo } from './types';
 import { useRoute } from './useHash';
 
 function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
@@ -54,6 +55,7 @@ export function App() {
   const [doneCards, setDoneCards] = useState<Card[]>([]);
   const [closedRelays, setClosedRelays] = useState<Relay[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
+  const [memos, setMemos] = useState<Memo[]>([]);
   const [syncAt, setSyncAt] = useState<number | null | undefined>(undefined);
   const [clock, setClock] = useState(() => Date.now());
   const route = useRoute();
@@ -100,6 +102,12 @@ export function App() {
     return () => { stop(); stopNexo(); window.clearInterval(tick); };
   }, [user]);
 
+  const onNotes = route.name === 'notes';
+  useEffect(() => {
+    if (!user || !onNotes) return undefined;
+    return watchMemos(user.uid, setMemos, (e) => console.warn('[notes]', e));
+  }, [user, onNotes]);
+
   const onShelf = route.name === 'shelf';
   useEffect(() => {
     if (!user || !onShelf) return undefined;
@@ -133,7 +141,9 @@ export function App() {
   return (
     <>
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
-      {tab === 'trips' ? (
+      {tab === 'notes' ? (
+        <Notes memos={memos} onKeep={(t, g) => { void addMemo(user.uid, t, g); }} />
+      ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} />
       ) : tab === 'shelf' ? (
         <Shelf done={doneCards} closed={closedRelays} resources={resources}
@@ -167,7 +177,7 @@ export function App() {
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       ) : null}
-      <TabBar current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+      <TabBar current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due) => { void addCard(user.uid, t, w, due); }} /> : null}
     </>
   );
