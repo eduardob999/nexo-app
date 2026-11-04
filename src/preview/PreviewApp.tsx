@@ -53,6 +53,7 @@ const INFO: TodayInfo = {
 };
 
 const WORKING: NexoStatus = {
+  health: { state: 'ok', note: '' },
   phase: 'working', startedAt: new Date(Date.now() - 3 * 60_000).toISOString(), queuedAt: null, total: 4, answered: 2, lastOutcome: null, lastEndedAt: null,
   cards: [
     { id: 'a', title: 'Reply to the housing office', answered: true },

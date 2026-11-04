@@ -5,12 +5,14 @@ import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthS
 import { addAlloc, addCard, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
+import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
+import { bandOf } from './urgency';
 import { Drafts } from './Drafts';
 import { Thread } from './Thread';
 import { ToastHost } from './Toast';
@@ -196,7 +198,8 @@ export function App() {
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       ) : null}
-      <TabBar current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+      <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
+        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr) => { void addCard(user.uid, t, w, due, pr); }} /> : null}
     </>
   );

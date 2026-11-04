@@ -33,6 +33,7 @@ const BAND_LABEL: Record<Band, string> = {
   assignment: 'Assignments', urgent: 'Urgent', overdue: 'Overdue', today: 'Today', prep: 'Preparation', other: 'Later',
 };
 /** Today shows five groups. Nexo's own lane has no date rules of its own, so it also shows the rest. */
+const HEALTH_LABEL = { ok: 'online', late: 'late', offline: 'OFFLINE', blocked: 'BLOCKED', asleep: 'asleep' } as const;
 const YOU_BANDS: Band[] = ['assignment', 'urgent', 'overdue', 'today', 'prep'];
 const NEXO_BANDS: Band[] = [...YOU_BANDS, 'other'];
 
@@ -122,7 +123,9 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
     <main className="screen">
       <header className="top">
         <div>
-          <span className="kicker">{stamp} · {count} {lane === 'you' ? 'LEFT' : 'WITH NEXO'}</span>
+          <span className="kicker">{stamp} · {count} {lane === 'you' ? 'LEFT' : 'WITH NEXO'}{nexo?.health && nexo.health.state !== 'asleep' ? (nexo.health.state === 'ok'
+            ? <i className="health-dot" role="img" aria-label="Nexo is online" title="Nexo is online" />
+            : <span className={`health health-${nexo.health.state}`} title={nexo.health.note || undefined}> · {HEALTH_LABEL[nexo.health.state]}</span>) : null}</span>
           <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
         </div>
         <button className="call" onClick={press}

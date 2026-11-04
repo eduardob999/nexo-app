@@ -5,14 +5,15 @@ const TABS = [
   { id: 'browse', label: 'Browse', href: '#/browse', d: 'M4 6h16M4 12h16M4 18h10' },
 ] as const;
 
-export function TabBar({ current, draftCount = 0 }: { current: string; draftCount?: number }) {
+export function TabBar({ current, draftCount = 0, todayCount = 0, browseCount = 0 }: { current: string; draftCount?: number; todayCount?: number; browseCount?: number }) {
   return (
     <nav className="tabs" aria-label="Sections">
       {TABS.map((t) => {
         const icon = (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={t.d} /></svg>
         );
-        const badge = t.id === 'drafts' && draftCount > 0 ? <i className="badge">{draftCount}</i> : null;
+        const n = t.id === 'drafts' ? draftCount : t.id === 'today' ? todayCount : t.id === 'browse' ? browseCount : 0;
+        const badge = n > 0 ? <i className={`badge ${t.id === 'drafts' ? '' : 'quiet'}`}>{n}</i> : null;
         return (
           <a key={t.id} href={t.href} aria-current={t.id === current ? 'page' : undefined}>{icon}{t.label}{badge}</a>
         );

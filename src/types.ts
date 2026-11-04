@@ -95,6 +95,8 @@ export interface NexoStatus {
   sleepUntil?: string | null;
   /** A mail-check request still waiting in the loop's inbox, since when. */
   mailCheckSince?: string | null;
+  /** How the loop looks from outside, worked out by the sync from the loop's own files. */
+  health?: { state: 'ok' | 'late' | 'offline' | 'blocked' | 'asleep'; note: string; lastBeatAt?: string | null } | null;
 }
 
 /** A prompt for another model that he carries by hand. `open` is the only state that waits on him. */
