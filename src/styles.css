@@ -381,3 +381,6 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .wake-time b { font-size: 32px; letter-spacing: -0.02em; }
 a.act-ink { display: inline-flex; align-items: center; text-decoration: none; }
 .wake a.act-ink { justify-content: center; min-height: 48px; padding: 0 20px; border-radius: 14px; font-size: 16px; white-space: nowrap; }
+
+.pin-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 6px 0; font-size: 13px; color: var(--accent); text-decoration: none; }
+.props a { color: var(--accent); text-decoration: none; }

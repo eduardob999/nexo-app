@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { usePersisted } from './persist';
 import { markSeen } from './seen';
 import type { Card, CardFile, Draft, Entry } from './types';
-import { calendarLabel, cardTag, priorityLabel } from './cardmeta';
+import { calendarLabel, cardTag, placeLabel, placeUrl, priorityLabel } from './cardmeta';
 import { Checklists } from './Checklists';
 import { Linkified } from './Linkified';
 import { TripTicket } from './TripTicket';
@@ -68,7 +68,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
       <h1 className="thread-title">{card.title ?? card.id}</h1>
       <ul className="props">
         <li><Icon d="M4 5h16v15H4zM4 10h16M9 3v4M15 3v4" /><span>{dueText(card, now)}</span></li>
-        {card.place ? <li><Icon d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11zM12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /><span>{card.place}</span></li> : null}
+        {card.place ? <li><Icon d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11zM12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" />{placeLabel(card) ? <a href={placeUrl(card.place)} target="_blank" rel="noreferrer">{card.place} <span className="mut">open in Maps</span></a> : <span>{card.place}</span>}</li> : null}
         {cardTag(card) ? <li><Icon d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01" /><span>{cardTag(card)}</span></li> : null}
         <li><Icon d="M5 3v18M5 4h12l-2 4 2 4H5" /><button className="prio-btn" onClick={onPriority} aria-label={`Priority ${priorityLabel(card)}, tap to change`}>{priorityLabel(card)} <span className="mut">tap to change</span></button></li>
         {calendarLabel(card) ? <li><Icon d="M4 5h16v15H4zM4 10h16M9 3v4M15 3v4M9 15l2 2 4-4" /><span>{calendarLabel(card)}</span></li> : null}

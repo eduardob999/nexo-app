@@ -17,6 +17,13 @@ export function placeLabel(card: Card): string | null {
   return p && !/^(anywhere|online)$/i.test(p) ? p : null;
 }
 
+/** A Google Maps link for a place: the text itself when it already is a link, else a search that opens that place. */
+export function placeUrl(place: string): string {
+  const p = place.trim();
+  if (/^https?:\/\//i.test(p)) return p;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p)}`;
+}
+
 const PRIO: Record<string, string> = { high: 'Now', normal: 'Soon', med: 'Soon', low: 'Whenever' };
 
 export function priorityLabel(card: Card): string {

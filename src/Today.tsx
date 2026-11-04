@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cardTag, placeLabel } from './cardmeta';
+import { cardTag, placeLabel, placeUrl } from './cardmeta';
 import { isHis, nexoSection, SECTION_LABEL, SECTION_ORDER } from './nexo';
 import { NexoPanel } from './NexoPanel';
 import { isNewCard } from './seen';
@@ -75,7 +75,6 @@ function Row({ card, now, onDone, onLater, hasDraft, closeable = false }: { card
           <span className="row-meta">
             {cardTag(card) ? <span className="tagchip">{cardTag(card)}</span> : null}
             <CalendarIcon />{dueText(card, now)}
-            {placeLabel(card) ? <span className="pin"><PinIcon />{placeLabel(card)}</span> : null}
             {card.for === 'nexo' ? <span className="draft-flag">With Nexo</span> : null}
             {hasDraft ? <span className="draft-flag"><MailIcon />Draft</span> : null}
           </span>
@@ -83,8 +82,8 @@ function Row({ card, now, onDone, onLater, hasDraft, closeable = false }: { card
           {open && card.last && !card.ask ? (
             <span className="row-last"><b>{card.last.by === 'eduardo' ? 'You' : 'Nexo'}</b> {card.last.text}</span>
           ) : null}
-          {open && card.place ? <span className="row-place">{card.place}</span> : null}
         </button>
+        {placeLabel(card) ? <a className="pin pin-link" href={placeUrl(placeLabel(card) as string)} target="_blank" rel="noreferrer" aria-label={`Open ${placeLabel(card)} in Google Maps`}><PinIcon />{placeLabel(card)}</a> : null}
         {closeable ? (
           <div className="row-actions">
             <span className="mut">Nothing is owed on this.</span>

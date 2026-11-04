@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calendarLabel, cardTag, placeLabel, priorityLabel } from './cardmeta';
+import { calendarLabel, cardTag, placeLabel, placeUrl, priorityLabel } from './cardmeta';
 import type { Card } from './types';
 
 const c = (extra: Partial<Card>): Card => ({ id: 'x', status: 'open', for: 'you', ...extra });
@@ -31,5 +31,14 @@ describe('priorityLabel and calendarLabel', () => {
     expect(calendarLabel(c({ due: '2026-11-05', cal: 'yes' }))).toBe('On calendar');
     expect(calendarLabel(c({ due: '2026-11-05', calEvent: { eventId: 'e' } }))).toBe('On calendar');
     expect(calendarLabel(c({ due: '2026-11-05' }))).toBe('No calendar entry');
+  });
+});
+
+describe('placeUrl', () => {
+  it('searches Google Maps for a named place', () => {
+    expect(placeUrl('Kyoto University Uji campus')).toBe('https://www.google.com/maps/search/?api=1&query=Kyoto%20University%20Uji%20campus');
+  });
+  it('keeps a link that is already one', () => {
+    expect(placeUrl(' https://maps.app.goo.gl/abc ')).toBe('https://maps.app.goo.gl/abc');
   });
 });
