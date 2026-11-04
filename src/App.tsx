@@ -118,6 +118,7 @@ export function App() {
       ) : (
         <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
           withDraft={new Set(drafts.map((d) => d.linkedNote ?? ''))}
+          waiting={cards.filter((c) => c.last?.by === 'eduardo').length}
           onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); }} />
       )}
       {tab === 'today' ? (

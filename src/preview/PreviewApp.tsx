@@ -61,7 +61,7 @@ export function PreviewApp() {
   }
   return (
     <>
-      <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} withDraft={new Set(['b'])} />
+      <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} withDraft={new Set(['b'])} waiting={3} />
       <TabBar current="today" draftCount={DRAFTS.length} />
     </>
   );
