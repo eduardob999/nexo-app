@@ -33,7 +33,7 @@ function isNotice(card: Card): boolean {
  * Assignments come first at any distance. Urgent is the old board's rule: marked
  * `high` and either undated or due by the end of today, so a card whose date he
  * has since moved does not keep shouting. Overdue is a date before today, Today
- * is today. Preparation is what falls ahead and needs thought: seven days for a
+ * is today, and so is an undated card that asks something of him. Preparation is what falls ahead and needs thought: seven days for a
  * plain task, fourteen for a trip, bring list or plan, two for a class or holiday
  * notice, or whatever the card's own `lead` says. Everything else is `other`: it
  * lives in Upcoming and Search.
@@ -44,7 +44,9 @@ export function bandOf(card: Card, now: Date): Band {
   const valid = due !== null && !Number.isNaN(due.getTime());
   const days = valid ? Math.floor((startOfDay(due) - startOfDay(now)) / DAY) : null;
   if (card.prio === 'high' && !isNotice(card) && (days === null || days <= 0)) return 'urgent';
-  if (days === null) return 'other';
+  // No date on something that asks him to act is a gap in the data, not a reason to hide it: it shows
+  // under Today, labelled "No date", until someone dates it.
+  if (days === null) return isNotice(card) ? 'other' : 'today';
   const lead = typeof card.lead === 'number' && card.lead > 0 ? card.lead : null;
   // A notice that has passed asks nothing of him; one that is today is on the banner or the day's list.
   if (isNotice(card) && !isPlanned(card) && lead === null) {
@@ -109,4 +111,15 @@ export function postpone(due: string | null | undefined, now: Date): string {
   }
   const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
   return due.length <= 10 ? ymd(next) : `${ymd(next)}${due.slice(10)}`;
+}
+
+/**
+ * Which cards the Today tab lists. His own cards in every group, and the cards that have gone to
+ * Nexo's lane only while they are Urgent or due Today, so replying to something that cannot wait
+ * does not make it vanish from the day.
+ */
+export function onTodayBoard(card: Card, now: Date): boolean {
+  if (card.for === 'you') return true;
+  const band = bandOf(card, now);
+  return card.for === 'nexo' && (band === 'urgent' || band === 'today');
 }

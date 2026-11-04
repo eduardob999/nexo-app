@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NexoPanel } from './NexoPanel';
 import type { Card, NexoStatus } from './types';
-import { bandOf, dueText, sortQueue, type Band } from './urgency';
+import { bandOf, dueText, onTodayBoard, sortQueue, type Band } from './urgency';
 
 interface Props {
   cards: Card[];
@@ -53,6 +53,7 @@ function Row({ card, now, onDone, onLater, hasDraft }: { card: Card; now: Date; 
           <span className="row-title">{title}</span>
           <span className="row-meta">
             <CalendarIcon />{dueText(card, now)}
+            {card.for === 'nexo' ? <span className="draft-flag">With Nexo</span> : null}
             {hasDraft ? <span className="draft-flag"><MailIcon />Draft</span> : null}
           </span>
           {open && card.last ? (
@@ -77,7 +78,7 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
 }
 
 export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you', withDraft, waiting = 0, nexo }: Props) {
-  const mine = sortQueue(cards.filter((c) => c.for === lane), now);
+  const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane)), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
   const [calledAt, setCalledAt] = useState(0);

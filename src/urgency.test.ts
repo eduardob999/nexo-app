@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandOf, postpone, sortQueue } from './urgency';
+import { bandOf, onTodayBoard, postpone, sortQueue } from './urgency';
 import type { Card } from './types';
 
 const now = new Date('2026-11-02T12:00:00+09:00');
@@ -48,7 +48,11 @@ describe('bandOf', () => {
     expect(bandOf(c('a', { due: '2026-11-05', type: 'INFO' }), now)).toBe('other');
     expect(bandOf(c('b', { due: '2026-10-28', type: 'INFO' }), now)).toBe('other');
     expect(bandOf(c('c', { due: '2026-11-02T00:00:00+09:00', type: 'HOLIDAY' }), now)).toBe('other');
-    expect(bandOf(c('d'), now)).toBe('other');
+    expect(bandOf(c('d', { type: 'INFO' }), now)).toBe('other');
+  });
+  it('shows an undated task under Today so a missing date cannot hide it', () => {
+    expect(bandOf(c('a'), now)).toBe('today');
+    expect(bandOf(c('b', { type: 'TASK' }), now)).toBe('today');
   });
 });
 
@@ -59,7 +63,19 @@ describe('sortQueue', () => {
        c('overdue', { due: '2026-11-01' }), c('urgent', { prio: 'high' }), c('hw', { type: 'ASSIGNMENT', due: '2026-12-01' })],
       now,
     ).map((x) => x.id);
-    expect(out).toEqual(['hw', 'urgent', 'overdue', 'today', 'prep', 'undated']);
+    expect(out).toEqual(['hw', 'urgent', 'overdue', 'today', 'undated', 'prep']);
+  });
+});
+
+describe('onTodayBoard', () => {
+  it('lists all of his cards', () => {
+    expect(onTodayBoard(c('a', { due: '2027-02-01' }), now)).toBe(true);
+  });
+  it('lists Nexo-lane cards only when urgent or due today', () => {
+    expect(onTodayBoard(c('a', { for: 'nexo', prio: 'high' }), now)).toBe(true);
+    expect(onTodayBoard(c('b', { for: 'nexo', due: '2026-11-02T18:00:00+09:00' }), now)).toBe(true);
+    expect(onTodayBoard(c('c', { for: 'nexo', due: '2026-11-04', type: 'TASK' }), now)).toBe(false);
+    expect(onTodayBoard(c('d', { for: 'nexo', due: '2026-11-01' }), now)).toBe(false);
   });
 });
 

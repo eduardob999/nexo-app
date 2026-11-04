@@ -20,6 +20,7 @@ const FIXTURES: Card[] = [
   { id: 'i1', status: 'open', for: 'you', type: 'INFO', title: 'Lecture, room A', due: '2026-11-04T10:30:00+09:00' },
   { id: 'h', status: 'open', for: 'you', type: 'HOLIDAY', title: 'Holiday: Culture Day', due: '2026-11-02T00:00:00+09:00' },
   { id: 'f', status: 'open', for: 'nexo', title: 'Check the bank notice', due: '2026-11-02' },
+  { id: 'g', status: 'open', for: 'you', type: 'TASK', title: 'Send Carla the commuter pass steps' },
 ];
 
 const ENTRIES: Entry[] = [
