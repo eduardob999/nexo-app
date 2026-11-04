@@ -6,6 +6,7 @@ interface Props {
   onCopied: (id: string) => void;
   onSent: (id: string) => void;
   onDiscard: (id: string) => void;
+  onSend: (draft: Draft) => void;
 }
 
 /** Clipboard first; the textarea fallback covers browsers that refuse the async API on a plain page. */
@@ -33,8 +34,36 @@ function CopyChip({ label, text }: { label: string; text: string }) {
   );
 }
 
-function DraftCard({ draft, onCopied, onSent, onDiscard }: { draft: Draft } & Omit<Props, 'drafts'>) {
+const SEND_VALID_MS = 6 * 3600_000;
+
+function hhmm(iso?: string): string {
+  const d = iso ? new Date(iso) : null;
+  return d && !Number.isNaN(d.getTime()) ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+}
+
+function SentLine({ draft }: { draft: Draft }) {
+  const to = (draft.to ?? []).join(', ');
+  return (
+    <li className="draft sent-line">
+      <span className="who">SENT · {hhmm(draft.sentAt)}{draft.sentVia === 'elsewhere' ? ' · by you, elsewhere' : ''}</span>
+      <span>{draft.subject ?? draft.topic ?? draft.id}{to ? ` to ${to}` : ''}</span>
+    </li>
+  );
+}
+
+function DraftCard({ draft, onCopied, onSent, onDiscard, onSend }: { draft: Draft } & Omit<Props, 'drafts'>) {
   const [flash, setFlash] = useState(false);
+  const [armed, setArmed] = useState(false);
+  const requested = draft.sendRequestedAt && Date.now() - Date.parse(draft.sendRequestedAt) < SEND_VALID_MS;
+  const arm = () => {
+    if (!armed) {
+      setArmed(true);
+      window.setTimeout(() => setArmed(false), 6000);
+      return;
+    }
+    setArmed(false);
+    onSend(draft);
+  };
   const body = draft.text ?? '';
   const to = (draft.to ?? []).join(', ');
   const copy = () => {
@@ -60,8 +89,16 @@ function DraftCard({ draft, onCopied, onSent, onDiscard }: { draft: Draft } & Om
       )}
       {draft.status === 'drafted' ? (
         <>
+          {requested ? (
+            <p className="send-wait">Send requested {hhmm(draft.sendRequestedAt)}. Nexo sends it on its next run; press Call Nexo to hurry it.</p>
+          ) : (
+            <button className={`send-main ${armed ? 'armed' : ''}`} onClick={arm}>
+              {armed ? 'Tap again to send' : 'Send'}
+            </button>
+          )}
+          {armed ? <p className="send-confirm">{to ? `To ${to}` : 'No address on this draft'}{draft.subject ? ` · ${draft.subject}` : ''}</p> : null}
           <div className="draft-actions">
-            <button className="copy-main" onClick={copy}>{flash || draft.copiedAt ? 'Copy again' : 'Copy'}</button>
+            <button className="copy-main alt" onClick={copy}>{flash || draft.copiedAt ? 'Copy again' : 'Copy'}</button>
             <button className="chip-btn" onClick={() => onSent(draft.id)}>I sent it</button>
           </div>
           <div className="draft-more">
@@ -77,7 +114,10 @@ function DraftCard({ draft, onCopied, onSent, onDiscard }: { draft: Draft } & Om
   );
 }
 
-export function Drafts({ drafts, onCopied, onSent, onDiscard }: Props) {
+export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend }: Props) {
+  const waiting = drafts.filter((d) => d.status !== 'sent');
+  const dayAgo = Date.now() - 24 * 3600_000;
+  const sent = drafts.filter((d) => d.status === 'sent' && Date.parse(d.sentAt ?? '') > dayAgo);
   return (
     <main className="screen">
       <header className="top">
@@ -86,9 +126,10 @@ export function Drafts({ drafts, onCopied, onSent, onDiscard }: Props) {
           <h1>Drafts</h1>
         </div>
       </header>
-      {drafts.length === 0 ? <p className="empty">No drafts waiting.</p> : null}
+      {waiting.length === 0 ? <p className="empty">No drafts waiting.</p> : null}
       <ul className="drafts">
-        {drafts.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} />)}
+        {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} />)}
+        {sent.map((d) => <SentLine key={d.id} draft={d} />)}
       </ul>
     </main>
   );

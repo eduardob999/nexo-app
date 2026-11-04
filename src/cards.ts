@@ -103,9 +103,9 @@ export function addEntry(uid: string, card: Card, text: string): Promise<void> {
   return batch.commit();
 }
 
-/** Drafts that still need him. Sent and discarded ones stay in Firestore but leave this list. */
+/** Drafts that still need him, plus sent ones so the tab can confirm a send. Discarded ones leave. */
 export function watchDrafts(uid: string, onDrafts: (d: Draft[]) => void, onError: (e: Error) => void): () => void {
-  const q = query(collection(db, ...root(uid), 'drafts'), where('status', 'in', ['drafted', 'needs-info']));
+  const q = query(collection(db, ...root(uid), 'drafts'), where('status', 'in', ['drafted', 'needs-info', 'sent']));
   return onSnapshot(q, (snap) => onDrafts(snap.docs.map((d) => ({ ...(d.data() as Omit<Draft, 'id'>), id: d.id }))), onError);
 }
 
@@ -130,6 +130,17 @@ export function markSent(uid: string, id: string): Promise<void> {
 
 export function discardDraft(uid: string, id: string): Promise<void> {
   return draftAction(uid, id, 'discarded', { status: 'discarded', discardedAt: new Date().toISOString() });
+}
+
+/**
+ * He pressed Send. This is the explicit act the sending policy asks for, for exactly this text. The
+ * app sends nothing itself: the loop does, from state.json, and only if the draft is still the one he saw.
+ */
+export function requestSend(uid: string, draft: Draft): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(draftRef(uid, draft.id), { sendRequestedAt: new Date().toISOString() });
+  intent(batch, uid, { type: 'draft', draftId: draft.id, action: 'send', text: draft.text ?? '' });
+  return batch.commit();
 }
 
 /** When the sync service last completed a cycle, or null if it never has. */

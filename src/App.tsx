@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchSync } from './cards';
+import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchSync } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -116,10 +116,11 @@ export function App() {
         <Drafts drafts={drafts}
           onCopied={(id) => { void markCopied(user.uid, id); }}
           onSent={(id) => { void markSent(user.uid, id); }}
-          onDiscard={(id) => { void discardDraft(user.uid, id); }} />
+          onDiscard={(id) => { void discardDraft(user.uid, id); }}
+          onSend={(d) => { void requestSend(user.uid, d); }} />
       ) : (
         <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
-          withDraft={new Set(drafts.map((d) => d.linkedNote ?? ''))}
+          withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo}
           onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); }} />
       )}
@@ -128,7 +129,7 @@ export function App() {
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       ) : null}
-      <TabBar current={tab === 'nexo' || tab === 'search' ? 'browse' : tab} draftCount={drafts.length} />
+      <TabBar current={tab === 'nexo' || tab === 'search' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due) => { void addCard(user.uid, t, w, due); }} /> : null}
     </>
   );

@@ -45,6 +45,11 @@ export interface Draft {
   text?: string;
   need?: string;
   copiedAt?: string;
+  /** He pressed Send; the loop sends on its next run and then sets status `sent`. */
+  sendRequestedAt?: string;
+  sentAt?: string;
+  sentBy?: string;
+  sentVia?: string;
   ts?: string;
 }
 

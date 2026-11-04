@@ -31,6 +31,8 @@ const ENTRIES: Entry[] = [
 const DRAFTS: Draft[] = [
   { id: 'd1', linkedNote: 'b', status: 'drafted', to: ['housing@example.org'], subject: 'Re: Lease form for the winter term', text: 'Dear Tanaka-san,\n\nThank you for the reminder. I will bring the signed lease form and a copy of my residence card to the office on Monday morning. Please let me know if anything else is needed.' },
   { id: 'd2', status: 'drafted', copiedAt: '2026-11-01T10:00:00+09:00', to: ['events@example.org'], subject: 'Re: Thank you for the invitation', text: 'Thank you very much for the invitation. I look forward to the seminar on Monday afternoon.' },
+  { id: 'd4', status: 'drafted', to: ['friend@example.org'], subject: 'Re: Saturday', text: 'See you Saturday.', sendRequestedAt: new Date(Date.now() - 4 * 60_000).toISOString() },
+  { id: 'd5', status: 'sent', to: ['friend@example.org'], subject: 'Re: Dinner', text: 'x', sentAt: new Date(Date.now() - 3600_000).toISOString(), sentBy: 'nexo' },
   { id: 'd3', status: 'needs-info', topic: 'Reply about the bike registration', need: 'the frame number from the registration card' },
 ];
 
@@ -72,7 +74,7 @@ export function PreviewApp() {
   if (which === 'drafts') {
     return (
       <>
-        <Drafts drafts={DRAFTS} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} />
+        <Drafts drafts={DRAFTS} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} />
         <TabBar current="drafts" draftCount={DRAFTS.length} />
       </>
     );

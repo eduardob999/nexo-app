@@ -235,3 +235,11 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .np-list li.done { color: var(--muted); text-decoration: line-through; }
 .np-list li.more { color: var(--muted); }
 .np-mark { width: 16px; text-align: center; color: var(--accent); flex: none; }
+
+/* send */
+.send-main { height: 52px; border: 0; border-radius: 12px; background: var(--ink); color: var(--bg); font-size: 17px; font-weight: 700; }
+.send-main.armed { background: var(--now); color: var(--bg); }
+.send-confirm { margin: -4px 0 0; font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.send-wait { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--today-tint); color: var(--today); font-weight: 600; font-size: 15px; }
+.copy-main.alt { background: var(--chip); color: var(--ink); }
+.sent-line { display: grid; gap: 4px; background: transparent; border-style: dashed; font-size: 15px; color: var(--muted); }
