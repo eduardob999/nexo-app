@@ -106,3 +106,13 @@ export interface Relay {
   response?: string;
   ts?: string;
 }
+
+export interface Resource {
+  id: string;
+  kind: string;
+  title: string;
+  url?: string;
+  note?: string;
+  ts?: string;
+  archived?: boolean;
+}

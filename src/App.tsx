@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchOpenCards, watchRelays, watchSync, watchTodayInfo } from './cards';
+import { addCard, addEntry, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
+import { Shelf } from './Shelf';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
@@ -12,7 +13,7 @@ import { Drafts } from './Drafts';
 import { Thread } from './Thread';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
-import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, TodayInfo } from './types';
+import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, Resource, TodayInfo } from './types';
 import { useRoute } from './useHash';
 
 function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
@@ -49,6 +50,9 @@ export function App() {
   const [nexo, setNexo] = useState<NexoStatus | null | undefined>(undefined);
   const [relays, setRelays] = useState<Relay[]>([]);
   const [info, setInfo] = useState<TodayInfo | null>(null);
+  const [doneCards, setDoneCards] = useState<Card[]>([]);
+  const [closedRelays, setClosedRelays] = useState<Relay[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
   const [syncAt, setSyncAt] = useState<number | null | undefined>(undefined);
   const [clock, setClock] = useState(() => Date.now());
   const route = useRoute();
@@ -95,6 +99,14 @@ export function App() {
     return () => { stop(); stopNexo(); window.clearInterval(tick); };
   }, [user]);
 
+  const onShelf = route.name === 'shelf';
+  useEffect(() => {
+    if (!user || !onShelf) return undefined;
+    const warn = (e: Error) => console.warn('[shelf]', e);
+    const stops = [watchDoneCards(user.uid, setDoneCards, warn), watchClosedRelays(user.uid, setClosedRelays, warn), watchResources(user.uid, setResources, warn)];
+    return () => stops.forEach((s) => s());
+  }, [user, onShelf]);
+
   if (!isFirebaseConfigured) return <main className="screen center"><p className="notice">Firebase is not configured. Fill in .env.local.</p></main>;
   if (user === undefined) return <main className="screen center"><p className="notice">Loading</p></main>;
   if (user === null) {
@@ -120,7 +132,10 @@ export function App() {
   return (
     <>
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
-      {tab === 'search' ? (
+      {tab === 'shelf' ? (
+        <Shelf done={doneCards} closed={closedRelays} resources={resources}
+          onAdd={(r) => { void addResource(user.uid, r); }} onArchive={(r, a) => { void archiveResource(user.uid, r, a); }} />
+      ) : tab === 'search' ? (
         <Search cards={cards} now={new Date()} />
       ) : tab === 'upcoming' ? (
         <Upcoming cards={cards} now={new Date()} onDone={done} />
@@ -149,7 +164,7 @@ export function App() {
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       ) : null}
-      <TabBar current={tab === 'nexo' || tab === 'search' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+      <TabBar current={tab === 'nexo' || tab === 'search' || tab === 'shelf' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due) => { void addCard(user.uid, t, w, due); }} /> : null}
     </>
   );

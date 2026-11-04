@@ -300,3 +300,16 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .mailbar { display: flex; align-items: center; gap: 12px; margin: 12px 8px 0; flex-wrap: wrap; } .mailbar .chip-btn:disabled { opacity: .6; } .mailbar .mut { font-size: 14px; }
 .sec-you { color: var(--assign); } .sec-nexo { color: var(--accent); } .sec-close { color: var(--later); } .sec-else { color: var(--muted); }
 .row-actions .mut { align-self: center; font-size: 14px; }
+
+/* shelf */
+.shelf-fold { margin: 14px 8px 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; }
+.shelf-fold > summary, .shelf-sub > summary { font-weight: 700; cursor: pointer; min-height: 32px; }
+.shelf-sub { margin-top: 12px; }
+.res-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
+.res { display: grid; gap: 6px; padding: 12px 0; border-top: 1px solid var(--line); }
+.res.done { padding: 10px 0; font-size: 15px; color: var(--muted); } .res.done a { color: var(--muted); text-decoration: none; }
+.res a { color: var(--accent); }
+.res-note { color: var(--muted); font-size: 14px; white-space: pre-wrap; }
+.res-path { font: 13px var(--mono); overflow-wrap: anywhere; background: var(--bg); padding: 6px 8px; border-radius: 8px; }
+.res-add { display: grid; gap: 10px; margin-top: 10px; } .res-add .search-input { margin-top: 0; }
+.mut { color: var(--muted); }

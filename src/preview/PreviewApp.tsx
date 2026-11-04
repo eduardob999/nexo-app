@@ -2,6 +2,7 @@ import { AddSheet } from '../AddSheet';
 import { Browse } from '../Browse';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
+import { Shelf } from '../Shelf';
 import { Upcoming } from '../Upcoming';
 import { Thread } from '../Thread';
 import { Today } from '../Today';
@@ -69,6 +70,13 @@ export function PreviewApp() {
   }
   if (which === 'browse') {
     return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'shelf') {
+    return (<><Shelf
+      done={[{ id: 'x1', status: 'done', for: 'you', title: 'Renew the library card' }, { id: 'x2', status: 'done', for: 'you', title: 'Pay the electricity bill' }]}
+      closed={[{ id: 'P-011', status: 'closed', topic: 'Driving test day logistics' }]}
+      resources={[{ id: 'a', kind: 'deck', title: 'Whiteboard, one slide', url: 'https://example.org/deck', note: 'The version for the meeting.' }, { id: 'b', kind: 'file', title: 'Residence card scan', url: '/home/me/docs/card.pdf' }, { id: 'c', kind: 'link', title: 'Old link', url: 'https://example.org', archived: true }]}
+      onAdd={() => {}} onArchive={() => {}} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'nexolane') {
     const mk = (id: string, title: string, last: string, extra: Partial<Card> = {}): Card => ({ id, status: 'open', for: 'nexo', title, last: { by: 'nexo', text: last, ts: '2026-11-02T10:00:00+09:00' }, ...extra });

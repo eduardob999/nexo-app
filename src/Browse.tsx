@@ -10,7 +10,7 @@ const ITEMS = [
   { id: 'notes', label: 'Notes', hint: 'Coming later', href: null },
   { id: 'money', label: 'Money', hint: 'Coming later', href: null },
   { id: 'trips', label: 'Trips', hint: 'Coming later', href: null },
-  { id: 'shelf', label: 'Shelf', hint: 'Done cards and filed answers, coming later', href: null },
+  { id: 'shelf', label: 'Shelf', hint: 'Resources, done cards and closed threads', href: '#/shelf' },
 ] as const;
 
 /** Todoist's Browse: everything that is not an hourly decision, one tap away. */

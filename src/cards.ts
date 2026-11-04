@@ -1,6 +1,6 @@
 import { collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, TodayInfo } from './types';
+import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 
 const root = (uid: string) => ['users', uid] as const;
@@ -227,5 +227,36 @@ export function setSleep(uid: string, until: Date | null): Promise<void> {
 export function requestMailCheck(uid: string): Promise<void> {
   const batch = writeBatch(db);
   intent(batch, uid, { type: 'mailcheck' });
+  return batch.commit();
+}
+
+/** Cards he has finished. Read only while the Shelf is open: a few hundred documents, cached after the first time. */
+export function watchDoneCards(uid: string, onCards: (c: Card[]) => void, onError: (e: Error) => void): () => void {
+  const q = query(collection(db, ...root(uid), 'cards'), where('status', '==', 'done'));
+  return onSnapshot(q, (snap) => onCards(snap.docs.map((d) => ({ ...(d.data() as Omit<Card, 'id'>), id: d.id }))), onError);
+}
+
+export function watchClosedRelays(uid: string, onRelays: (r: Relay[]) => void, onError: (e: Error) => void): () => void {
+  const q = query(collection(db, ...root(uid), 'relays'), where('status', 'in', ['filed', 'closed']));
+  return onSnapshot(q, (snap) => onRelays(snap.docs.map((d) => ({ ...(d.data() as Omit<Relay, 'id'>), id: d.id }))), onError);
+}
+
+export function watchResources(uid: string, onItems: (r: Resource[]) => void, onError: (e: Error) => void): () => void {
+  return onSnapshot(collection(db, ...root(uid), 'resources'), (snap) => onItems(snap.docs.map((d) => ({ ...(d.data() as Omit<Resource, 'id'>), id: d.id }))), onError);
+}
+
+export function addResource(uid: string, r: { title: string; url: string; note: string; kind: string }): Promise<void> {
+  const id = `res-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  const batch = writeBatch(db);
+  batch.set(doc(db, ...root(uid), 'resources', id), { id, ...r, ts: new Date().toISOString() });
+  intent(batch, uid, { type: 'resource', action: 'add', resourceId: id, ...r });
+  return batch.commit();
+}
+
+/** Resources are archived and restored, never deleted. */
+export function archiveResource(uid: string, r: Resource, archived: boolean): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'resources', r.id), { archived });
+  intent(batch, uid, { type: 'resource', action: archived ? 'archive' : 'restore', resourceId: r.id });
   return batch.commit();
 }
