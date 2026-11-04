@@ -1,3 +1,4 @@
+import { useInstall } from './install';
 import type { Settings } from './settings';
 
 interface Props { nexoCount: number; draftCount: number; settings: Settings; onSettings: (s: Settings) => void }
@@ -13,6 +14,7 @@ const ITEMS = [
 
 /** Todoist's Browse: everything that is not an hourly decision, one tap away. */
 export function Browse({ nexoCount, draftCount, settings, onSettings }: Props) {
+  const { state: installState, install } = useInstall();
   return (
     <main className="screen">
       <header className="top"><div><span className="kicker">EVERYTHING ELSE</span><h1>Browse</h1></div></header>
@@ -27,6 +29,25 @@ export function Browse({ nexoCount, draftCount, settings, onSettings }: Props) {
           </li>
         ))}
       </ul>
+      {installState !== 'installed' ? (
+        <>
+          <h2 className="group-title">Install</h2>
+          <div className="panel settings">
+            <div className="setting install">
+              {installState === 'ready' ? (
+                <>
+                  <span>Put Nexo on your home screen</span>
+                  <button className="copy-main" onClick={() => { void install(); }}>Install app</button>
+                </>
+              ) : installState === 'ios' ? (
+                <span>Tap the Share button in Safari, then <b>Add to Home Screen</b>.</span>
+              ) : (
+                <span>Open your browser's menu and choose <b>Install app</b> or <b>Add to Home screen</b>.</span>
+              )}
+            </div>
+          </div>
+        </>
+      ) : null}
       <h2 className="group-title">Display</h2>
       <div className="panel settings">
         <div className="setting"><span>Theme</span>
