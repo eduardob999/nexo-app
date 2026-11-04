@@ -1,5 +1,4 @@
-import type { AlarmDoc } from './alarm';
-import { loadPattern } from './push';
+import { applyFeedback, type WakeDoc, type WakeFeedback, type WakePrefs, type WakeRecord } from './alarm';
 import { arrayUnion, collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
@@ -250,17 +249,19 @@ export function watchTodayInfo(uid: string, onInfo: (t: TodayInfo | null) => voi
   }, () => onInfo(null));
 }
 
-/** The wake-up alarm: the sync on his computer sends a loud push at this time. */
-export function setWakeAlarm(uid: string, at: Date, label = 'Wake up'): Promise<void> {
-  return setDoc(doc(db, ...root(uid), 'meta', 'alarm'), { at: at.toISOString(), label, status: 'set', pattern: loadPattern(), setAt: new Date().toISOString() });
+/** What the app has learned about his mornings, and the log of suggestions it asked him about. */
+export function watchWake(uid: string, on: (w: WakeDoc | null) => void): () => void {
+  return onSnapshot(doc(db, ...root(uid), 'meta', 'wake'), (snap) => on(snap.exists() ? (snap.data() as WakeDoc) : null), () => on(null));
 }
 
-export function stopWakeAlarm(uid: string, status: 'off' | 'done' = 'off'): Promise<void> {
-  return setDoc(doc(db, ...root(uid), 'meta', 'alarm'), { status, stoppedAt: new Date().toISOString() }, { merge: true });
+/** Remember tomorrow's suggestion so the question the next morning can refer to it. Never overwrites an answered one. */
+export function recordWake(uid: string, date: string, rec: WakeRecord): Promise<void> {
+  return setDoc(doc(db, ...root(uid), 'meta', 'wake'), { log: { [date]: rec } }, { merge: true });
 }
 
-export function watchWakeAlarm(uid: string, on: (a: AlarmDoc | null) => void): () => void {
-  return onSnapshot(doc(db, ...root(uid), 'meta', 'alarm'), (snap) => on(snap.exists() ? (snap.data() as AlarmDoc) : null), () => on(null));
+/** His answer about a morning: stores it and the updated numbers in one write. */
+export function answerWake(uid: string, date: string, rec: WakeRecord, feedback: WakeFeedback, prefs: WakePrefs): Promise<void> {
+  return setDoc(doc(db, ...root(uid), 'meta', 'wake'), { prefs: applyFeedback(prefs, rec.basis, feedback), log: { [date]: { ...rec, feedback } } }, { merge: true });
 }
 
 /** Pause Nexo until a time, or wake it (null). While it sleeps it makes no model calls, so it costs nothing. */

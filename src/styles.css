@@ -385,3 +385,7 @@ a.act-ink { display: inline-flex; align-items: center; text-decoration: none; }
 .pin-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 6px 0; font-size: 13px; color: var(--accent); text-decoration: none; }
 .props a { color: var(--accent); text-decoration: none; }
 .wake-fail { margin: 0; font-size: 14px; color: var(--ink); }
+.wake-big { font-size: 40px; letter-spacing: -0.02em; line-height: 1.1; }
+.wake-q { margin: 0; font-size: 17px; font-weight: 600; }
+.wake-q .mut { display: block; font-weight: 400; font-size: 14px; margin-top: 2px; }
+.wake-answers { display: flex; gap: 8px; flex-wrap: wrap; }

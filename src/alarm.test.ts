@@ -1,46 +1,58 @@
 import { describe, expect, it } from 'vitest';
-import { alarmLink, clock, suggestWake, wakeDate } from './alarm';
+import { applyFeedback, clock, DEFAULT_PREFS, needsTravel, stepFor, suggestWake } from './alarm';
 import type { Card } from './types';
 
 const now = new Date('2026-11-04T21:00:00+09:00');
 const c = (id: string, extra: Partial<Card> = {}): Card => ({ id, status: 'open', for: 'you', ...extra });
 
 describe('suggestWake', () => {
-  it('wakes 90 minutes before the first timed card tomorrow', () => {
-    const r = suggestWake([c('a', { title: 'Lab', due: '2026-11-05T09:30' }), c('b', { due: '2026-11-05T13:00' })], now);
-    expect(clock(r.minutes)).toBe('07:30');
-    expect(r.first?.title).toBe('Lab');
+  it('allows the travel lead before a physical place and the home lead before an online one', () => {
+    const lab = suggestWake([c('a', { title: 'Lab', due: '2026-11-05T09:30', place: 'Uji campus' })], now);
+    expect([clock(lab.minutes), lab.basis, lab.lead]).toEqual(['07:30', 'travel', 90]);
+    const early = suggestWake([c('a', { due: '2026-11-05T08:30', place: 'Uji campus' })], now);
+    expect(clock(early.minutes)).toBe('07:00');
+    const online = suggestWake([c('a', { due: '2026-11-05T08:30', place: 'Online' })], now);
+    expect([clock(online.minutes), online.basis]).toEqual(['07:30', 'home']);
   });
-  it('goes earlier for an early start and uses the trip leave time', () => {
-    expect(clock(suggestWake([c('a', { due: '2026-11-05T08:00' })], now).minutes)).toBe('06:30');
-    const trip = c('t', { due: '2026-11-05T10:00', plan: { out: { leave: '07:10' } } });
-    expect(clock(suggestWake([trip], now).minutes)).toBe('05:40');
+  it('uses a trip leave time and never goes before 04:00', () => {
+    const trip = c('t', { due: '2026-11-05T10:00', plan: { out: { leave: '06:10' } } });
+    expect(clock(suggestWake([trip], now).minutes)).toBe('04:40');
+    expect(clock(suggestWake([c('a', { due: '2026-11-05T04:30', place: 'Gion' })], now).minutes)).toBe('04:00');
   });
-  it('ignores done cards, other days and date-only cards, and falls back to the usual time', () => {
+  it('ignores done cards, other days and date-only cards and falls back to the usual time', () => {
     const r = suggestWake([c('a', { status: 'done', due: '2026-11-05T06:00' }), c('b', { due: '2026-11-06T06:00' }), c('d', { due: '2026-11-05' })], now);
+    expect([clock(r.minutes), r.basis, r.first]).toEqual(['07:30', 'usual', undefined]);
+  });
+  it('follows the learned numbers', () => {
+    const r = suggestWake([c('a', { due: '2026-11-05T08:30', place: 'Uji campus' })], now, { ...DEFAULT_PREFS, leadTravel: 60 });
     expect(clock(r.minutes)).toBe('07:30');
-    expect(r.first).toBeUndefined();
-  });
-  it('never goes earlier than 04:00', () => {
-    expect(clock(suggestWake([c('a', { due: '2026-11-05T04:30' })], now).minutes)).toBe('04:00');
   });
 });
 
-describe('alarmLink', () => {
-  it('builds the Android set-alarm intent', () => {
-    const l = alarmLink(6 * 60 + 45);
-    expect(l).toContain('action=android.intent.action.SET_ALARM');
-    expect(l).toContain('HOUR=6');
-    expect(l).toContain('MINUTES=45');
-    expect(l).toContain('MESSAGE=Wake%20up');
+describe('needsTravel', () => {
+  it('is false for no place, Anywhere and Online, true otherwise', () => {
+    expect([needsTravel(c('a')), needsTravel(c('a', { place: 'Anywhere' })), needsTravel(c('a', { place: 'Online (Zoom)' })), needsTravel(c('a', { place: 'Gion' })), needsTravel(c('a', { trip: true }))]).toEqual([false, false, false, true, true]);
   });
 });
 
-describe('wakeDate', () => {
-  it('picks tomorrow when the time has passed today and today when it is still ahead', () => {
-    const evening = new Date('2026-11-04T21:00:00+09:00');
-    expect(wakeDate(7 * 60 + 30, evening).getDate()).toBe(evening.getDate() + 1);
-    const early = new Date('2026-11-04T05:00:00+09:00');
-    expect(wakeDate(7 * 60 + 30, early).getDate()).toBe(early.getDate());
+describe('applyFeedback', () => {
+  it('shortens the lead when the morning was too early and lengthens it when too late', () => {
+    expect(applyFeedback(DEFAULT_PREFS, 'travel', 'early').leadTravel).toBe(75);
+    expect(applyFeedback(DEFAULT_PREFS, 'travel', 'late').leadTravel).toBe(105);
+    expect(applyFeedback(DEFAULT_PREFS, 'home', 'late').leadHome).toBe(60);
+  });
+  it('moves the usual time the opposite way and keeps it between 05:00 and 10:00', () => {
+    expect(applyFeedback(DEFAULT_PREFS, 'usual', 'early').usual).toBe(7 * 60 + 45);
+    expect(applyFeedback(DEFAULT_PREFS, 'usual', 'late').usual).toBe(7 * 60 + 15);
+    expect(applyFeedback({ ...DEFAULT_PREFS, usual: 5 * 60 }, 'usual', 'late').usual).toBe(5 * 60);
+  });
+  it('counts a right answer without moving anything, and takes smaller steps later', () => {
+    const r = applyFeedback(DEFAULT_PREFS, 'travel', 'right');
+    expect([r.leadTravel, r.n]).toEqual([90, 1]);
+    expect([stepFor(0), stepFor(6), stepFor(20)]).toEqual([15, 10, 5]);
+  });
+  it('stays inside its limits', () => {
+    expect(applyFeedback({ ...DEFAULT_PREFS, leadTravel: 35 }, 'travel', 'early').leadTravel).toBe(30);
+    expect(applyFeedback({ ...DEFAULT_PREFS, leadTravel: 175 }, 'travel', 'late').leadTravel).toBe(180);
   });
 });

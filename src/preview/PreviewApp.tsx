@@ -7,7 +7,7 @@ import { Notes } from '../Notes';
 import { Shelf } from '../Shelf';
 import { Trips } from '../Trips';
 import { Upcoming } from '../Upcoming';
-import { WakeAlarm } from '../WakeAlarm';
+import { WakeSuggestion } from '../WakeSuggestion';
 import { Thread } from '../Thread';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
@@ -70,10 +70,13 @@ export function PreviewApp() {
   if (which === 'thread') {
     return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} />;
   }
+  if (which === 'wakeq') {
+    return <WakeSuggestion cards={[]} now={new Date('2026-11-05T08:10:00+09:00')} wake={{ prefs: { n: 4 }, log: { '2026-11-05': { minutes: 450, basis: 'travel', lead: 90, first: 'Lab meeting with Mamitsuka-sensei' } } }} onAnswer={() => {}} />;
+  }
   if (which === 'alarm') {
     const evening = new Date('2026-11-04T21:00:00+09:00');
     const cs: Card[] = [{ id: 'x', status: 'open', for: 'you', title: 'Lab meeting with Mamitsuka-sensei', due: '2026-11-05T09:30', place: 'Uji campus' }];
-    return <WakeAlarm cards={cs} now={evening} />;
+    return <WakeSuggestion cards={cs} now={evening} wake={{ prefs: { leadTravel: 75, n: 4 } }} />;
   }
   if (which === 'upcoming') {
     return (<><Upcoming cards={FIXTURES} now={NOW} onDone={() => {}} /><TabBar current="upcoming" draftCount={DRAFTS.length} /></>);

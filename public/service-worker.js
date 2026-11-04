@@ -200,35 +200,13 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     void self.skipWaiting();
   }
-  // A test of the wake-up alarm: shown after a short delay so the phone can be locked first, exactly as the real one is.
-  if (event.data?.type === 'TEST_ALARM') {
-    const delay = Math.min(Math.max(Number(event.data.delay) || 5000, 0), 20000);
-    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    // Five alerts, eight seconds apart, the way the real alarm repeats, so the repeat can be heard.
-    event.waitUntil((async () => {
-      await wait(delay);
-      for (let i = 1; i <= 5; i += 1) {
-        await self.registration.showNotification('Wake up (test ' + i + ' of 5)', {
-          body: 'This is a test of the wake-up alarm. Dismiss it to stop.',
-          tag: 'wake-test',
-          icon: 'icons/icon-192.png',
-          badge: 'icons/icon-192.png',
-          requireInteraction: true,
-          renotify: true,
-          vibrate: ALARM_PATTERNS[event.data.pattern] || ALARM_PATTERNS.strong,
-          data: { url: '#/' },
-        });
-        if (i < 5) await wait(8000);
-      }
-    })());
-  }
 });
 
 /**
  * Push from the sync on his computer (Firebase Cloud Messaging, data-only). The payload carries title, body and a
  * route in the app. A notification must always be shown, so anything unreadable still produces one.
  */
-const ALARM_PATTERNS = {
+const VIBRATIONS = {
   gentle: [300, 200, 300, 200, 300],
   strong: [600, 200, 600, 200, 600, 200, 600, 200, 600],
   urgent: [1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000],
@@ -249,10 +227,8 @@ self.addEventListener('push', (event) => {
     icon: 'icons/icon-192.png',
     badge: 'icons/icon-192.png',
     data: { url: d.url || '#/' },
-    // The wake-up alarm stays on screen, buzzes, and sounds again each time it repeats.
-    ...(d.alarm ? { requireInteraction: true, renotify: true } : {}),
     // Every kind of notification buzzes in its own rhythm, since Android gives a web app only one sound.
-    vibrate: ALARM_PATTERNS[d.pattern] || (d.alarm ? ALARM_PATTERNS.strong : ALARM_PATTERNS.gentle),
+    vibrate: VIBRATIONS[d.pattern] || VIBRATIONS.gentle,
   }));
 });
 
