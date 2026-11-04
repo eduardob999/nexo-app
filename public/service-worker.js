@@ -250,7 +250,9 @@ self.addEventListener('push', (event) => {
     badge: 'icons/icon-192.png',
     data: { url: d.url || '#/' },
     // The wake-up alarm stays on screen, buzzes, and sounds again each time it repeats.
-    ...(d.alarm ? { requireInteraction: true, renotify: true, vibrate: ALARM_PATTERNS[d.pattern] || ALARM_PATTERNS.strong } : {}),
+    ...(d.alarm ? { requireInteraction: true, renotify: true } : {}),
+    // Every kind of notification buzzes in its own rhythm, since Android gives a web app only one sound.
+    vibrate: ALARM_PATTERNS[d.pattern] || (d.alarm ? ALARM_PATTERNS.strong : ALARM_PATTERNS.gentle),
   }));
 });
 
