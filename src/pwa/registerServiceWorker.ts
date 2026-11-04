@@ -54,6 +54,11 @@ export function registerServiceWorker(): void {
       .then((registration) => {
         console.info('[pwa] Service worker registered for', registration.scope);
 
+        // An installed app is rarely reloaded, so look for a new version whenever it comes back to the screen.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') void registration.update().catch(() => undefined);
+        });
+
         // Already waiting: the update installed on a previous visit, or before
         // this listener existed.
         if (registration.waiting && navigator.serviceWorker.controller) {

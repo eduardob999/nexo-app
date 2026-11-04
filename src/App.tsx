@@ -16,6 +16,7 @@ import { bandOf } from './urgency';
 import { Drafts } from './Drafts';
 import { Thread } from './Thread';
 import { ToastHost } from './Toast';
+import { UpdateBar } from './UpdateBar';
 import { flash } from './toast';
 import { Trips } from './Trips';
 import { Upcoming } from './Upcoming';
@@ -157,6 +158,7 @@ export function App() {
   return (
     <>
       <ToastHost />
+      <UpdateBar />
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
       {tab === 'money' ? (
         <Money allocations={allocs} onAdd={(a) => { void addAlloc(user.uid, a); }} onToggle={(a) => { void toggleAlloc(user.uid, a); }}

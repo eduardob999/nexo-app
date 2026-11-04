@@ -366,3 +366,4 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .health { font-weight: 600; } .health-ok { color: var(--later); } .health-late { color: var(--today); } .health-offline, .health-blocked { color: var(--now); }
 .badge.quiet { background: var(--now); color: var(--bg); }
 .call { white-space: nowrap; flex: none; } .health-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--later-ring); margin-left: 8px; vertical-align: 1px; }
+.update-bar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px 16px; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 14px; } .update-bar .chip-btn { height: 36px; color: var(--ink); }
