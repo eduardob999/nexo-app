@@ -216,3 +216,22 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .sync-warn { position: sticky; top: 0; z-index: 20; margin: 0; padding: 10px 16px; background: var(--today-tint); color: var(--today); font-size: 14px; font-weight: 600; text-align: center; }
 
 .call-count { min-width: 22px; height: 22px; padding: 0 6px; margin-left: 2px; border-radius: 11px; background: var(--accent); color: var(--on-accent); font: 600 12px/22px var(--mono); text-align: center; }
+
+/* Nexo progress */
+.nexo-panel { margin: 14px 8px 0; padding: 14px 16px; background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; display: grid; gap: 8px; }
+.nexo-panel.warn { background: var(--today-tint); border-color: transparent; }
+.nexo-panel.done { background: var(--later-tint); border-color: transparent; color: var(--later); }
+.np-head { margin: 0; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.np-time { font: 500 13px var(--mono); color: var(--muted); }
+.np-sub { margin: 0; font-size: 14px; color: var(--muted); }
+.warn .np-sub, .warn .np-head { color: var(--today); }
+.np-bar { height: 8px; border-radius: 4px; background: var(--chip); overflow: hidden; position: relative; }
+.np-bar i { display: block; height: 100%; background: var(--accent); border-radius: 4px; transition: width .4s; }
+.np-bar.indeterminate::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 35%; background: var(--accent); border-radius: 4px; animation: np-slide 1.2s ease-in-out infinite; }
+@keyframes np-slide { 0% { left: -35%; } 100% { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .np-bar.indeterminate::after { animation: none; width: 100%; opacity: .4; } }
+.np-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.np-list li { display: flex; gap: 10px; font-size: 15px; align-items: baseline; }
+.np-list li.done { color: var(--muted); text-decoration: line-through; }
+.np-list li.more { color: var(--muted); }
+.np-mark { width: 16px; text-align: center; color: var(--accent); flex: none; }

@@ -6,7 +6,7 @@ import { Upcoming } from '../Upcoming';
 import { Thread } from '../Thread';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
-import type { Card, Draft, Entry } from '../types';
+import type { Card, Draft, Entry, NexoStatus } from '../types';
 
 /** Invented cards, so the screens can be rendered without signing in or touching real data. */
 const NOW = new Date('2026-11-02T12:00:00+09:00');
@@ -33,6 +33,16 @@ const DRAFTS: Draft[] = [
   { id: 'd3', status: 'needs-info', topic: 'Reply about the bike registration', need: 'the frame number from the registration card' },
 ];
 
+const WORKING: NexoStatus = {
+  phase: 'working', startedAt: new Date(Date.now() - 3 * 60_000).toISOString(), queuedAt: null, total: 4, answered: 2, lastOutcome: null, lastEndedAt: null,
+  cards: [
+    { id: 'a', title: 'Reply to the housing office', answered: true },
+    { id: 'b', title: 'Confirm the lab visit time', answered: true },
+    { id: 'c', title: 'Bicycle registration Thu 5 Nov', answered: false },
+    { id: 'd', title: 'Contact lens delivery on Friday', answered: false },
+  ],
+};
+
 export function PreviewApp() {
   const which = window.location.hash.replace('#/preview', '').replace(/^\//, '');
   const card = FIXTURES[2] as Card;
@@ -44,6 +54,13 @@ export function PreviewApp() {
   }
   if (which === 'browse') {
     return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'working' || which === 'slow' || which === 'queued' || which === 'failed') {
+    const st: NexoStatus = which === 'queued' ? { ...WORKING, phase: 'queued', startedAt: null, queuedAt: new Date(Date.now() - 20_000).toISOString(), answered: 0, cards: WORKING.cards.map((c) => ({ ...c, answered: false })) }
+      : which === 'slow' ? { ...WORKING, startedAt: new Date(Date.now() - 13 * 60_000).toISOString(), answered: 0, cards: WORKING.cards.map((c) => ({ ...c, answered: false })) }
+      : which === 'failed' ? { phase: 'idle', startedAt: null, queuedAt: null, cards: [], total: 0, answered: 0, lastOutcome: 'failed', lastEndedAt: new Date(Date.now() - 5 * 60_000).toISOString() }
+      : WORKING;
+    return (<><NexoShell status={st} /><TabBar current="today" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'search') {
     return (<><Search cards={FIXTURES} now={NOW} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
@@ -65,4 +82,9 @@ export function PreviewApp() {
       <TabBar current="today" draftCount={DRAFTS.length} />
     </>
   );
+}
+
+/** Today with a fixed status and a fixed clock, so each state can be rendered. */
+function NexoShell({ status }: { status: NexoStatus }) {
+  return <Today cards={FIXTURES} now={new Date('2026-11-02T12:00:00+09:00')} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} waiting={4} nexo={status} />;
 }

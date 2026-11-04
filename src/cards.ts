@@ -1,6 +1,6 @@
 import { collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Card, Draft, Entry } from './types';
+import type { Card, Draft, Entry, NexoStatus } from './types';
 import { postpone, todayYmd } from './urgency';
 
 const root = (uid: string) => ['users', uid] as const;
@@ -138,4 +138,9 @@ export function watchSync(uid: string, onTime: (ms: number | null) => void): () 
     const t = snap.exists() ? Date.parse(String((snap.data() as { lastCycleAt?: string }).lastCycleAt ?? '')) : NaN;
     onTime(Number.isNaN(t) ? null : t);
   }, () => onTime(null));
+}
+
+/** What Nexo is doing right now: idle, called and waiting, or working through cards. */
+export function watchNexo(uid: string, onStatus: (s: NexoStatus | null) => void): () => void {
+  return onSnapshot(doc(db, ...root(uid), 'meta', 'nexo'), (snap) => onStatus(snap.exists() ? (snap.data() as NexoStatus) : null), () => onStatus(null));
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { Card } from './types';
+import { NexoPanel } from './NexoPanel';
+import type { Card, NexoStatus } from './types';
 import { bandOf, dueText, sortQueue, type Band } from './urgency';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
   withDraft?: Set<string>;
   /** Open cards whose last entry is his: what Nexo has to read and answer when called. */
   waiting?: number;
+  nexo?: NexoStatus | null | undefined;
 }
 
 const BAND_LABEL: Record<Band, string> = {
@@ -74,10 +76,13 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
   return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you', withDraft, waiting = 0 }: Props) {
+export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you', withDraft, waiting = 0, nexo }: Props) {
   const mine = sortQueue(cards.filter((c) => c.for === lane), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
+  const [calledAt, setCalledAt] = useState(0);
+  const press = () => { setCalledAt(Date.now()); onCallNexo(); };
+  const titles = new Map(cards.map((c) => [c.id, c.title ?? c.id]));
   const count = groups.reduce((n, g) => n + g.items.length, 0);
   const stamp = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
   const holiday = lane === 'you' ? todayHoliday(cards, now) : undefined;
@@ -90,13 +95,14 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane
           <span className="kicker">{stamp} · {count} {lane === 'you' ? 'LEFT' : 'WITH NEXO'}</span>
           <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
         </div>
-        <button className="call" onClick={onCallNexo}
+        <button className="call" onClick={press}
           aria-label={waiting > 0 ? `Call Nexo, ${waiting} ${waiting === 1 ? 'card' : 'cards'} to revise` : 'Call Nexo'}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>
           Call Nexo
           {waiting > 0 ? <span className="call-count" aria-hidden="true">{waiting}</span> : null}
         </button>
       </header>
+      <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
       {holiday ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
       {groups.length === 0 ? <p className="empty">{lane === 'you' ? 'Nothing needs you.' : 'Nexo has nothing open.'}</p> : (

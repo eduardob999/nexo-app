@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, watchDrafts, watchEntries, watchOpenCards, watchSync } from './cards';
+import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchSync } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -12,7 +12,7 @@ import { Drafts } from './Drafts';
 import { Thread } from './Thread';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
-import type { Card, Draft, Entry } from './types';
+import type { Card, Draft, Entry, NexoStatus } from './types';
 import { useRoute } from './useHash';
 
 function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
@@ -44,6 +44,7 @@ export function App() {
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [nexo, setNexo] = useState<NexoStatus | null | undefined>(undefined);
   const [syncAt, setSyncAt] = useState<number | null | undefined>(undefined);
   const [clock, setClock] = useState(() => Date.now());
   const route = useRoute();
@@ -75,8 +76,9 @@ export function App() {
   useEffect(() => {
     if (!user) return undefined;
     const stop = watchSync(user.uid, setSyncAt);
+    const stopNexo = watchNexo(user.uid, setNexo);
     const tick = window.setInterval(() => setClock(Date.now()), 30_000);
-    return () => { stop(); window.clearInterval(tick); };
+    return () => { stop(); stopNexo(); window.clearInterval(tick); };
   }, [user]);
 
   if (!isFirebaseConfigured) return <main className="screen center"><p className="notice">Firebase is not configured. Fill in .env.local.</p></main>;
@@ -118,7 +120,7 @@ export function App() {
       ) : (
         <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
           withDraft={new Set(drafts.map((d) => d.linkedNote ?? ''))}
-          waiting={cards.filter((c) => c.last?.by === 'eduardo').length}
+          waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo}
           onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); }} />
       )}
       {tab === 'today' ? (

@@ -47,3 +47,15 @@ export interface Draft {
   copiedAt?: string;
   ts?: string;
 }
+
+/** What the sync service publishes at meta/nexo. */
+export interface NexoStatus {
+  phase: 'idle' | 'queued' | 'working';
+  startedAt: string | null;
+  queuedAt: string | null;
+  cards: { id: string; title: string; answered: boolean }[];
+  total: number;
+  answered: number;
+  lastOutcome: 'ok' | 'failed' | null;
+  lastEndedAt: string | null;
+}
