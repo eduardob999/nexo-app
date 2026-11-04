@@ -56,7 +56,7 @@ export function markLater(uid: string, card: Card): Promise<void> {
  * one made without a date lands on today; the entry count and last entry are
  * written with it so a list never needs the entries subcollection.
  */
-export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null): Promise<void> {
+export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null, prio: 'high' | 'normal' | 'low' = 'normal'): Promise<void> {
   const now = new Date();
   const ts = now.toISOString();
   const id = `n${now.getTime().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -65,11 +65,11 @@ export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?:
   const when = due ?? todayYmd(now);
   const batch = writeBatch(db);
   batch.set(doc(db, ...root(uid), 'cards', id), {
-    status: 'open', for: forWho, type: 'TASK', title: text, due: when, ts,
+    status: 'open', for: forWho, type: 'TASK', title: text, due: when, ts, prio,
     entryCount: 1, last: entry, hasEntries: true,
   });
   batch.set(doc(db, ...root(uid), 'cards', id, 'entries', entryId), entry);
-  intent(batch, uid, { type: 'add', cardId: id, text, for: forWho, due: when, ts, entryId });
+  intent(batch, uid, { type: 'add', cardId: id, text, for: forWho, due: when, ts, entryId, prio });
   return batch.commit();
 }
 
@@ -376,5 +376,16 @@ export function addItem(uid: string, card: Card, text: string): Promise<void> {
   const batch = writeBatch(db);
   batch.update(doc(db, ...root(uid), 'cards', card.id), { items });
   intent(batch, uid, { type: 'checklist', action: 'item-add', cardId: card.id, itemId, text });
+  return batch.commit();
+}
+
+const NEXT_PRIO: Record<string, 'high' | 'normal' | 'low'> = { high: 'normal', normal: 'low', low: 'high', med: 'low' };
+
+/** Cycle Now, Soon, Whenever. */
+export function cyclePriority(uid: string, card: Card): Promise<void> {
+  const next = NEXT_PRIO[card.prio ?? 'normal'] ?? 'high';
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', card.id), { prio: next });
+  intent(batch, uid, { type: 'priority', cardId: card.id, prio: next });
   return batch.commit();
 }

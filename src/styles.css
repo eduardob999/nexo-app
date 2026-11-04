@@ -354,3 +354,5 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .citem label { display: flex; gap: 12px; align-items: flex-start; min-height: 44px; padding: 8px 0; font-size: 16px; line-height: 1.35; }
 .citem input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--accent); flex: none; } .citem.done span { color: var(--muted); text-decoration: line-through; }
 .cladd { display: flex; gap: 8px; margin-top: 8px; } .cladd .search-input { margin-top: 0; height: 44px; }
+.prio-btn { all: unset; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; font-size: 15px; } .sheet .seg { justify-self: start; }
+.bubble a, .ask-block a, .row-last a { color: var(--accent); overflow-wrap: anywhere; text-decoration: underline; }

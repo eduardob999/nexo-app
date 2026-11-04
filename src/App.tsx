@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addAlloc, addCard, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { addAlloc, addCard, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { Notes } from './Notes';
@@ -40,7 +40,7 @@ function ThreadView({ uid, card, drafts, onDone, onLater }: { uid: string; card:
     <Thread card={card} entries={entries} pics={pics} drafts={drafts} now={new Date()}
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); }} onDone={onDone} onLater={onLater}
-      onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} />
+      onPriority={() => { void cyclePriority(uid, card); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} />
   );
 }
 
@@ -194,7 +194,7 @@ export function App() {
         </button>
       ) : null}
       <TabBar current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
-      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due) => { void addCard(user.uid, t, w, due); }} /> : null}
+      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr) => { void addCard(user.uid, t, w, due, pr); }} /> : null}
     </>
   );
 }

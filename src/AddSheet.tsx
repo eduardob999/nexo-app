@@ -4,7 +4,7 @@ import { parseQuickAdd } from './parse';
 import { dueText } from './urgency';
 
 interface Props {
-  onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null) => void;
+  onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low') => void;
   onClose: () => void;
 }
 
@@ -24,11 +24,12 @@ function Mirror({ text, tokens }: { text: string; tokens: { start: number; end: 
 export function AddSheet({ onAdd, onClose }: Props) {
   const [text, setText] = useState('');
   const [forWho, setForWho] = useState<'you' | 'nexo'>('you');
+  const [prio, setPrio] = useState<'high' | 'normal' | 'low'>('normal');
   const now = new Date();
   const parsed = parseQuickAdd(text, now);
   const submit = () => {
     if (!parsed.title) return;
-    onAdd(parsed.title, forWho, parsed.due);
+    onAdd(parsed.title, forWho, parsed.due, prio);
     onClose();
   };
   return (
@@ -48,6 +49,11 @@ export function AddSheet({ onAdd, onClose }: Props) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M4 10h16M9 3v4M15 3v4" /></svg>
             {parsed.due ? dueText({ id: 'x', status: 'open', for: 'you', due: parsed.due }, now) : 'Today'}
           </span>
+        </div>
+        <div className="seg" role="group" aria-label="Priority">
+          {([['high', 'Now'], ['normal', 'Soon'], ['low', 'Whenever']] as const).map(([v, label]) => (
+            <button type="button" key={v} aria-pressed={prio === v} onClick={() => setPrio(v)}>{label}</button>
+          ))}
         </div>
         <div className="sheet-foot">
           <button type="button" className="chip-btn" onClick={() => setForWho(forWho === 'you' ? 'nexo' : 'you')}>

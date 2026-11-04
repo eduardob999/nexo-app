@@ -30,7 +30,7 @@ const FIXTURES: Card[] = [
 
 const ENTRIES: Entry[] = [
   { id: '0000', by: 'eduardo', ts: '2026-10-30T10:12:00+09:00', text: 'They asked for the signed form by Monday. Can you check what they still need?' },
-  { id: '0001', by: 'nexo', ts: '2026-10-30T10:31:00+09:00', text: 'They need the signed form and a copy of your residence card. Nothing else is missing.' },
+  { id: '0001', by: 'nexo', ts: '2026-10-30T10:31:00+09:00', text: 'They need the signed form and a copy of your residence card. Form: [housing form](https://example.org/form) or https://example.org/help. Nothing else is missing.' },
   { id: '0002', by: 'nexo', ts: '2026-10-31T09:02:00+09:00', text: 'Draft ready, waiting for your approval.' },
 ];
 const DRAFTS: Draft[] = [
