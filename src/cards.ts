@@ -132,6 +132,31 @@ export function discardDraft(uid: string, id: string): Promise<void> {
   return draftAction(uid, id, 'discarded', { status: 'discarded', discardedAt: new Date().toISOString() });
 }
 
+/** He rewrote the draft himself. The text Copy and Send use is now his. */
+export function editDraft(uid: string, draft: Draft, text: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(draftRef(uid, draft.id), { text, editedAt: new Date().toISOString(), editedBy: 'eduardo', ...(draft.status === 'needs-info' ? { status: 'drafted' } : {}) });
+  intent(batch, uid, { type: 'draft', action: 'edit', draftId: draft.id, text });
+  return batch.commit();
+}
+
+/** He tells Nexo what to change; Nexo rewrites it. Edit and Send stay hidden until the new text lands. */
+export function reviseDraft(uid: string, draft: Draft, instruction: string): Promise<void> {
+  const at = new Date().toISOString();
+  const batch = writeBatch(db);
+  batch.update(draftRef(uid, draft.id), { revise: { text: instruction, at, by: 'eduardo' } });
+  intent(batch, uid, { type: 'draft', action: 'revise', draftId: draft.id, text: instruction, entryId: String(Date.now()) });
+  return batch.commit();
+}
+
+/** He supplies the missing detail on a needs-info draft; Nexo redrafts with it. */
+export function answerDraft(uid: string, draft: Draft, detail: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(draftRef(uid, draft.id), { answer: detail, answeredAt: new Date().toISOString() });
+  intent(batch, uid, { type: 'draft', action: 'answer', draftId: draft.id, text: detail, entryId: String(Date.now()) });
+  return batch.commit();
+}
+
 /**
  * He pressed Send. This is the explicit act the sending policy asks for, for exactly this text. The
  * app sends nothing itself: the loop does, from state.json, and only if the draft is still the one he saw.

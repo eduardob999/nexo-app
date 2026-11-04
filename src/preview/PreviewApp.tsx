@@ -33,6 +33,7 @@ const DRAFTS: Draft[] = [
   { id: 'd2', status: 'drafted', copiedAt: '2026-11-01T10:00:00+09:00', to: ['events@example.org'], subject: 'Re: Thank you for the invitation', text: 'Thank you very much for the invitation. I look forward to the seminar on Monday afternoon.' },
   { id: 'd4', status: 'drafted', to: ['friend@example.org'], subject: 'Re: Saturday', text: 'See you Saturday.', sendRequestedAt: new Date(Date.now() - 4 * 60_000).toISOString() },
   { id: 'd5', status: 'sent', to: ['friend@example.org'], subject: 'Re: Dinner', text: 'x', sentAt: new Date(Date.now() - 3600_000).toISOString(), sentBy: 'nexo' },
+  { id: 'd6', status: 'drafted', to: ['dojo@example.org'], subject: 'Re: Shift on Tuesday', text: 'I can take the Tuesday shift.', revise: { text: 'mention that I arrive at 18:15', at: new Date(Date.now() - 6 * 60_000).toISOString(), by: 'eduardo' } },
   { id: 'd3', status: 'needs-info', topic: 'Reply about the bike registration', need: 'the frame number from the registration card' },
 ];
 
@@ -74,7 +75,7 @@ export function PreviewApp() {
   if (which === 'drafts') {
     return (
       <>
-        <Drafts drafts={DRAFTS} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} />
+        <Drafts drafts={DRAFTS} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} onEdit={() => {}} onRevise={() => {}} onAnswer={() => {}} />
         <TabBar current="drafts" draftCount={DRAFTS.length} />
       </>
     );

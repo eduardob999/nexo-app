@@ -7,6 +7,9 @@ interface Props {
   onSent: (id: string) => void;
   onDiscard: (id: string) => void;
   onSend: (draft: Draft) => void;
+  onEdit: (draft: Draft, text: string) => void;
+  onRevise: (draft: Draft, instruction: string) => void;
+  onAnswer: (draft: Draft, detail: string) => void;
 }
 
 /** Clipboard first; the textarea fallback covers browsers that refuse the async API on a plain page. */
@@ -51,8 +54,13 @@ function SentLine({ draft }: { draft: Draft }) {
   );
 }
 
-function DraftCard({ draft, onCopied, onSent, onDiscard, onSend }: { draft: Draft } & Omit<Props, 'drafts'>) {
+function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer }: { draft: Draft } & Omit<Props, 'drafts'>) {
   const [flash, setFlash] = useState(false);
+  const [mode, setMode] = useState<'view' | 'edit' | 'revise'>('view');
+  const [box, setBox] = useState('');
+  const revising = Boolean(draft.revise?.at);
+  const open = (m: 'edit' | 'revise') => { setBox(m === 'edit' && draft.status !== 'needs-info' ? (draft.text ?? '') : ''); setMode(m); };
+  const done = () => { setMode('view'); setBox(''); };
   const [armed, setArmed] = useState(false);
   const requested = draft.sendRequestedAt && Date.now() - Date.parse(draft.sendRequestedAt) < SEND_VALID_MS;
   const arm = () => {
@@ -82,16 +90,51 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend }: { draft: Draf
         </div>
         {flash || draft.copiedAt ? <span className="pill-ok">COPIED</span> : null}
       </div>
-      {draft.status === 'needs-info' ? (
-        <p className="need">Needs from you: {draft.need ?? 'more information'}</p>
-      ) : (
-        <div className="draft-body">{body}</div>
-      )}
-      {draft.status === 'drafted' ? (
+      {revising ? (
+        <p className="revise-wait">Waiting for Nexo to revise since {hhmm(draft.revise?.at)}: “{draft.revise?.text}”</p>
+      ) : null}
+      {mode === 'edit' ? (
+        <div className="editor">
+          {draft.status === 'needs-info' ? <p className="need">Needs from you: {draft.need ?? 'more information'}</p> : null}
+          <label className="sr" htmlFor={`ed-${draft.id}`}>Draft text</label>
+          <textarea id={`ed-${draft.id}`} className="relay-answer" rows={Math.min(14, Math.max(5, box.split('\n').length + 1))} value={box} autoFocus
+            placeholder={draft.status === 'needs-info' ? 'Write the reply yourself, or just the missing detail' : 'The text Copy and Send will use'}
+            onChange={(e) => setBox(e.target.value)} />
+          <div className="draft-actions">
+            <button className="copy-main alt" disabled={!box.trim()} onClick={() => { onEdit(draft, box.trim()); done(); }}>
+              {draft.status === 'needs-info' ? 'Use as reply' : 'Save'}
+            </button>
+            <button className="chip-btn" onClick={done}>Cancel</button>
+          </div>
+          {draft.status === 'needs-info' && draft.linkedNote ? (
+            <button className="chip-btn small" disabled={!box.trim()} onClick={() => { onAnswer(draft, box.trim()); done(); }}>Answer for Nexo instead</button>
+          ) : null}
+        </div>
+      ) : mode === 'revise' ? (
+        <div className="editor">
+          <div className="draft-body">{body}</div>
+          <label className="sr" htmlFor={`rv-${draft.id}`}>What to change</label>
+          <textarea id={`rv-${draft.id}`} className="relay-answer" rows={3} value={box} autoFocus
+            placeholder="What to change. For example: shorter, mention Thursday, drop the apology" onChange={(e) => setBox(e.target.value)} />
+          <div className="draft-actions">
+            <button className="copy-main alt" disabled={!box.trim()} onClick={() => { onRevise(draft, box.trim()); done(); }}>Ask Nexo to revise</button>
+            <button className="chip-btn" onClick={done}>Cancel</button>
+          </div>
+        </div>
+      ) : draft.status === 'needs-info' ? (
         <>
+          <p className="need">Needs from you: {draft.need ?? 'more information'}</p>
+          <div className="draft-more">
+            <button className="chip-btn small" onClick={() => open('edit')}>Write it</button>
+            <button className="chip-btn small" onClick={() => onDiscard(draft.id)}>Discard</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="draft-body">{body}</div>
           {requested ? (
             <p className="send-wait">Send requested {hhmm(draft.sendRequestedAt)}. Nexo sends it on its next run; press Call Nexo to hurry it.</p>
-          ) : (
+          ) : revising ? null : (
             <button className={`send-main ${armed ? 'armed' : ''}`} onClick={arm}>
               {armed ? 'Tap again to send' : 'Send'}
             </button>
@@ -102,19 +145,19 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend }: { draft: Draf
             <button className="chip-btn" onClick={() => onSent(draft.id)}>I sent it</button>
           </div>
           <div className="draft-more">
+            {revising ? null : <button className="chip-btn small" onClick={() => open('edit')}>Edit</button>}
+            {revising ? null : <button className="chip-btn small" onClick={() => open('revise')}>Ask Nexo to revise</button>}
             {draft.subject ? <CopyChip label="Copy subject" text={draft.subject} /> : null}
             {to ? <CopyChip label="Copy address" text={to} /> : null}
             <button className="chip-btn small" onClick={() => onDiscard(draft.id)}>Discard</button>
           </div>
         </>
-      ) : (
-        <div className="draft-more"><button className="chip-btn small" onClick={() => onDiscard(draft.id)}>Discard</button></div>
       )}
     </li>
   );
 }
 
-export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend }: Props) {
+export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer }: Props) {
   const waiting = drafts.filter((d) => d.status !== 'sent');
   const dayAgo = Date.now() - 24 * 3600_000;
   const sent = drafts.filter((d) => d.status === 'sent' && Date.parse(d.sentAt ?? '') > dayAgo);
@@ -128,7 +171,7 @@ export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend }: Props) {
       </header>
       {waiting.length === 0 ? <p className="empty">No drafts waiting.</p> : null}
       <ul className="drafts">
-        {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} />)}
+        {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} />)}
         {sent.map((d) => <SentLine key={d.id} draft={d} />)}
       </ul>
     </main>

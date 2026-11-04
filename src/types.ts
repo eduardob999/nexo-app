@@ -55,6 +55,12 @@ export interface Draft {
   copiedAt?: string;
   /** He pressed Send; the loop sends on its next run and then sets status `sent`. */
   sendRequestedAt?: string;
+  /** He asked Nexo to rewrite it; set until the new text lands. */
+  revise?: { text: string; at: string; by?: string };
+  answer?: string;
+  answeredAt?: string;
+  editedAt?: string;
+  editedBy?: string;
   sentAt?: string;
   sentBy?: string;
   sentVia?: string;

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, answerRelay, closeRelay, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchRelays, watchSync } from './cards';
+import { addCard, addEntry, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchRelays, watchSync } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -123,7 +123,10 @@ export function App() {
           onCopied={(id) => { void markCopied(user.uid, id); }}
           onSent={(id) => { void markSent(user.uid, id); }}
           onDiscard={(id) => { void discardDraft(user.uid, id); }}
-          onSend={(d) => { void requestSend(user.uid, d); }} />
+          onSend={(d) => { void requestSend(user.uid, d); }}
+          onEdit={(d, t) => { void editDraft(user.uid, d, t); }}
+          onRevise={(d, t) => { void reviseDraft(user.uid, d, t); }}
+          onAnswer={(d, t) => { void answerDraft(user.uid, d, t); }} />
       ) : (
         <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
