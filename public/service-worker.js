@@ -221,6 +221,7 @@ self.addEventListener('message', (event) => {
         if (i < 5) await wait(8000);
       }
     })());
+  }
 });
 
 /**
