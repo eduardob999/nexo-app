@@ -11,6 +11,7 @@ import { TabBar } from './TabBar';
 import { Browse } from './Browse';
 import { Drafts } from './Drafts';
 import { Thread } from './Thread';
+import { Trips } from './Trips';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
 import type { Card, CardFile, Draft, Entry, NexoStatus, Relay, Resource, TodayInfo } from './types';
@@ -132,7 +133,9 @@ export function App() {
   return (
     <>
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
-      {tab === 'shelf' ? (
+      {tab === 'trips' ? (
+        <Trips cards={cards} now={new Date()} />
+      ) : tab === 'shelf' ? (
         <Shelf done={doneCards} closed={closedRelays} resources={resources}
           onAdd={(r) => { void addResource(user.uid, r); }} onArchive={(r, a) => { void archiveResource(user.uid, r, a); }} />
       ) : tab === 'search' ? (
@@ -164,7 +167,7 @@ export function App() {
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
         </button>
       ) : null}
-      <TabBar current={tab === 'nexo' || tab === 'search' || tab === 'shelf' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+      <TabBar current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due) => { void addCard(user.uid, t, w, due); }} /> : null}
     </>
   );

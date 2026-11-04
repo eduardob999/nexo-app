@@ -313,3 +313,17 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .res-path { font: 13px var(--mono); overflow-wrap: anywhere; background: var(--bg); padding: 6px 8px; border-radius: 8px; }
 .res-add { display: grid; gap: 10px; margin-top: 10px; } .res-add .search-input { margin-top: 0; }
 .mut { color: var(--muted); }
+
+/* trips and the ticket */
+.trips { list-style: none; margin: 14px 8px 0; padding: 0; display: grid; gap: 14px; }
+.trip-head { display: grid; gap: 4px; text-decoration: none; color: inherit; padding: 4px 4px 8px; }
+.ticket { background: var(--surface); border: 1px solid var(--edge); border-radius: 18px; padding: 16px; margin: 14px 8px 0; display: grid; gap: 8px; }
+.trips .ticket { margin: 0; }
+.tkroute { display: flex; gap: 10px; align-items: center; font-weight: 700; font-size: 17px; flex-wrap: wrap; }
+.tkwhy, .tkest { margin: 0; color: var(--muted); font-size: 14px; }
+.tktimes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-top: 1px dashed var(--edge); border-bottom: 1px dashed var(--edge); padding: 10px 0; }
+.tkcell { display: grid; gap: 2px; } .tkcell b { font: 700 20px var(--mono); } .tklbl { font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); } .tksub { font-size: 12px; color: var(--muted); }
+.tkh { margin: 6px 0 0; font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.tkline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .tkline li { display: grid; grid-template-columns: 52px 12px 1fr; gap: 8px; align-items: baseline; font-size: 15px; }
+.tkt { font: 600 13px var(--mono); color: var(--muted); } .tkdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; } .tkline i { color: var(--muted); font-size: 13px; }
+.tkknow { margin: 0; padding-left: 18px; font-size: 15px; display: grid; gap: 4px; } .tkmap { margin: 0; } .tkmap a { color: var(--accent); }

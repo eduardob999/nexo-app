@@ -3,6 +3,7 @@ import { Browse } from '../Browse';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
 import { Shelf } from '../Shelf';
+import { Trips } from '../Trips';
 import { Upcoming } from '../Upcoming';
 import { Thread } from '../Thread';
 import { Today } from '../Today';
@@ -70,6 +71,13 @@ export function PreviewApp() {
   }
   if (which === 'browse') {
     return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'trips') {
+    const trip: Card = { id: 't1', status: 'open', for: 'you', type: 'TRIP', trip: true, title: 'Trip to the dojo Sat 7 Nov: leave 08:50', due: '2026-11-03T08:50:00+09:00', place: 'Gion',
+      plan: { from: 'Home', to: 'The dojo', why: 'Guide shift, ends about 11:00 (end time assumed).',
+        out: { leave: '08:50', from: 'Home (Uji)', arrive: '09:45', to: 'The dojo, behind the shrine', legs: [{ t: '08:50', txt: 'Keihan Uji line, change at Chushojima to an express', dur: 'about 45 min' }, { t: '09:45', txt: 'Gion-Shijo, exit 6, walk about 8 min' }] },
+        back: { leave: '11:00', arrive: 'about 12:00', txt: 'Keihan back to Uji.' }, know: ['Arrive 15 min before the start.'], est: 'Trains and walk are estimates.' } };
+    return (<><Trips cards={[trip, { ...trip, id: 't2', title: 'Later trip', due: '2026-11-20T10:00:00+09:00' }]} now={NOW} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'shelf') {
     return (<><Shelf

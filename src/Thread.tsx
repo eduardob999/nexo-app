@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Card, CardFile, Draft, Entry } from './types';
 import { calendarLabel, cardTag, priorityLabel } from './cardmeta';
+import { TripTicket } from './TripTicket';
 import { dueText } from './urgency';
 
 interface Props {
@@ -69,6 +70,8 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
           </section>
         ) : null;
       })()}
+      {card.plan ? <TripTicket plan={card.plan} /> : null}
+
       <ol className="bubbles">
         {entries.map((e) => {
           const you = e.by === 'eduardo';

@@ -9,7 +9,7 @@ const ITEMS = [
   { id: 'nexo', label: 'Nexo', hint: 'What the assistant is working on', href: '#/nexo' },
   { id: 'notes', label: 'Notes', hint: 'Coming later', href: null },
   { id: 'money', label: 'Money', hint: 'Coming later', href: null },
-  { id: 'trips', label: 'Trips', hint: 'Coming later', href: null },
+  { id: 'trips', label: 'Trips', hint: 'Tickets for the trips ahead', href: '#/trips' },
   { id: 'shelf', label: 'Shelf', hint: 'Resources, done cards and closed threads', href: '#/shelf' },
 ] as const;
 

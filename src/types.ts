@@ -29,7 +29,7 @@ export interface Card {
   lead?: number;
   /** Things to bring and a plan: either marks a card as needing preparation. */
   bring?: unknown[];
-  plan?: unknown;
+  plan?: Plan;
   /** Denormalised by the writer so a list never has to read the entries subcollection. */
   files?: CardFile[];
   entryCount?: number;
@@ -115,4 +115,19 @@ export interface Resource {
   note?: string;
   ts?: string;
   archived?: boolean;
+}
+
+export interface Leg { t?: string; txt?: string; dur?: string }
+export interface PlanSide { leave?: string; arrive?: string; from?: string; to?: string; legs?: Leg[]; txt?: string }
+
+/** A trip ticket: the way there, the way back, what to know. Times are HH:MM. */
+export interface Plan {
+  from?: string;
+  to?: string;
+  why?: string;
+  out?: PlanSide;
+  back?: PlanSide | null;
+  know?: string[];
+  est?: string;
+  maps?: string;
 }
