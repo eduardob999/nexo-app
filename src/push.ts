@@ -41,3 +41,23 @@ export async function testPush(): Promise<void> {
   const reg = await navigator.serviceWorker.ready;
   await reg.showNotification('Notifications are on', { body: 'Nexo will tell you about questions, answers and urgent things.', tag: 'test', icon: 'icons/icon-192.png' });
 }
+
+export type AlarmPattern = 'gentle' | 'strong' | 'urgent';
+export const ALARM_PATTERNS: { id: AlarmPattern; label: string }[] = [
+  { id: 'gentle', label: 'Gentle' }, { id: 'strong', label: 'Strong' }, { id: 'urgent', label: 'Urgent' },
+];
+const PATTERN_KEY = 'nexo-alarm-pattern';
+
+export function loadPattern(): AlarmPattern {
+  try { const v = localStorage.getItem(PATTERN_KEY); return v === 'gentle' || v === 'urgent' ? v : 'strong'; } catch { return 'strong'; }
+}
+
+export function savePattern(p: AlarmPattern): void {
+  try { localStorage.setItem(PATTERN_KEY, p); } catch { /* ignore */ }
+}
+
+/** Ask the service worker to show the wake-up alarm notification after a few seconds, so the phone can be locked first. */
+export async function testAlarm(pattern: AlarmPattern, delayMs = 6000): Promise<void> {
+  const reg = await navigator.serviceWorker.ready;
+  (reg.active ?? navigator.serviceWorker.controller)?.postMessage({ type: 'TEST_ALARM', pattern, delay: delayMs });
+}

@@ -200,12 +200,32 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     void self.skipWaiting();
   }
+  // A test of the wake-up alarm: shown after a short delay so the phone can be locked first, exactly as the real one is.
+  if (event.data?.type === 'TEST_ALARM') {
+    const delay = Math.min(Math.max(Number(event.data.delay) || 5000, 0), 20000);
+    event.waitUntil(new Promise((resolve) => setTimeout(resolve, delay)).then(() => self.registration.showNotification('Wake up (test)', {
+      body: 'This is a test of the wake-up alarm. Dismiss it to stop.',
+      tag: 'wake-test',
+      icon: 'icons/icon-192.png',
+      badge: 'icons/icon-192.png',
+      requireInteraction: true,
+      renotify: true,
+      vibrate: ALARM_PATTERNS[event.data.pattern] || ALARM_PATTERNS.strong,
+      data: { url: '#/' },
+    })));
+  }
 });
 
 /**
  * Push from the sync on his computer (Firebase Cloud Messaging, data-only). The payload carries title, body and a
  * route in the app. A notification must always be shown, so anything unreadable still produces one.
  */
+const ALARM_PATTERNS = {
+  gentle: [300, 200, 300, 200, 300],
+  strong: [600, 200, 600, 200, 600, 200, 600, 200, 600],
+  urgent: [1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000],
+};
+
 self.addEventListener('push', (event) => {
   let d = {};
   try {
@@ -222,7 +242,7 @@ self.addEventListener('push', (event) => {
     badge: 'icons/icon-192.png',
     data: { url: d.url || '#/' },
     // The wake-up alarm stays on screen, buzzes, and sounds again each time it repeats.
-    ...(d.alarm ? { requireInteraction: true, renotify: true, vibrate: [600, 200, 600, 200, 600, 200, 600, 200, 600] } : {}),
+    ...(d.alarm ? { requireInteraction: true, renotify: true, vibrate: ALARM_PATTERNS[d.pattern] || ALARM_PATTERNS.strong } : {}),
   }));
 });
 

@@ -1,4 +1,5 @@
 import type { AlarmDoc } from './alarm';
+import { loadPattern } from './push';
 import { arrayUnion, collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
@@ -251,7 +252,7 @@ export function watchTodayInfo(uid: string, onInfo: (t: TodayInfo | null) => voi
 
 /** The wake-up alarm: the sync on his computer sends a loud push at this time. */
 export function setWakeAlarm(uid: string, at: Date, label = 'Wake up'): Promise<void> {
-  return setDoc(doc(db, ...root(uid), 'meta', 'alarm'), { at: at.toISOString(), label, status: 'set', setAt: new Date().toISOString() });
+  return setDoc(doc(db, ...root(uid), 'meta', 'alarm'), { at: at.toISOString(), label, status: 'set', pattern: loadPattern(), setAt: new Date().toISOString() });
 }
 
 export function stopWakeAlarm(uid: string, status: 'off' | 'done' = 'off'): Promise<void> {
