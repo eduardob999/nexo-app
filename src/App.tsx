@@ -3,7 +3,7 @@ import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addAlloc, addCard, attachFile, joinCards, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { addAlloc, addCard, attachFile, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -37,7 +37,7 @@ function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
   );
 }
 
-function ThreadView({ uid, card, drafts, others, onDone, onLater }: { uid: string; card: Card; drafts: Draft[]; others: Card[]; onDone: () => void; onLater: () => void }) {
+function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Draft[] }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   useEffect(() => watchEntries(uid, card.id, setEntries, (e) => console.warn('[entries]', e)), [uid, card.id]);
   const [pics, setPics] = useState<CardFile[]>([]);
@@ -45,10 +45,9 @@ function ThreadView({ uid, card, drafts, others, onDone, onLater }: { uid: strin
   return (
     <Thread card={card} entries={entries} pics={pics} drafts={drafts} now={new Date()}
       onBack={() => { window.location.hash = '#/'; }}
-      onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }} onDone={onDone} onLater={onLater}
+      onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }}
       onPriority={() => { void cyclePriority(uid, card); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }}
-      onAttach={async (files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); } flash('Attached'); }}
-      others={others} onJoin={(cs) => { void joinCards(uid, cs).then(() => { flash('Joined into one card'); window.location.hash = '#/'; }); }} />
+      onAttach={async (files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); } flash('Attached'); }} />
   );
 }
 
@@ -147,8 +146,7 @@ export function App() {
 
   if (route.name === 'card') {
     return card ? (
-      <ThreadView uid={user.uid} card={card} drafts={drafts} others={cards.filter((c) => c.id !== card.id && c.status === 'open')}
-        onDone={() => { done(card); window.location.hash = '#/'; }} onLater={() => { later(card); window.location.hash = '#/'; }} />
+      <ThreadView uid={user.uid} card={card} drafts={drafts} />
     ) : (
       <main className="screen center"><p className="notice">{fromCache ? 'Loading' : 'That card is closed or not found.'}</p><a className="chip-btn link" href="#/">Back</a></main>
     );

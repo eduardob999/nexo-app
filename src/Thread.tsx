@@ -18,15 +18,10 @@ interface Props {
   now: Date;
   onBack: () => void;
   onReply: (text: string) => void;
-  onDone: () => void;
-  onLater: () => void;
   onPriority?: () => void;
   onBring?: (index: number, got: boolean) => void;
   onItem?: (itemId: string, done: boolean) => void;
   onAddItem?: (text: string) => void;
-  /** Other open cards this one can be joined with. */
-  others?: Card[];
-  onJoin?: (others: Card[]) => void;
   /** Upload picked files to Drive and record them on the card. Resolves when all are done. */
   onAttach?: (files: File[]) => Promise<void>;
 }
@@ -43,13 +38,10 @@ function stamp(ts: string): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, others = [], onJoin, onAttach }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onAttach }: Props) {
   const [attaching, setAttaching] = useState(false);
   const [drive, setDrive] = useState(driveReady());
   const [busy, setBusy] = useState('');
-  const [joining, setJoining] = useState(false);
-  const [picked, setPicked] = useState<string[]>([]);
-  const [find, setFind] = useState('');
   const [text, setText] = usePersisted(`reply-${card.id}`);
   useEffect(() => { markSeen(card.id); }, [card.id, entries.length]);
   const mine = drafts.filter((d) => d.linkedNote === card.id);
@@ -121,10 +113,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
           </aside>
         ) : null}
         <div className="reply-actions">
-          <button className="act-ink" onClick={onDone}>Done</button>
-          <button className="chip-btn" onClick={onLater}>Later</button>
           {onAttach ? <button className="chip-btn" onClick={() => setAttaching((a) => !a)}>Attach</button> : null}
-          {onJoin && others.length > 0 ? <button className="chip-btn" onClick={() => setJoining((j) => !j)}>Join</button> : null}
         </div>
         {attaching && onAttach ? (
           <section className="join-pane" aria-label="Attach a photo or file">
@@ -137,18 +126,6 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
               <button className="act-ink" onClick={() => { setBusy('Opening Google'); connectDrive().then(() => { setDrive(true); setBusy(''); }, (e: unknown) => setBusy(e instanceof Error ? e.message : 'Could not connect')); }}>Connect Google Drive</button>
             )}
             {busy ? <p className="mut" role="status">{busy}</p> : <p className="mut">Files go to the Nexo attachments folder in your Drive.</p>}
-          </section>
-        ) : null}
-        {joining ? (
-          <section className="join-pane" aria-label="Join with other cards">
-            <input className="reply-input" placeholder="Find a card to join" value={find} onChange={(e) => setFind(e.target.value)} />
-            <ul>
-              {others.filter((o) => (o.title ?? o.id).toLowerCase().includes(find.trim().toLowerCase())).slice(0, 12).map((o) => (
-                <li key={o.id}><label><input type="checkbox" checked={picked.includes(o.id)} onChange={() => setPicked((p) => (p.includes(o.id) ? p.filter((x) => x !== o.id) : [...p, o.id]))} /> <span>{o.title ?? o.id}</span></label></li>
-              ))}
-            </ul>
-            <p className="mut">The originals are kept and marked done.</p>
-            <button className="act-ink" disabled={picked.length === 0} onClick={() => onJoin?.([card, ...others.filter((o) => picked.includes(o.id))])}>Join {picked.length + 1} cards</button>
           </section>
         ) : null}
         <div className="qchips" role="group" aria-label="Quick replies">
