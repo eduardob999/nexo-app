@@ -1,6 +1,6 @@
 import { collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Card, Draft, Entry, NexoStatus } from './types';
+import type { Card, Draft, Entry, NexoStatus, Relay } from './types';
 import { postpone, todayYmd } from './urgency';
 
 const root = (uid: string) => ['users', uid] as const;
@@ -154,4 +154,24 @@ export function watchSync(uid: string, onTime: (ms: number | null) => void): () 
 /** What Nexo is doing right now: idle, called and waiting, or working through cards. */
 export function watchNexo(uid: string, onStatus: (s: NexoStatus | null) => void): () => void {
   return onSnapshot(doc(db, ...root(uid), 'meta', 'nexo'), (snap) => onStatus(snap.exists() ? (snap.data() as NexoStatus) : null), () => onStatus(null));
+}
+
+/** Prompts waiting for him to take to another model and bring back. */
+export function watchRelays(uid: string, onRelays: (r: Relay[]) => void, onError: (e: Error) => void): () => void {
+  const q = query(collection(db, ...root(uid), 'relays'), where('status', '==', 'open'));
+  return onSnapshot(q, (snap) => onRelays(snap.docs.map((d) => ({ ...(d.data() as Omit<Relay, 'id'>), id: d.id }))), onError);
+}
+
+export function answerRelay(uid: string, relay: Relay, text: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'relays', relay.id), { response: text, status: 'answered', answeredAt: new Date().toISOString() });
+  intent(batch, uid, { type: 'relay', action: 'answer', relayId: relay.id, text });
+  return batch.commit();
+}
+
+export function closeRelay(uid: string, relay: Relay): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'relays', relay.id), { status: 'closed' });
+  intent(batch, uid, { type: 'relay', action: 'close', relayId: relay.id });
+  return batch.commit();
 }

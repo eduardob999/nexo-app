@@ -81,7 +81,8 @@ export function PreviewApp() {
   }
   return (
     <>
-      <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} withDraft={new Set(['b'])} waiting={3} />
+      <Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} withDraft={new Set(['b'])} waiting={3}
+        relays={[{ id: 'P-016', target: 'Perplexity', mode: 'Pro Search', status: 'open', topic: 'Visa renewal: which documents and where', prompt: 'P-016\n\nWhat documents does a status extension need in Kyoto?' }]} />
       <TabBar current="today" draftCount={DRAFTS.length} />
     </>
   );

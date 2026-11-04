@@ -72,3 +72,15 @@ export interface NexoStatus {
   lastOutcome: 'ok' | 'failed' | null;
   lastEndedAt: string | null;
 }
+
+/** A prompt for another model that he carries by hand. `open` is the only state that waits on him. */
+export interface Relay {
+  id: string;
+  target?: string;
+  mode?: string;
+  status: 'open' | 'answered' | 'filed' | 'closed';
+  topic: string;
+  prompt?: string;
+  response?: string;
+  ts?: string;
+}

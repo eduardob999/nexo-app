@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchSync } from './cards';
+import { addCard, addEntry, answerRelay, closeRelay, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchRelays, watchSync } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -12,7 +12,7 @@ import { Drafts } from './Drafts';
 import { Thread } from './Thread';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
-import type { Card, Draft, Entry, NexoStatus } from './types';
+import type { Card, Draft, Entry, NexoStatus, Relay } from './types';
 import { useRoute } from './useHash';
 
 function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
@@ -45,6 +45,7 @@ export function App() {
   const [adding, setAdding] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [nexo, setNexo] = useState<NexoStatus | null | undefined>(undefined);
+  const [relays, setRelays] = useState<Relay[]>([]);
   const [syncAt, setSyncAt] = useState<number | null | undefined>(undefined);
   const [clock, setClock] = useState(() => Date.now());
   const route = useRoute();
@@ -71,6 +72,11 @@ export function App() {
   useEffect(() => {
     if (!user) return undefined;
     return watchDrafts(user.uid, setDrafts, (e) => setError(e.message));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    return watchRelays(user.uid, setRelays, (e) => setError(e.message));
   }, [user]);
 
   useEffect(() => {
@@ -122,6 +128,7 @@ export function App() {
         <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo}
+          relays={relays} onAnswerRelay={(r, t) => { void answerRelay(user.uid, r, t); }} onCloseRelay={(r) => { void closeRelay(user.uid, r); }}
           onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); }} />
       )}
       {tab === 'today' ? (
