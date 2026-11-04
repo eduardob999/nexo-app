@@ -1,3 +1,4 @@
+import { isHis } from './nexo';
 import type { Card } from './types';
 
 export type Band = 'assignment' | 'urgent' | 'overdue' | 'today' | 'prep' | 'other';
@@ -119,7 +120,7 @@ export function postpone(due: string | null | undefined, now: Date): string {
  * does not make it vanish from the day.
  */
 export function onTodayBoard(card: Card, now: Date): boolean {
-  if (card.for === 'you') return true;
+  if (card.for === 'you' || isHis(card)) return true;
   const band = bandOf(card, now);
   return card.for === 'nexo' && (band === 'urgent' || band === 'today');
 }

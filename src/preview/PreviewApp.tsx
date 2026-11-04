@@ -70,6 +70,16 @@ export function PreviewApp() {
   if (which === 'browse') {
     return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
   }
+  if (which === 'nexolane') {
+    const mk = (id: string, title: string, last: string, extra: Partial<Card> = {}): Card => ({ id, status: 'open', for: 'nexo', title, last: { by: 'nexo', text: last, ts: '2026-11-02T10:00:00+09:00' }, ...extra });
+    const lane: Card[] = [
+      mk('n1', 'Which dojo shift do you want to swap?', 'Shall I offer Tuesday or Saturday?'),
+      mk('n2', 'Look up the carrier for the lens parcel', 'Checking the carrier site now'),
+      mk('n3', 'Bicycle registration paperwork', 'Booked. Nothing is needed from you.'),
+      mk('n4', 'Library fine', 'Waiting for the office to confirm', { due: '2026-11-20' }),
+    ];
+    return (<><Today cards={lane} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} lane="nexo" /><TabBar current="browse" draftCount={0} /></>);
+  }
   if (which === 'asleep') {
     return (<><NexoShell status={{ ...WORKING, phase: 'idle', startedAt: null, cards: [], total: 0, answered: 0, sleepUntil: new Date(Date.now() + 5 * 3_600_000).toISOString() }} /><TabBar current="today" draftCount={DRAFTS.length} /></>);
   }

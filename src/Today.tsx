@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { cardTag, placeLabel } from './cardmeta';
+import { isHis, nexoSection, SECTION_LABEL, SECTION_ORDER } from './nexo';
 import { NexoPanel } from './NexoPanel';
 import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
@@ -58,7 +59,7 @@ function MailIcon() {
   );
 }
 
-function Row({ card, now, onDone, onLater, hasDraft }: { card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean }) {
+function Row({ card, now, onDone, onLater, hasDraft, closeable = false }: { card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean; closeable?: boolean }) {
   const [open, setOpen] = useState(false);
   const band = bandOf(card, now);
   const title = card.title ?? card.id;
@@ -81,6 +82,12 @@ function Row({ card, now, onDone, onLater, hasDraft }: { card: Card; now: Date; 
           ) : null}
           {open && card.place ? <span className="row-place">{card.place}</span> : null}
         </button>
+        {closeable ? (
+          <div className="row-actions">
+            <span className="mut">Nothing is owed on this.</span>
+            <button className="chip-btn" onClick={() => onDone(card)}>Mark done</button>
+          </div>
+        ) : null}
         {open ? (
           <div className="row-actions">
             <a className="chip-btn link" href={`#/card/${card.id}`}>Open</a>
@@ -98,13 +105,14 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
 }
 
 export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {} }: Props) {
-  const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane)), now);
+  const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane && !isHis(c))), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
   const [calledAt, setCalledAt] = useState(0);
   const press = () => { setCalledAt(Date.now()); onCallNexo(); };
   const titles = new Map(cards.map((c) => [c.id, c.title ?? c.id]));
-  const count = groups.reduce((n, g) => n + g.items.length, 0);
+  const sections = lane === 'nexo' ? SECTION_ORDER.map((k) => ({ key: k, items: mine.filter((c) => nexoSection(c, now) === k) })).filter((g) => g.items.length > 0) : [];
+  const count = lane === 'nexo' ? mine.length : groups.reduce((n, g) => n + g.items.length, 0);
   const stamp = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
   const holiday = lane === 'you' ? todayHoliday(cards, now) : undefined;
   const hidden = lane === 'you' ? mine.filter((c) => bandOf(c, now) === 'other').length : 0;
@@ -135,7 +143,18 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
       {lane === 'you' ? <TodayStrip info={info} now={now} /> : null}
       {holiday && !info ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
-      {groups.length === 0 ? <p className="empty">{lane === 'you' ? 'Nothing needs you.' : 'Nexo has nothing open.'}</p> : (
+      {lane === 'nexo' && sections.length > 0 ? (
+        <div className="panel">
+          {sections.map((g) => (
+            <section key={g.key}>
+              <h2 className={`band-title sec-${g.key}`}>{SECTION_LABEL[g.key]} <span>{g.items.length}</span></h2>
+              <ul className="rows">
+                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} closeable={g.key === 'close'} />)}
+              </ul>
+            </section>
+          ))}
+        </div>
+      ) : lane === 'nexo' ? <p className="empty">Nexo has nothing open.</p> : groups.length === 0 ? <p className="empty">{lane === 'you' ? 'Nothing needs you.' : 'Nexo has nothing open.'}</p> : (
         <div className="panel">
           {groups.map((g) => (
             <section key={g.band}>
