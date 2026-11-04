@@ -135,3 +135,6 @@ export interface Plan {
 export interface Memo { id: string; tags: string[]; text: string; ts: string }
 
 export interface Alloc { id: string; label: string; amount: number; done: boolean; ts?: string; month?: string; recurring?: boolean; tag?: string }
+
+export interface Market { items: { id: string; name: string }[]; log: { id: string; itemId?: string | null; name: string; ts: string; price?: number | null; receiptId?: string }[] }
+export interface Receipt { id: string; amount: number; cat: string; vendor: string; ts: string }

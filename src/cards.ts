@@ -1,6 +1,6 @@
-import { collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
+import { arrayUnion, collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Alloc, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
+import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 
 const root = (uid: string) => ['users', uid] as const;
@@ -314,5 +314,41 @@ export function repeatAlloc(uid: string, a: Alloc): Promise<void> {
 export function seedAllocMonth(uid: string, month: string): Promise<void> {
   const batch = writeBatch(db);
   intent(batch, uid, { type: 'alloc', action: 'seed', month });
+  return batch.commit();
+}
+
+/** The market list and its log live in one document, `meta/market`, under `value`. */
+export function watchMarket(uid: string, onMarket: (m: Market | null) => void): () => void {
+  return onSnapshot(doc(db, ...root(uid), 'meta', 'market'), (snap) => onMarket(snap.exists() ? ((snap.data() as { value?: Market }).value ?? null) : null), () => onMarket(null));
+}
+
+export function watchReceipts(uid: string, onItems: (r: Receipt[]) => void, onError: (e: Error) => void): () => void {
+  return onSnapshot(collection(db, ...root(uid), 'receipts'), (snap) => onItems(snap.docs.map((d) => ({ ...(d.data() as Omit<Receipt, 'id'>), id: d.id }))), onError);
+}
+
+const rid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+
+/** One tap logs a purchase. The preview goes into the document's own log; the sync writes the real one. */
+export function logPurchase(uid: string, item: { id: string; name: string }): Promise<void> {
+  const id = rid('ml');
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'meta', 'market'), { 'value.log': arrayUnion({ id, itemId: item.id, name: item.name, ts: new Date().toISOString(), price: null }) });
+  intent(batch, uid, { type: 'market', action: 'log', logId: id, itemId: item.id, name: item.name });
+  return batch.commit();
+}
+
+export function addMarketItem(uid: string, name: string): Promise<void> {
+  const id = rid('mi');
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'meta', 'market'), { 'value.items': arrayUnion({ id, name }) });
+  intent(batch, uid, { type: 'market', action: 'item', itemId: id, name });
+  return batch.commit();
+}
+
+export function addReceipt(uid: string, r: { amount: number; cat: string; vendor: string }): Promise<void> {
+  const id = rid('r');
+  const batch = writeBatch(db);
+  batch.set(doc(db, ...root(uid), 'receipts', id), { id, ...r, ts: new Date().toISOString() });
+  intent(batch, uid, { type: 'receipt', action: 'add', receiptId: id, ...r });
   return batch.commit();
 }

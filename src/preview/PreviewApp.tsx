@@ -81,7 +81,10 @@ export function PreviewApp() {
       { id: '2', label: 'Rent and utilities', amount: 20000, done: true, month },
       { id: '3', label: 'Carla (debt)', amount: 5500, done: false, month, tag: 'Carla' },
       { id: '4', label: 'Motorcycle lessons', amount: 11000, done: false, month, recurring: false },
-      { id: '5', label: 'Old', amount: 9000, done: true, month: '2026-09' }]} /><TabBar current="browse" draftCount={0} /></>);
+      { id: '5', label: 'Old', amount: 9000, done: true, month: '2026-09' }]}
+      onLog={() => {}} onAddItem={() => {}} onReceipt={() => {}}
+      market={{ items: [{ id: 'a', name: 'Rice' }, { id: 'b', name: 'Eggs' }, { id: 'c', name: 'Milk' }], log: [{ id: 'l1', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 3 * 3_600_000).toISOString() }, { id: 'l2', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 2 * 86_400_000).toISOString() }] }}
+      receipts={[{ id: 'r1', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: new Date().toISOString() }, { id: 'r2', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: new Date().toISOString() }, { id: 'r3', amount: 439, cat: 'food', vendor: 'Shop (granola)', ts: new Date().toISOString() }, { id: 'r4', amount: 120, cat: 'supplies', vendor: 'Daiso (bag)', ts: new Date().toISOString() }]} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'notes') {
     return (<><Notes onKeep={() => {}} memos={[

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { earlierMonths, jstMonth, needsSeed, summarise, yen } from './money';
-import type { Alloc } from './types';
+import { earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, summarise, topBars, yen } from './money';
+import type { Alloc, Market, Receipt } from './types';
 
 interface Props {
   allocations: Alloc[];
@@ -9,6 +9,11 @@ interface Props {
   onEdit: (a: Alloc, change: { label?: string; amount?: number; tag?: string }) => void;
   onRepeat: (a: Alloc) => void;
   onSeed: (month: string) => void;
+  market?: Market | null | undefined;
+  receipts?: Receipt[];
+  onLog?: ((item: { id: string; name: string }) => void) | undefined;
+  onAddItem?: ((name: string) => void) | undefined;
+  onReceipt?: ((r: { amount: number; cat: string; vendor: string }) => void) | undefined;
 }
 
 function Line({ a, onToggle, onEdit, onRepeat }: { a: Alloc } & Pick<Props, 'onToggle' | 'onEdit' | 'onRepeat'>) {
@@ -41,7 +46,7 @@ function Line({ a, onToggle, onEdit, onRepeat }: { a: Alloc } & Pick<Props, 'onT
 }
 
 /** The month's set-aside checklist. A new month seeds itself from the last one's repeating lines. */
-export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed }: Props) {
+export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt }: Props) {
   const month = jstMonth(new Date());
   const seeded = useRef(false);
   useEffect(() => {
@@ -77,6 +82,9 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed }
         </form>
         {msg ? <p className="notice" role="status">{msg}</p> : null}
       </section>
+      <MarketBlock market={market} onLog={onLog} onAddItem={onAddItem} />
+      <Charts receipts={receipts} />
+      <ReceiptsBlock receipts={receipts} onReceipt={onReceipt} />
       {earlierMonths(allocations, month).length ? (
         <details className="shelf-fold"><summary>Earlier months</summary>
           {earlierMonths(allocations, month).map((m) => (
@@ -85,5 +93,87 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed }
         </details>
       ) : null}
     </main>
+  );
+}
+
+
+const CATS = ['food', 'transport', 'supplies', 'health', 'fees', 'other'];
+
+function MarketBlock({ market, onLog, onAddItem }: Pick<Props, 'market' | 'onLog' | 'onAddItem'>) {
+  const [q, setQ] = useState('');
+  const [name, setName] = useState('');
+  if (!market || !onLog) return null;
+  const counts = marketCounts(market.log, Date.now());
+  const shown = market.items.filter((i) => !q.trim() || i.name.toLowerCase().includes(q.trim().toLowerCase()));
+  return (
+    <details className="shelf-fold" open>
+      <summary>Market <span className="mut">{market.items.length} items, {market.log.length} logged</span></summary>
+      <input className="search-input" type="search" placeholder="Find an item" aria-label="Find an item" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="mk-chips">
+        {shown.map((i) => (
+          <button key={i.id} className="qchip mk" onClick={() => onLog(i)}>
+            {i.name}{counts.get(i.id) ? <small>{counts.get(i.id)?.n}× · {counts.get(i.id)?.last}</small> : null}
+          </button>
+        ))}
+      </div>
+      {onAddItem ? (
+        <form className="al-add" onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onAddItem(name.trim()); setName(''); } }}>
+          <input className="search-input" placeholder="New item" aria-label="New item" value={name} onChange={(e) => setName(e.target.value)} />
+          <button type="submit" className="copy-main alt" disabled={!name.trim()}>Add item</button>
+        </form>
+      ) : null}
+      <details className="shelf-sub"><summary>Recent log</summary>
+        <ul className="res-list">{market.log.slice(0, 20).map((l) => <li key={l.id} className="res done">{l.name} <span className="mut">{new Date(l.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{l.price ? ` · ${yen(l.price)}` : ''}</span></li>)}</ul>
+      </details>
+    </details>
+  );
+}
+
+function Bars({ title, bars, fmt }: { title: string; bars: { name: string; value: number; pct: number }[]; fmt: (n: number) => string }) {
+  if (!bars.length) return null;
+  return (
+    <div className="mchart"><h3 className="group-title">{title}</h3>
+      {bars.map((b) => <div key={b.name} className="mbar"><span className="ml">{b.name}</span><span className="mt"><i style={{ width: `${b.pct}%` }} /></span><span className="mv">{fmt(b.value)}</span></div>)}
+    </div>
+  );
+}
+
+function Charts({ receipts }: { receipts: Receipt[] }) {
+  const d = moneyItems(receipts);
+  if (d.rows.length < 3) return null;
+  return (
+    <details className="shelf-fold"><summary>By item</summary>
+      <Bars title="Where the money went" bars={topBars(d.rows, 'sum')} fmt={yen} />
+      <Bars title="How often" bars={topBars(d.rows, 'n')} fmt={(n) => `${n}×`} />
+      {d.lump.n ? <p className="notice">Not in the charts: {d.lump.n} receipt{d.lump.n === 1 ? '' : 's'} ({yen(d.lump.sum)}) kept as a single total for a whole shop trip.</p> : null}
+    </details>
+  );
+}
+
+function ReceiptsBlock({ receipts, onReceipt }: { receipts: Receipt[]; onReceipt?: Props['onReceipt'] }) {
+  const [amount, setAmount] = useState('');
+  const [cat, setCat] = useState('food');
+  const [vendor, setVendor] = useState('');
+  const [msg, setMsg] = useState('');
+  const months = receiptMonths(receipts);
+  return (
+    <details className="shelf-fold"><summary>Receipts <span className="mut">{receipts.length}</span></summary>
+      {onReceipt ? (
+        <form className="al-add" onSubmit={(e) => { e.preventDefault(); const n = Number(amount.replace(/[^0-9]/g, '')); if (!(n > 0)) return setMsg('An amount, first.'); onReceipt({ amount: n, cat, vendor: vendor.trim() }); setAmount(''); setVendor(''); setMsg(''); }}>
+          <input className="search-input" placeholder="Yen" inputMode="numeric" aria-label="Yen" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <div className="seg" role="group" aria-label="Category">{CATS.map((c) => <button type="button" key={c} aria-pressed={cat === c} onClick={() => setCat(c)}>{c}</button>)}</div>
+          <input className="search-input" placeholder="Vendor" aria-label="Vendor" value={vendor} onChange={(e) => setVendor(e.target.value)} />
+          <button type="submit" className="copy-main">Record it</button>
+        </form>
+      ) : null}
+      {msg ? <p className="notice" role="status">{msg}</p> : null}
+      {months.map((m) => (
+        <div key={m.month}>
+          <h3 className="group-title">{m.month} <span className="mut">{yen(m.total)}</span></h3>
+          <p className="mut al-cats">{m.cats.map((c) => `${c.cat} ${yen(c.sum)}`).join(' · ')}</p>
+          <ul className="res-list">{m.items.slice(0, 25).map((r) => <li key={r.id} className="res done"><span>{yen(r.amount)} · {r.vendor || r.cat}</span><span className="mut">{r.cat} · {new Date(r.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span></li>)}</ul>
+        </div>
+      ))}
+    </details>
   );
 }

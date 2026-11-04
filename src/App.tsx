@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addAlloc, addCard, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMemos, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { addAlloc, addCard, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { Notes } from './Notes';
@@ -16,7 +16,7 @@ import { Thread } from './Thread';
 import { Trips } from './Trips';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
-import type { Alloc, Card, CardFile, Draft, Entry, Memo, NexoStatus, Relay, Resource, TodayInfo } from './types';
+import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, Memo, NexoStatus, Relay, Resource, TodayInfo } from './types';
 import { useRoute } from './useHash';
 
 function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
@@ -58,6 +58,8 @@ export function App() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [memos, setMemos] = useState<Memo[]>([]);
   const [allocs, setAllocs] = useState<Alloc[]>([]);
+  const [market, setMarket] = useState<Market | null>(null);
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [syncAt, setSyncAt] = useState<number | null | undefined>(undefined);
   const [clock, setClock] = useState(() => Date.now());
   const route = useRoute();
@@ -107,7 +109,8 @@ export function App() {
   const onMoney = route.name === 'money';
   useEffect(() => {
     if (!user || !onMoney) return undefined;
-    return watchAllocations(user.uid, setAllocs, (e) => console.warn('[money]', e));
+    const stops = [watchAllocations(user.uid, setAllocs, (e) => console.warn('[money]', e)), watchMarket(user.uid, setMarket), watchReceipts(user.uid, setReceipts, (e) => console.warn('[money]', e))];
+    return () => stops.forEach((x) => x());
   }, [user, onMoney]);
 
   const onNotes = route.name === 'notes';
@@ -151,7 +154,8 @@ export function App() {
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
       {tab === 'money' ? (
         <Money allocations={allocs} onAdd={(a) => { void addAlloc(user.uid, a); }} onToggle={(a) => { void toggleAlloc(user.uid, a); }}
-          onEdit={(a, c) => { void editAlloc(user.uid, a, c); }} onRepeat={(a) => { void repeatAlloc(user.uid, a); }} onSeed={(m) => { void seedAllocMonth(user.uid, m); }} />
+          onEdit={(a, c) => { void editAlloc(user.uid, a, c); }} onRepeat={(a) => { void repeatAlloc(user.uid, a); }} onSeed={(m) => { void seedAllocMonth(user.uid, m); }}
+          market={market} receipts={receipts} onLog={(i) => { void logPurchase(user.uid, i); }} onAddItem={(n) => { void addMarketItem(user.uid, n); }} onReceipt={(r) => { void addReceipt(user.uid, r); }} />
       ) : tab === 'notes' ? (
         <Notes memos={memos} onKeep={(t, g) => { void addMemo(user.uid, t, g); }} />
       ) : tab === 'trips' ? (
