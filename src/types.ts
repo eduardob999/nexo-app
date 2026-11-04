@@ -19,6 +19,10 @@ export interface Card {
   prio?: string;
   /** A question or decision Nexo has put to him. Present only while it is open. */
   ask?: string;
+  /** Calendar coverage marker: `yes`, `queued` or `ics`. */
+  cal?: string | null;
+  calEvent?: unknown;
+  trip?: boolean;
   /** Personalised reply options Nexo wrote for this card. */
   qreplies?: string[];
   /** Days ahead this card should start showing under Preparation, overriding the default for its kind. */

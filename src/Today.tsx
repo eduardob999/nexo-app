@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { cardTag, placeLabel } from './cardmeta';
 import { NexoPanel } from './NexoPanel';
 import type { Card, NexoStatus } from './types';
 import { bandOf, dueText, onTodayBoard, sortQueue, type Band } from './urgency';
@@ -33,6 +34,14 @@ function CalendarIcon() {
   );
 }
 
+function PinIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" />
+    </svg>
+  );
+}
+
 function MailIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" role="img">
@@ -52,7 +61,9 @@ function Row({ card, now, onDone, onLater, hasDraft }: { card: Card; now: Date; 
         <button className="row-main" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span className="row-title">{title}</span>
           <span className="row-meta">
+            {cardTag(card) ? <span className="tagchip">{cardTag(card)}</span> : null}
             <CalendarIcon />{dueText(card, now)}
+            {placeLabel(card) ? <span className="pin"><PinIcon />{placeLabel(card)}</span> : null}
             {card.for === 'nexo' ? <span className="draft-flag">With Nexo</span> : null}
             {hasDraft ? <span className="draft-flag"><MailIcon />Draft</span> : null}
           </span>

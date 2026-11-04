@@ -256,3 +256,5 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .qchip { flex: none; height: 40px; padding: 0 14px; border: 1px solid var(--edge); border-radius: 20px; background: var(--surface); font-size: 15px; font-weight: 500; white-space: nowrap; }
 .qchip:active { background: var(--chip); }
 .thread { padding-bottom: calc(300px + env(safe-area-inset-bottom)); }
+.tagchip { padding: 1px 7px; border-radius: 6px; background: var(--chip); color: var(--muted); font: 600 11px/18px var(--mono); letter-spacing: .04em; }
+.pin { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-family: var(--sans); font-weight: 500; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

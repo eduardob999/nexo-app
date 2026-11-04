@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Card, Draft, Entry } from './types';
+import { calendarLabel, cardTag, priorityLabel } from './cardmeta';
 import { dueText } from './urgency';
 
 interface Props {
@@ -40,13 +41,15 @@ export function Thread({ card, entries, drafts, now, onBack, onReply, onDone, on
         <button className="icon-btn" aria-label="Back" onClick={onBack}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>
         </button>
-        <span className="kicker">{dueText(card, now)}{card.type ? ` · ${card.type}` : ''}</span>
+        <span className="kicker">{dueText(card, now)}{cardTag(card) ? ` · ${cardTag(card)}` : ''}</span>
       </header>
       <h1 className="thread-title">{card.title ?? card.id}</h1>
       <ul className="props">
         <li><Icon d="M4 5h16v15H4zM4 10h16M9 3v4M15 3v4" /><span>{dueText(card, now)}</span></li>
         {card.place ? <li><Icon d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11zM12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /><span>{card.place}</span></li> : null}
-        {card.type ? <li><Icon d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01" /><span>{card.type}</span></li> : null}
+        {cardTag(card) ? <li><Icon d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01" /><span>{cardTag(card)}</span></li> : null}
+        <li><Icon d="M5 3v18M5 4h12l-2 4 2 4H5" /><span>{priorityLabel(card)}</span></li>
+        {calendarLabel(card) ? <li><Icon d="M4 5h16v15H4zM4 10h16M9 3v4M15 3v4M9 15l2 2 4-4" /><span>{calendarLabel(card)}</span></li> : null}
         <li><Icon d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /><span>{card.for === 'you' ? 'Waiting on you' : 'With Nexo'}</span></li>
         {mine.length > 0 ? <li><Icon d="M3 6h18v12H3zM4 8l8 6 8-6" /><span>{mine.length} draft{mine.length > 1 ? 's' : ''}</span></li> : null}
       </ul>
