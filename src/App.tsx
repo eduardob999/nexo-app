@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, watchDrafts, watchEntries, watchOpenCards } from './cards';
+import { addCard, addEntry, callNexo, discardDraft, markCopied, markDone, markLater, markSent, watchDrafts, watchEntries, watchOpenCards, watchSync } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -33,7 +33,7 @@ function ThreadView({ uid, card, drafts, onDone, onLater }: { uid: string; card:
   return (
     <Thread card={card} entries={entries} drafts={drafts} now={new Date()}
       onBack={() => { window.location.hash = '#/'; }}
-      onReply={(t) => { void addEntry(uid, card.id, t); }} onDone={onDone} onLater={onLater} />
+      onReply={(t) => { void addEntry(uid, card, t); }} onDone={onDone} onLater={onLater} />
   );
 }
 
@@ -44,6 +44,8 @@ export function App() {
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [syncAt, setSyncAt] = useState<number | null | undefined>(undefined);
+  const [clock, setClock] = useState(() => Date.now());
   const route = useRoute();
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const changeSettings = (next: Settings) => { setSettings(next); saveSettings(next); applySettings(next); };
@@ -70,6 +72,13 @@ export function App() {
     return watchDrafts(user.uid, setDrafts, (e) => setError(e.message));
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return undefined;
+    const stop = watchSync(user.uid, setSyncAt);
+    const tick = window.setInterval(() => setClock(Date.now()), 30_000);
+    return () => { stop(); window.clearInterval(tick); };
+  }, [user]);
+
   if (!isFirebaseConfigured) return <main className="screen center"><p className="notice">Firebase is not configured. Fill in .env.local.</p></main>;
   if (user === undefined) return <main className="screen center"><p className="notice">Loading</p></main>;
   if (user === null) {
@@ -89,8 +98,12 @@ export function App() {
   }
 
   const tab = route.name;
+  // The sync service writes a heartbeat every minute. Five minutes without one means changes made here
+  // are saved but not reaching Nexo, and the screen should say so rather than look healthy.
+  const syncLate = syncAt !== undefined && (syncAt === null || clock - syncAt > 5 * 60_000);
   return (
     <>
+      {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
       {tab === 'search' ? (
         <Search cards={cards} now={new Date()} />
       ) : tab === 'upcoming' ? (

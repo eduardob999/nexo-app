@@ -212,3 +212,5 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .switch.on::after { transform: translateX(20px); }
 
 .more-link { display: flex; align-items: center; justify-content: center; min-height: 48px; margin-top: 12px; color: var(--muted); font-weight: 600; text-decoration: none; }
+
+.sync-warn { position: sticky; top: 0; z-index: 20; margin: 0; padding: 10px 16px; background: var(--today-tint); color: var(--today); font-size: 14px; font-weight: 600; text-align: center; }
