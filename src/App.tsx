@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addCard, addEntry, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchRelays, watchSync, watchTodayInfo } from './cards';
+import { addCard, addEntry, answerDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestSend, setSleep, watchDrafts, watchEntries, watchNexo, watchOpenCards, watchRelays, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Search } from './Search';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
@@ -123,7 +123,8 @@ export function App() {
       ) : tab === 'upcoming' ? (
         <Upcoming cards={cards} now={new Date()} onDone={done} />
       ) : tab === 'browse' ? (
-        <Browse nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} settings={settings} onSettings={changeSettings} />
+        <Browse nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} settings={settings} onSettings={changeSettings}
+          onSleep={(until) => { void setSleep(user.uid, until); }} />
       ) : tab === 'drafts' ? (
         <Drafts drafts={drafts}
           onCopied={(id) => { void markCopied(user.uid, id); }}
@@ -138,7 +139,7 @@ export function App() {
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info}
           relays={relays} onAnswerRelay={(r, t) => { void answerRelay(user.uid, r, t); }} onCloseRelay={(r) => { void closeRelay(user.uid, r); }}
-          onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); }} />
+          onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); }} onWake={() => { void setSleep(user.uid, null); }} />
       )}
       {tab === 'today' ? (
         <button className="fab" aria-label="Add a task" onClick={() => setAdding(true)}>

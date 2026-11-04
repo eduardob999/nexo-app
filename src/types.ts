@@ -79,6 +79,8 @@ export interface NexoStatus {
   answered: number;
   lastOutcome: 'ok' | 'failed' | null;
   lastEndedAt: string | null;
+  /** While set and in the future, the loop makes no calls at all. */
+  sleepUntil?: string | null;
 }
 
 /** A prompt for another model that he carries by hand. `open` is the only state that waits on him. */

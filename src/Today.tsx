@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { cardTag, placeLabel } from './cardmeta';
 import { NexoPanel } from './NexoPanel';
+import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
 import { Relays } from './Relays';
 import type { Card, NexoStatus, Relay, TodayInfo } from './types';
@@ -13,6 +14,7 @@ interface Props {
   onDone: (card: Card) => void;
   onLater: (card: Card) => void;
   onCallNexo: () => void;
+  onWake?: () => void;
   lane?: 'you' | 'nexo';
   /** Ids of cards that have a draft waiting, shown as a small envelope instead of a line of text. */
   withDraft?: Set<string>;
@@ -95,7 +97,7 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
   return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {} }: Props) {
+export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {} }: Props) {
   const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane)), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
@@ -121,6 +123,13 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, lane
           {waiting > 0 ? <span className="call-count" aria-hidden="true">{waiting}</span> : null}
         </button>
       </header>
+      {nexo?.sleepUntil && Date.parse(nexo.sleepUntil) > now.getTime() ? (
+        <section className="nexo-panel asleep" aria-live="polite">
+          <p className="np-head">Nexo is asleep until {untilLabel(new Date(nexo.sleepUntil), now)}</p>
+          <p className="np-sub">It makes no calls while asleep. Mail checks and the nightly check-in are skipped, not queued.</p>
+          <button className="copy-main alt" onClick={onWake}>Wake Nexo</button>
+        </section>
+      ) : null}
       <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
       {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : null}
       {lane === 'you' ? <TodayStrip info={info} now={now} /> : null}

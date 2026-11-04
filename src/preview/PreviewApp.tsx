@@ -68,7 +68,10 @@ export function PreviewApp() {
     return (<><Upcoming cards={FIXTURES} now={NOW} onDone={() => {}} /><TabBar current="upcoming" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'browse') {
-    return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+    return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+  }
+  if (which === 'asleep') {
+    return (<><NexoShell status={{ ...WORKING, phase: 'idle', startedAt: null, cards: [], total: 0, answered: 0, sleepUntil: new Date(Date.now() + 5 * 3_600_000).toISOString() }} /><TabBar current="today" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'working' || which === 'slow' || which === 'queued' || which === 'failed') {
     const st: NexoStatus = which === 'queued' ? { ...WORKING, phase: 'queued', startedAt: null, queuedAt: new Date(Date.now() - 20_000).toISOString(), answered: 0, cards: WORKING.cards.map((c) => ({ ...c, answered: false })) }

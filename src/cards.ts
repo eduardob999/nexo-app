@@ -208,3 +208,10 @@ export function watchTodayInfo(uid: string, onInfo: (t: TodayInfo | null) => voi
     onInfo(v ?? null);
   }, () => onInfo(null));
 }
+
+/** Pause Nexo until a time, or wake it (null). While it sleeps it makes no model calls, so it costs nothing. */
+export function setSleep(uid: string, until: Date | null): Promise<void> {
+  const batch = writeBatch(db);
+  intent(batch, uid, { type: 'sleep', until: until ? until.toISOString() : null });
+  return batch.commit();
+}

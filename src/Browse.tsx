@@ -1,7 +1,8 @@
 import { useInstall } from './install';
+import { sleepOptions, untilLabel } from './sleep';
 import type { Settings } from './settings';
 
-interface Props { nexoCount: number; draftCount: number; settings: Settings; onSettings: (s: Settings) => void }
+interface Props { nexoCount: number; draftCount: number; settings: Settings; onSettings: (s: Settings) => void; onSleep?: (until: Date) => void }
 
 const ITEMS = [
   { id: 'search', label: 'Search', hint: 'Find an open card', href: '#/search' },
@@ -13,7 +14,7 @@ const ITEMS = [
 ] as const;
 
 /** Todoist's Browse: everything that is not an hourly decision, one tap away. */
-export function Browse({ nexoCount, draftCount, settings, onSettings }: Props) {
+export function Browse({ nexoCount, draftCount, settings, onSettings, onSleep }: Props) {
   const { state: installState, install } = useInstall();
   return (
     <main className="screen">
@@ -45,6 +46,21 @@ export function Browse({ nexoCount, draftCount, settings, onSettings }: Props) {
                 <span>Open your browser's menu and choose <b>Install app</b> or <b>Add to Home screen</b>.</span>
               )}
             </div>
+          </div>
+        </>
+      ) : null}
+      {onSleep ? (
+        <>
+          <h2 className="group-title">Pause Nexo</h2>
+          <div className="panel settings">
+            <div className="sleep-opts">
+              {sleepOptions(new Date()).map((o) => (
+                <button key={o.label} className="chip-btn" onClick={() => onSleep(o.until)}>
+                  {o.label}<small>until {untilLabel(o.until, new Date())}</small>
+                </button>
+              ))}
+            </div>
+            <p className="notice">While paused it makes no calls at all, so it costs nothing. Mail checks and the nightly check-in are skipped, not queued.</p>
           </div>
         </>
       ) : null}
