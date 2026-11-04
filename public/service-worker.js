@@ -221,6 +221,8 @@ self.addEventListener('push', (event) => {
     icon: 'icons/icon-192.png',
     badge: 'icons/icon-192.png',
     data: { url: d.url || '#/' },
+    // The wake-up alarm stays on screen, buzzes, and sounds again each time it repeats.
+    ...(d.alarm ? { requireInteraction: true, renotify: true, vibrate: [600, 200, 600, 200, 600, 200, 600, 200, 600] } : {}),
   }));
 });
 

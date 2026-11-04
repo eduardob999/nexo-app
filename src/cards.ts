@@ -1,3 +1,4 @@
+import type { AlarmDoc } from './alarm';
 import { arrayUnion, collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
@@ -246,6 +247,19 @@ export function watchTodayInfo(uid: string, onInfo: (t: TodayInfo | null) => voi
     const v = snap.exists() ? (snap.data() as { value?: TodayInfo }).value : null;
     onInfo(v ?? null);
   }, () => onInfo(null));
+}
+
+/** The wake-up alarm: the sync on his computer sends a loud push at this time. */
+export function setWakeAlarm(uid: string, at: Date, label = 'Wake up'): Promise<void> {
+  return setDoc(doc(db, ...root(uid), 'meta', 'alarm'), { at: at.toISOString(), label, status: 'set', setAt: new Date().toISOString() });
+}
+
+export function stopWakeAlarm(uid: string, status: 'off' | 'done' = 'off'): Promise<void> {
+  return setDoc(doc(db, ...root(uid), 'meta', 'alarm'), { status, stoppedAt: new Date().toISOString() }, { merge: true });
+}
+
+export function watchWakeAlarm(uid: string, on: (a: AlarmDoc | null) => void): () => void {
+  return onSnapshot(doc(db, ...root(uid), 'meta', 'alarm'), (snap) => on(snap.exists() ? (snap.data() as AlarmDoc) : null), () => on(null));
 }
 
 /** Pause Nexo until a time, or wake it (null). While it sleeps it makes no model calls, so it costs nothing. */

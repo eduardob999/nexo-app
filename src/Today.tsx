@@ -6,6 +6,7 @@ import { isNewCard } from './seen';
 import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
 import { WakeAlarm } from './WakeAlarm';
+import type { AlarmDoc } from './alarm';
 import { Relays } from './Relays';
 import type { Card, NexoStatus, Relay, TodayInfo } from './types';
 import { bandOf, dueText, onTodayBoard, sortQueue, type Band } from './urgency';
@@ -28,6 +29,9 @@ interface Props {
   relays?: Relay[];
   onAnswerRelay?: (relay: Relay, text: string) => void;
   onCloseRelay?: (relay: Relay) => void;
+  alarm?: AlarmDoc | null | undefined;
+  onSetAlarm?: ((at: Date) => void) | undefined;
+  onCancelAlarm?: (() => void) | undefined;
 }
 
 const BAND_LABEL: Record<Band, string> = {
@@ -106,7 +110,7 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
   return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {} }: Props) {
+export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, alarm, onSetAlarm, onCancelAlarm }: Props) {
   const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane && !isHis(c))), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
@@ -145,7 +149,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
       <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
       {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : null}
       {lane === 'you' ? <TodayStrip info={info} now={now} /> : null}
-      {lane === 'you' ? <WakeAlarm cards={cards} now={now} /> : null}
+      {lane === 'you' ? <WakeAlarm cards={cards} now={now} alarm={alarm} onSet={onSetAlarm} onCancel={onCancelAlarm} /> : null}
       {holiday && !info ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
       {lane === 'nexo' && sections.length > 0 ? (

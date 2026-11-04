@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { alarmLink, clock, suggestWake } from './alarm';
+import { alarmLink, clock, suggestWake, wakeDate } from './alarm';
 import type { Card } from './types';
 
 const now = new Date('2026-11-04T21:00:00+09:00');
@@ -33,5 +33,14 @@ describe('alarmLink', () => {
     expect(l).toContain('HOUR=6');
     expect(l).toContain('MINUTES=45');
     expect(l).toContain('MESSAGE=Wake%20up');
+  });
+});
+
+describe('wakeDate', () => {
+  it('picks tomorrow when the time has passed today and today when it is still ahead', () => {
+    const evening = new Date('2026-11-04T21:00:00+09:00');
+    expect(wakeDate(7 * 60 + 30, evening).getDate()).toBe(evening.getDate() + 1);
+    const early = new Date('2026-11-04T05:00:00+09:00');
+    expect(wakeDate(7 * 60 + 30, early).getDate()).toBe(early.getDate());
   });
 });

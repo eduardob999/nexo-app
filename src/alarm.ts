@@ -52,6 +52,16 @@ export function clock(minutes: number): string {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
 
+/** The next moment the clock reads this time, today if it is still ahead by a minute, else tomorrow. */
+export function wakeDate(minutes: number, now: Date): Date {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(minutes / 60), minutes % 60, 0, 0);
+  if (d.getTime() <= now.getTime() + 60_000) d.setDate(d.getDate() + 1);
+  return d;
+}
+
+/** The alarm document the sync reads: it sends the wake-up push at `at`. */
+export interface AlarmDoc { at: string; label: string; status: 'set' | 'off' | 'done' }
+
 /** An Android link that opens the Clock app on a new alarm with this time and label filled in. */
 export function alarmLink(minutes: number, label = 'Wake up'): string {
   const m = ((minutes % 1440) + 1440) % 1440;

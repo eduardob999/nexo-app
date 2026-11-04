@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
+import type { AlarmDoc } from './alarm';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addAlloc, addCard, attachFile, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { addAlloc, addCard, attachFile, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, setWakeAlarm, stopWakeAlarm, watchWakeAlarm, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -61,6 +62,7 @@ export function App() {
   const [nexo, setNexo] = useState<NexoStatus | null | undefined>(undefined);
   const [relays, setRelays] = useState<Relay[]>([]);
   const [info, setInfo] = useState<TodayInfo | null>(null);
+  const [alarm, setAlarm] = useState<AlarmDoc | null>(null);
   const [doneCards, setDoneCards] = useState<Card[]>([]);
   const [closedRelays, setClosedRelays] = useState<Relay[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
@@ -105,6 +107,17 @@ export function App() {
     if (!user) return undefined;
     return watchTodayInfo(user.uid, setInfo);
   }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    return watchWakeAlarm(user.uid, setAlarm);
+  }, [user]);
+
+  // Opening the app once the alarm time has passed is how it is switched off: the sync stops repeating the push.
+  useEffect(() => {
+    if (!user || alarm?.status !== 'set') return;
+    if (new Date(alarm.at).getTime() <= Date.now() && document.visibilityState === 'visible') void stopWakeAlarm(user.uid, 'done');
+  }, [user, alarm]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -192,7 +205,8 @@ export function App() {
       ) : (
         <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
-          waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info}
+          waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info} alarm={alarm}
+          onSetAlarm={(at) => { void setWakeAlarm(user.uid, at); flash('Alarm set'); }} onCancelAlarm={() => { void stopWakeAlarm(user.uid); }}
           relays={relays} onAnswerRelay={(r, t) => { void answerRelay(user.uid, r, t); }} onCloseRelay={(r) => { void closeRelay(user.uid, r); }}
           onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); flash('Nexo called'); }} onWake={() => { void setSleep(user.uid, null); }} />
       )}
