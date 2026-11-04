@@ -1,8 +1,9 @@
 import { useInstall } from './install';
 import { sleepOptions, untilLabel } from './sleep';
 import type { Settings } from './settings';
+import { Notifications } from './Notifications';
 
-interface Props { nexoCount: number; draftCount: number; settings: Settings; onSettings: (s: Settings) => void; onSleep?: (until: Date) => void }
+interface Props { uid?: string; nexoCount: number; draftCount: number; settings: Settings; onSettings: (s: Settings) => void; onSleep?: (until: Date) => void }
 
 const ITEMS = [
   { id: 'search', label: 'Search', hint: 'Find an open card', href: '#/search' },
@@ -14,7 +15,7 @@ const ITEMS = [
 ] as const;
 
 /** Todoist's Browse: everything that is not an hourly decision, one tap away. */
-export function Browse({ nexoCount, draftCount, settings, onSettings, onSleep }: Props) {
+export function Browse({ uid, nexoCount, draftCount, settings, onSettings, onSleep }: Props) {
   const { state: installState, install } = useInstall();
   return (
     <main className="screen">
@@ -60,6 +61,7 @@ export function Browse({ nexoCount, draftCount, settings, onSettings, onSleep }:
           </div>
         </>
       ) : null}
+      {uid ? <Notifications uid={uid} /> : null}
       <h2 className="group-title">Display</h2>
       <div className="panel settings">
         <div className="setting"><span>Theme</span>

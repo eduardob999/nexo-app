@@ -79,7 +79,7 @@ export function PreviewApp() {
     return (<><Upcoming cards={FIXTURES} now={NOW} onDone={() => {}} /><TabBar current="upcoming" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'browse') {
-    return (<><Browse nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+    return (<><Browse uid="preview" nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'money') {
     const month = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }).slice(0, 7);

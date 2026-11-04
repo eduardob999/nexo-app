@@ -201,3 +201,42 @@ self.addEventListener('message', (event) => {
     void self.skipWaiting();
   }
 });
+
+/**
+ * Push from the sync on his computer (Firebase Cloud Messaging, data-only). The payload carries title, body and a
+ * route in the app. A notification must always be shown, so anything unreadable still produces one.
+ */
+self.addEventListener('push', (event) => {
+  let d = {};
+  try {
+    const j = event.data ? event.data.json() : {};
+    d = j.data || j.notification || j;
+  } catch {
+    d = {};
+  }
+  const title = d.title || 'Nexo';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: d.body || '',
+    tag: d.tag || undefined,
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    data: { url: d.url || '#/' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const hash = (event.notification.data && event.notification.data.url) || '#/';
+  const target = new URL(hash, self.registration.scope).href;
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if (c.url.startsWith(self.registration.scope)) {
+        await c.focus();
+        if ('navigate' in c) await c.navigate(target);
+        return;
+      }
+    }
+    await self.clients.openWindow(target);
+  })());
+});

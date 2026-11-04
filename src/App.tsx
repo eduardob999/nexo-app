@@ -179,7 +179,7 @@ export function App() {
       ) : tab === 'upcoming' ? (
         <Upcoming cards={cards} now={new Date()} onDone={done} />
       ) : tab === 'browse' ? (
-        <Browse nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} settings={settings} onSettings={changeSettings}
+        <Browse uid={user.uid} nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} settings={settings} onSettings={changeSettings}
           onSleep={(until) => { void setSleep(user.uid, until); }} />
       ) : tab === 'drafts' ? (
         <Drafts drafts={drafts}
