@@ -352,3 +352,29 @@ export function addReceipt(uid: string, r: { amount: number; cat: string; vendor
   intent(batch, uid, { type: 'receipt', action: 'add', receiptId: id, ...r });
   return batch.commit();
 }
+
+/** Tick one line of a card's "Bring" or "Steps" list. A fully ticked list never closes the card. */
+export function tickBring(uid: string, card: Card, index: number, got: boolean): Promise<void> {
+  const bring = (card.bring ?? []).map((b, i) => (i === index ? { ...b, got } : b));
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', card.id), { bring });
+  intent(batch, uid, { type: 'checklist', action: 'bring', cardId: card.id, index, got });
+  return batch.commit();
+}
+
+export function tickItem(uid: string, card: Card, itemId: string, done: boolean): Promise<void> {
+  const items = (card.items ?? []).map((x) => (x.id === itemId ? { ...x, done } : x));
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', card.id), { items });
+  intent(batch, uid, { type: 'checklist', action: 'item-toggle', cardId: card.id, itemId, done });
+  return batch.commit();
+}
+
+export function addItem(uid: string, card: Card, text: string): Promise<void> {
+  const itemId = `it${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  const items = [...(card.items ?? []), { id: itemId, text, done: false }];
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', card.id), { items });
+  intent(batch, uid, { type: 'checklist', action: 'item-add', cardId: card.id, itemId, text });
+  return batch.commit();
+}

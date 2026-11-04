@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Card, CardFile, Draft, Entry } from './types';
 import { calendarLabel, cardTag, priorityLabel } from './cardmeta';
+import { Checklists } from './Checklists';
 import { TripTicket } from './TripTicket';
 import { dueText } from './urgency';
 
@@ -15,6 +16,9 @@ interface Props {
   onReply: (text: string) => void;
   onDone: () => void;
   onLater: () => void;
+  onBring?: (index: number, got: boolean) => void;
+  onItem?: (itemId: string, done: boolean) => void;
+  onAddItem?: (text: string) => void;
 }
 
 function Icon({ d }: { d: string }) {
@@ -29,7 +33,7 @@ function stamp(ts: string): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onDone, onLater, onBring = () => {}, onItem = () => {}, onAddItem = () => {} }: Props) {
   const [text, setText] = useState('');
   const mine = drafts.filter((d) => d.linkedNote === card.id);
   const send = () => {
@@ -71,6 +75,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         ) : null;
       })()}
       {card.plan ? <TripTicket plan={card.plan} /> : null}
+      <div className="cl-wrap"><Checklists card={card} onBring={onBring} onItem={onItem} onAdd={onAddItem} /></div>
 
       <ol className="bubbles">
         {entries.map((e) => {

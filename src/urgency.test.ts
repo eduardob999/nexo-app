@@ -25,7 +25,7 @@ describe('bandOf', () => {
   it('puts things to anticipate in the next seven days under preparation', () => {
     expect(bandOf(c('a', { due: '2026-11-04', type: 'TASK' }), now)).toBe('prep');
     expect(bandOf(c('b', { due: '2026-11-07', type: 'TRIP' }), now)).toBe('prep');
-    expect(bandOf(c('c', { due: '2026-11-06', type: 'INFO', bring: ['ID card'] }), now)).toBe('prep');
+    expect(bandOf(c('c', { due: '2026-11-06', type: 'INFO', bring: [{ t: 'ID card' }] }), now)).toBe('prep');
     expect(bandOf(c('d', { due: '2026-11-09', type: 'TASK' }), now)).toBe('prep');
   });
   it('shows planned things two weeks ahead and plain tasks only one', () => {

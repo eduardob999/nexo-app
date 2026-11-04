@@ -20,8 +20,8 @@ const FIXTURES: Card[] = [
   { id: 'u', status: 'open', for: 'you', type: 'TASK', prio: 'high', title: 'Confirm the lab visit time with the supervisor', ask: 'Do you want Thursday 10:00 or Friday 14:00 for the visit?' },
   { id: 'b', status: 'open', for: 'you', type: 'TASK', title: 'Reply to the housing office about the lease form', due: '2026-11-01', entryCount: 2, last: { by: 'nexo', text: 'Draft ready, waiting for your approval.', ts: '2026-11-01T09:00:00+09:00' } },
   { id: 'c', status: 'open', for: 'you', type: 'TASK', title: 'Seminar 15:00, Building 3 room 204', due: '2026-11-02T15:00:00+09:00', place: 'Building 3, room 204', entryCount: 1 },
-  { id: 'p1', status: 'open', for: 'you', type: 'TRIP', title: 'Trip to the dojo Sat 7 Nov: leave 08:50', due: '2026-11-07T08:50:00+09:00', bring: ['uniform', 'water'], place: 'Gion' },
-  { id: 'p2', status: 'open', for: 'you', type: 'TASK', title: 'Bicycle registration Thu 5 Nov 11:00', due: '2026-11-05T11:00:00+09:00', prio: 'high', bring: ['ID card'] },
+  { id: 'p1', status: 'open', for: 'you', type: 'TRIP', title: 'Trip to the dojo Sat 7 Nov: leave 08:50', due: '2026-11-07T08:50:00+09:00', bring: [{ t: 'uniform' }, { t: 'water' }], place: 'Gion' },
+  { id: 'p2', status: 'open', for: 'you', type: 'TASK', title: 'Bicycle registration Thu 5 Nov 11:00', due: '2026-11-05T11:00:00+09:00', prio: 'high', bring: [{ t: 'ID card' }] },
   { id: 'i1', status: 'open', for: 'you', type: 'INFO', title: 'Lecture, room A', due: '2026-11-04T10:30:00+09:00' },
   { id: 'h', status: 'open', for: 'you', type: 'HOLIDAY', title: 'Holiday: Culture Day', due: '2026-11-02T00:00:00+09:00' },
   { id: 'f', status: 'open', for: 'nexo', title: 'Check the bank notice', due: '2026-11-02' },
@@ -64,7 +64,7 @@ const WORKING: NexoStatus = {
 
 export function PreviewApp() {
   const which = window.location.hash.replace('#/preview', '').replace(/^\//, '');
-  const card = { ...(FIXTURES[2] as Card), ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
+  const card = { ...(FIXTURES[2] as Card), bring: [{ t: 'Signed lease form', got: true }, { t: 'Residence card' }, { t: 'Pen' }], items: [{ id: 'i1', text: 'Ask about the deposit', done: false }], ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
   if (which === 'thread') {
     return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} onDone={() => {}} onLater={() => {}} />;
   }

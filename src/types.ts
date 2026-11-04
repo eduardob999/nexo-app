@@ -28,7 +28,9 @@ export interface Card {
   /** Days ahead this card should start showing under Preparation, overriding the default for its kind. */
   lead?: number;
   /** Things to bring and a plan: either marks a card as needing preparation. */
-  bring?: unknown[];
+  bring?: { t: string; got?: boolean }[];
+  bringAs?: string;
+  items?: { id: string; text: string; done?: boolean }[];
   plan?: Plan;
   /** Denormalised by the writer so a list never has to read the entries subcollection. */
   files?: CardFile[];
