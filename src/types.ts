@@ -61,6 +61,9 @@ export interface Entry {
   ts: string;
 }
 
+/** A file attached to a draft: the same record a card keeps in `files`. The picture is in the linked card's files subcollection. */
+export interface DraftAttachment { id: string; name: string; type?: string; size?: number; driveId: string; viewUrl?: string }
+
 /** A reply the loop has drafted. Sending is always his act, never the app's. */
 export interface Draft {
   id: string;
@@ -70,6 +73,7 @@ export interface Draft {
   subject?: string;
   to?: string[];
   text?: string;
+  attachments?: DraftAttachment[];
   need?: string;
   copiedAt?: string;
   /** He pressed Send; the loop sends on its next run and then sets status `sent`. */

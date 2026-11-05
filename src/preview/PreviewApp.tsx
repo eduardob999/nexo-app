@@ -36,12 +36,18 @@ const ENTRIES: Entry[] = [
   { id: '0001', by: 'nexo', ts: '2026-10-30T10:31:00+09:00', text: 'They need the signed form and a copy of your residence card. Form: [housing form](https://example.org/form) or https://example.org/help. Nothing else is missing.' },
   { id: '0002', by: 'nexo', ts: '2026-10-31T09:02:00+09:00', text: 'Draft ready, waiting for your approval.' },
 ];
+const svgThumb = (c: string) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="72"><rect width="96" height="72" fill="${c}"/><rect x="20" y="14" width="56" height="44" fill="#fff" opacity=".8"/></svg>`)}`;
 const DRAFTS: Draft[] = [
   { id: 'd1', linkedNote: 'b', status: 'drafted', to: ['housing@example.org'], subject: 'Re: Lease form for the winter term', text: 'Dear Tanaka-san,\n\nThank you for the reminder. I will bring the signed lease form and a copy of my residence card to the office on Monday morning. Please let me know if anything else is needed.' },
   { id: 'd2', status: 'drafted', copiedAt: '2026-11-01T10:00:00+09:00', to: ['events@example.org'], subject: 'Re: Thank you for the invitation', text: 'Thank you very much for the invitation. I look forward to the seminar on Monday afternoon.' },
   { id: 'd4', status: 'drafted', to: ['friend@example.org'], subject: 'Re: Saturday', text: 'See you Saturday.', sendRequestedAt: new Date(Date.now() - 4 * 60_000).toISOString() },
   { id: 'd5', status: 'sent', to: ['friend@example.org'], subject: 'Re: Dinner', text: 'x', sentAt: new Date(Date.now() - 3600_000).toISOString(), sentBy: 'nexo' },
   { id: 'd6', status: 'drafted', to: ['dojo@example.org'], subject: 'Re: Shift on Tuesday', text: 'I can take the Tuesday shift.', revise: { text: 'mention that I arrive at 18:15', at: new Date(Date.now() - 6 * 60_000).toISOString(), by: 'eduardo' } },
+  { id: 'd7', linkedNote: 'b', status: 'drafted', to: ['housing@example.org'], subject: 'Re: Signed lease form', text: 'Dear Tanaka-san,\n\nPlease find the signed lease form and a copy of my residence card attached.', attachments: [
+    { id: 'f1', name: 'lease-page1.jpg', type: 'image/jpeg', driveId: 'x1', viewUrl: 'https://example.org/1' },
+    { id: 'f2', name: 'lease-page2.jpg', type: 'image/jpeg', driveId: 'x2', viewUrl: 'https://example.org/2' },
+    { id: 'f3', name: 'residence-card-copy-long-name.pdf', type: 'application/pdf', driveId: 'x3', viewUrl: 'https://example.org/3' }] },
+  { id: 'd8', status: 'drafted', to: ['office@example.org'], subject: 'Re: Documents', text: 'I am attaching the documents you asked for.' },
   { id: 'd3', status: 'needs-info', topic: 'Reply about the bike registration', need: 'the frame number from the registration card' },
 ];
 
@@ -176,7 +182,7 @@ export function PreviewApp() {
   if (which === 'drafts') {
     return (
       <>
-        <Drafts drafts={DRAFTS} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} onEdit={() => {}} onRevise={() => {}} onAnswer={() => {}} onMailCheck={() => {}} />
+        <Drafts drafts={DRAFTS} cards={FIXTURES} onDetach={() => {}} onAttachExisting={() => {}} onUpload={async () => {}} watchPics={(_id, on) => { on([{ id: 'f1', thumb: svgThumb('#4a7') }, { id: 'f2', thumb: svgThumb('#57a') }]); return () => {}; }} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} onEdit={() => {}} onRevise={() => {}} onAnswer={() => {}} onMailCheck={() => {}} />
         <TabBar current="drafts" draftCount={DRAFTS.length} />
       </>
     );

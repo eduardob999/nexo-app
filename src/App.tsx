@@ -4,7 +4,7 @@ import { AddSheet } from './AddSheet';
 import type { WakeDoc } from './alarm';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -210,7 +210,11 @@ export function App() {
         <Browse uid={user.uid} nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} settings={settings} onSettings={changeSettings}
           onSleep={(until) => { void setSleep(user.uid, until); }} />
       ) : tab === 'drafts' ? (
-        <Drafts drafts={drafts}
+        <Drafts drafts={drafts} cards={cards}
+          watchPics={(id, on) => watchFiles(user.uid, id, on, (e) => console.warn('[files]', e))}
+          onAttachExisting={(d, f) => { if (f.driveId) void attachToDraft(user.uid, d, { id: f.id, name: f.name ?? 'file', ...(f.type ? { type: f.type } : {}), driveId: f.driveId, ...(f.viewUrl ? { viewUrl: f.viewUrl } : {}) }); }}
+          onDetach={(d, id) => { void detachFromDraft(user.uid, d, id); }}
+          onUpload={async (d, files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); if (d.linkedNote) await attachFile(user.uid, { cardId: d.linkedNote }, up, thumb); await attachToDraft(user.uid, d, up); } flash('Attached to draft'); }}
           onCopied={(id) => { void markCopied(user.uid, id); flash('Copied'); }}
           onSent={(id) => { void markSent(user.uid, id); }}
           onDiscard={(id) => { void discardDraft(user.uid, id); }}

@@ -1,7 +1,7 @@
 import { applyFeedback, type WakeDoc, type WakeFeedback, type WakePrefs, type WakeRecord } from './alarm';
 import { arrayUnion, collection, deleteField, doc, documentId, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
+import type { DraftAttachment, Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 import { sortChat, type ChatMsg } from './chatlogic';
 
@@ -190,6 +190,22 @@ export function reviseDraft(uid: string, draft: Draft, instruction: string): Pro
   const batch = writeBatch(db);
   batch.update(draftRef(uid, draft.id), { revise: { text: instruction, at, by: 'eduardo' } });
   intent(batch, uid, { type: 'draft', action: 'revise', draftId: draft.id, text: instruction, entryId: String(Date.now()) });
+  return batch.commit();
+}
+
+/** Attach a file to a draft. The preview goes on the draft at once; the loop attaches it when it sends. */
+export function attachToDraft(uid: string, draft: Draft, file: DraftAttachment): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(draftRef(uid, draft.id), { attachments: arrayUnion({ ...file }) });
+  intent(batch, uid, { type: 'draft', action: 'attach', draftId: draft.id, file });
+  return batch.commit();
+}
+
+/** Take a file off a draft. The file stays on the card. */
+export function detachFromDraft(uid: string, draft: Draft, fileId: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(draftRef(uid, draft.id), { attachments: (draft.attachments ?? []).filter((f) => f.id !== fileId) });
+  intent(batch, uid, { type: 'draft', action: 'detach', draftId: draft.id, fileId });
   return batch.commit();
 }
 

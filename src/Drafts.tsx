@@ -1,6 +1,9 @@
 import { ConfirmButton } from './ConfirmButton';
 import { useState } from 'react';
-import type { Draft, NexoStatus } from './types';
+import { useEffect } from 'react';
+import { driveReady, connectDrive } from './drive';
+import { attachableFiles, attachmentLabel, isImage, mentionsAttachment } from './draftfiles';
+import type { Card, CardFile, Draft, DraftAttachment, NexoStatus } from './types';
 
 interface Props {
   drafts: Draft[];
@@ -12,6 +15,14 @@ interface Props {
   onRevise: (draft: Draft, instruction: string) => void;
   onAnswer: (draft: Draft, detail: string) => void;
   onMailCheck?: () => void;
+  /** Open cards, for the linked card's file list. */
+  cards?: Card[] | undefined;
+  /** Live files of a card (thumbs live there). */
+  watchPics?: ((cardId: string, on: (f: CardFile[]) => void) => () => void) | undefined;
+  onAttachExisting?: ((draft: Draft, file: CardFile) => void) | undefined;
+  onDetach?: ((draft: Draft, fileId: string) => void) | undefined;
+  /** Uploads to Drive, puts the files on the linked card and attaches them to the draft. */
+  onUpload?: ((draft: Draft, files: File[]) => Promise<void>) | undefined;
   nexo?: NexoStatus | null | undefined;
 }
 
@@ -49,15 +60,84 @@ function hhmm(iso?: string): string {
 
 function SentLine({ draft }: { draft: Draft }) {
   const to = (draft.to ?? []).join(', ');
+  const names = (draft.attachments ?? []).map((f) => f.name).join(', ');
   return (
     <li className="draft sent-line">
       <span className="who">SENT · {hhmm(draft.sentAt)}{draft.sentVia === 'elsewhere' ? ' · by you, elsewhere' : ''}</span>
       <span>{draft.subject ?? draft.topic ?? draft.id}{to ? ` to ${to}` : ''}</span>
+      {names ? <span className="mut">Attached: {names}</span> : null}
     </li>
   );
 }
 
-function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer }: { draft: Draft } & Omit<Props, 'drafts'>) {
+function Attachments({ draft, card, watchPics, onAttachExisting, onDetach, onUpload }: { draft: Draft; card?: Card | undefined } & Pick<Props, 'watchPics' | 'onAttachExisting' | 'onDetach' | 'onUpload'>) {
+  const [pane, setPane] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [drive, setDrive] = useState(driveReady());
+  const [pics, setPics] = useState<CardFile[]>([]);
+  const list = draft.attachments ?? [];
+  const live = Boolean(draft.linkedNote) && (list.length > 0 || pane);
+  useEffect(() => {
+    if (!live || !watchPics || !draft.linkedNote) return undefined;
+    return watchPics(draft.linkedNote, setPics);
+  }, [live, watchPics, draft.linkedNote]);
+  const thumbOf = (f: DraftAttachment) => pics.find((p) => p.id === f.id)?.thumb;
+  const options = attachableFiles(card?.files, list);
+  const pick = (fl: FileList | null) => {
+    const files = Array.from(fl ?? []);
+    if (files.length === 0 || !onUpload) return;
+    setBusy(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}`);
+    onUpload(draft, files).then(() => { setBusy(''); setPane(false); }, (e: unknown) => { setBusy(e instanceof Error ? e.message : 'Upload failed'); setDrive(driveReady()); });
+  };
+  const canAttach = Boolean(draft.linkedNote && onUpload);
+  return (
+    <div className="d-attach">
+      {list.length > 0 ? (
+        <ul className="d-files" aria-label="Attachments">
+          {list.map((f) => {
+            const t = thumbOf(f);
+            const body = t && isImage(f) ? <img src={t} alt={f.name} /> : <span className="d-ico" aria-hidden="true">{(f.type ?? '').includes('pdf') ? 'PDF' : 'FILE'}</span>;
+            return (
+              <li key={f.id} className="d-file">
+                {f.viewUrl ? <a className="d-thumb" href={f.viewUrl} target="_blank" rel="noreferrer">{body}</a> : <span className="d-thumb">{body}</span>}
+                <span className="d-name">{f.name}</span>
+                {onDetach ? <ConfirmButton label="x" armedLabel="Remove?" ariaLabel={`Remove ${f.name}`} className="chip-btn small d-x" onConfirm={() => onDetach(draft, f.id)} /> : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {canAttach ? <button type="button" className="chip-btn small" onClick={() => setPane((p) => !p)}>{pane ? 'Close' : 'Attach'}</button> : null}
+      {pane ? (
+        <section className="join-pane" aria-label="Attach to this draft">
+          {options.length > 0 ? (
+            <ul className="d-opts">
+              {options.map((f) => (
+                <li key={f.id}>
+                  <button type="button" className="chip-btn small" onClick={() => onAttachExisting?.(draft, f)}>Attach {f.name ?? 'file'}</button>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="mut">No other files on the linked card.</p>}
+          {drive ? (
+            <>
+              <label className="chip-btn">Take a photo<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => pick(e.target.files)} /></label>
+              <label className="chip-btn">Choose photos or files<input type="file" accept="image/*,application/pdf" multiple hidden onChange={(e) => pick(e.target.files)} /></label>
+            </>
+          ) : (
+            <button type="button" className="act-ink" onClick={() => { setBusy('Opening Google'); connectDrive().then(() => { setDrive(true); setBusy(''); }, (e: unknown) => setBusy(e instanceof Error ? e.message : 'Could not connect')); }}>Connect Google Drive</button>
+          )}
+          {busy ? <p className="mut" role="status">{busy}</p> : null}
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, cards, watchPics, onAttachExisting, onDetach, onUpload }: { draft: Draft } & Omit<Props, 'drafts'>) {
+  const card = cards?.find((c) => c.id === draft.linkedNote);
+  const attachProps = { draft, card, watchPics, onAttachExisting, onDetach, onUpload };
+  const nAtt = (draft.attachments ?? []).length;
   const [flash, setFlash] = useState(false);
   const [mode, setMode] = useState<'view' | 'edit' | 'revise'>('view');
   const [box, setBox] = useState('');
@@ -127,6 +207,7 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
       ) : draft.status === 'needs-info' ? (
         <>
           <p className="need">Needs from you: {draft.need ?? 'more information'}</p>
+          <Attachments {...attachProps} />
           <div className="draft-more">
             <button className="chip-btn small" onClick={() => open('edit')}>Write it</button>
             <ConfirmButton label="Discard" onConfirm={() => onDiscard(draft.id)} />
@@ -135,6 +216,8 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
       ) : (
         <>
           <div className="draft-body">{body}</div>
+          <Attachments {...attachProps} />
+          {nAtt > 0 ? <p className="d-sends">{attachmentLabel(nAtt)}</p> : mentionsAttachment(body) ? <p className="d-warn">The text mentions an attachment but none is attached.</p> : null}
           {requested ? (
             <p className="send-wait">Send requested {hhmm(draft.sendRequestedAt)}. Nexo sends it on its next run; press Call Nexo to hurry it.</p>
           ) : revising ? null : (
@@ -160,7 +243,7 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
   );
 }
 
-export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo }: Props) {
+export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo, cards, watchPics, onAttachExisting, onDetach, onUpload }: Props) {
   const [asked, setAsked] = useState(0);
   const pending = Boolean(nexo?.mailCheckSince) || Date.now() - asked < 60_000;
   const waiting = drafts.filter((d) => d.status !== 'sent');
@@ -184,7 +267,7 @@ export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, on
       ) : null}
       {waiting.length === 0 ? <p className="empty">No drafts waiting.</p> : null}
       <ul className="drafts">
-        {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} />)}
+        {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} cards={cards} watchPics={watchPics} onAttachExisting={onAttachExisting} onDetach={onDetach} onUpload={onUpload} />)}
         {sent.map((d) => <SentLine key={d.id} draft={d} />)}
       </ul>
     </main>
