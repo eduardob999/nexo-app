@@ -17,7 +17,7 @@ interface Props {
   fromCache: boolean;
   onDone: (card: Card) => void;
   onLater: (card: Card) => void;
-  onCallNexo: () => void;
+  onCallNexo: (mail?: boolean) => void;
   onWake?: () => void;
   lane?: 'you' | 'nexo';
   /** Ids of cards that have a draft waiting, shown as a small envelope instead of a line of text. */
@@ -115,7 +115,9 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
   const [calledAt, setCalledAt] = useState(0);
-  const press = () => { setCalledAt(Date.now()); onCallNexo(); };
+  const [mail, setMail] = useState(() => { try { return localStorage.getItem('nexo.callMail') === '1'; } catch { return false; } });
+  const toggleMail = (v: boolean) => { setMail(v); try { localStorage.setItem('nexo.callMail', v ? '1' : '0'); } catch { /* private mode */ } };
+  const press = () => { setCalledAt(Date.now()); onCallNexo(mail); };
   const titles = new Map(cards.map((c) => [c.id, c.title ?? c.id]));
   const sections = lane === 'nexo' ? SECTION_ORDER.map((k) => ({ key: k, items: mine.filter((c) => nexoSection(c, now) === k) })).filter((g) => g.items.length > 0) : [];
   const count = lane === 'nexo' ? mine.length : groups.reduce((n, g) => n + g.items.length, 0);
@@ -132,12 +134,15 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
             : <span className={`health health-${nexo.health.state}`} title={nexo.health.note || undefined}> · {HEALTH_LABEL[nexo.health.state]}</span>) : null}</span>
           <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
         </div>
+        <div className="call-wrap">
+        <label className="call-mail" title="Also check my mail"><input type="checkbox" checked={mail} onChange={(e) => toggleMail(e.target.checked)} /> Mail</label>
         <button className="call" onClick={press}
           aria-label={waiting > 0 ? `Call Nexo, ${waiting} ${waiting === 1 ? 'card' : 'cards'} to revise` : 'Call Nexo'}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>
           Call Nexo
           {waiting > 0 ? <span className="call-count" aria-hidden="true">{waiting}</span> : null}
         </button>
+        </div>
       </header>
       {nexo?.sleepUntil && Date.parse(nexo.sleepUntil) > now.getTime() ? (
         <section className="nexo-panel asleep" aria-live="polite">

@@ -202,7 +202,7 @@ export function App() {
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info} wake={wake}
           onRecordWake={(d, r) => { void recordWake(user.uid, d, r); }} onAnswerWake={(d, r, f, p) => { void answerWake(user.uid, d, r, f, p); flash('Thanks, noted'); }}
           relays={relays} onAnswerRelay={(r, t) => { void answerRelay(user.uid, r, t); }} onCloseRelay={(r) => { void closeRelay(user.uid, r); }}
-          onDone={done} onLater={later} onCallNexo={() => { void callNexo(user.uid); flash('Nexo called'); }} onWake={() => { void setSleep(user.uid, null); }} />
+          onDone={done} onLater={later} onCallNexo={(mail) => { void callNexo(user.uid); if (mail) void requestMailCheck(user.uid); flash(mail ? 'Nexo called, mail check included' : 'Nexo called'); }} onWake={() => { void setSleep(user.uid, null); }} />
       )}
       {tab === 'today' ? (
         <button className="fab" aria-label="Add a task" onClick={() => setAdding(true)}>

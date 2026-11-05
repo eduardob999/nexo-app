@@ -389,3 +389,7 @@ a.act-ink { display: inline-flex; align-items: center; text-decoration: none; }
 .wake-q { margin: 0; font-size: 17px; font-weight: 600; }
 .wake-q .mut { display: block; font-weight: 400; font-size: 14px; margin-top: 2px; }
 .wake-answers { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.call-wrap { display: flex; align-items: center; gap: 10px; flex: none; }
+.call-mail { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mut, #5F646C); white-space: nowrap; }
+.call-mail input { width: 18px; height: 18px; accent-color: var(--accent); }
