@@ -441,3 +441,35 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .selrow { display: flex; justify-content: flex-end; padding: 12px 0 4px; }
 .al-add { grid-template-columns: minmax(0, 1fr); } .res-add { grid-template-columns: minmax(0, 1fr); }
 .thread-foot { display: flex; justify-content: center; padding: 16px 0 8px; }
+
+/* Command deck: Call Nexo with a Mail segment, and Live chat. A dark glass panel with a cyan HUD glow. */
+:root { --hud: #0aa5c8; --hud-soft: rgba(10, 165, 200, .35); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --hud: #35e0ff; --hud-soft: rgba(53, 224, 255, .38); } }
+:root[data-theme='dark'] { --hud: #35e0ff; --hud-soft: rgba(53, 224, 255, .38); }
+.top-wrap .deck { flex: 0 0 100%; margin-top: 14px; display: flex; gap: 10px; align-items: stretch; }
+.call-split { position: relative; display: flex; flex: 1 1 0; min-width: 0; height: 52px; border-radius: 26px; overflow: hidden; color: #eafcff;
+  background: radial-gradient(120% 140% at 12% 0%, #1b3a46 0%, #0b1418 55%, #070b0e 100%);
+  box-shadow: 0 0 0 1px var(--hud-soft), 0 0 22px -4px var(--hud-soft), inset 0 1px 0 rgba(255,255,255,.14); }
+.call-split::after { content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(105deg, transparent 35%, rgba(120,240,255,.22) 50%, transparent 65%); transform: translateX(-120%); animation: sheen 7s ease-in-out infinite; }
+@keyframes sheen { 0%, 70% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+.top-wrap .call-split .call { flex: 1 1 auto; height: 100%; padding: 0 8px 0 14px; gap: 8px; background: transparent; color: inherit; border: 0; border-radius: 0; font-weight: 650; font-size: 15px; letter-spacing: 0; }
+.call-split .call:active { background: rgba(53,224,255,.12); }
+.reactor { color: var(--hud-bright, #5cecff); filter: drop-shadow(0 0 5px rgba(53,224,255,.8)); flex: none; }
+.reactor-ring { transform-origin: 12px 12px; animation: spin 14s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.call-split .call-count { background: #5cecff; color: #04161a; box-shadow: 0 0 10px rgba(92,236,255,.7); }
+.mail-seg { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 52px; border: 0; border-left: 1px solid rgba(120,240,255,.22);
+  background: transparent; color: rgba(234,252,255,.62); transition: background .2s, color .2s, box-shadow .2s; }
+.mail-tag { font: 600 9.5px/1 var(--mono); letter-spacing: .12em; }
+.mail-seg[aria-pressed='true'] { color: #04161a; background: linear-gradient(180deg, #7ff3ff, #35d6ee); box-shadow: inset 0 0 14px rgba(255,255,255,.35), 0 0 16px rgba(53,224,255,.55); }
+.top-wrap .chat-btn { position: relative; height: 52px; padding: 0 14px 0 12px; gap: 7px; border-radius: 26px; font-weight: 650; font-size: 15px; color: var(--ink);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 82%, transparent), color-mix(in srgb, var(--surface) 55%, transparent)); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid transparent; background-clip: padding-box;
+  box-shadow: 0 0 0 1px var(--hud-soft), 0 0 18px -6px var(--hud-soft), inset 0 1px 0 rgba(255,255,255,.35); }
+.top-wrap .chat-btn:active { transform: translateY(1px); }
+.live-dot { width: 8px; height: 8px; border-radius: 50%; background: #2fe39a; box-shadow: 0 0 0 0 rgba(47,227,154,.6); animation: ping 2s ease-out infinite; flex: none; }
+.live-dot.off { background: #f0a53a; animation: none; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(47,227,154,.55); } 80%, 100% { box-shadow: 0 0 0 9px rgba(47,227,154,0); } }
+@media (prefers-reduced-motion: reduce) { .call-split::after, .reactor-ring, .live-dot { animation: none; } }
+@media (max-width: 370px) { .top-wrap .chat-btn { padding: 0 10px 0 9px; gap: 5px; font-size: 14px; } .mail-seg { width: 46px; } .top-wrap .deck { gap: 8px; } }

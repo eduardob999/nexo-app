@@ -132,18 +132,26 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
           ? <i className="health-dot" role="img" aria-label="Nexo is online" title="Nexo is online" />
           : <span className={`health health-${nexo.health.state}`} title={nexo.health.note || undefined}> · {HEALTH_LABEL[nexo.health.state]}</span>) : null}</span>
         <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
-        <div className="call-wrap">
-        <label className="call-mail" title="Also check my mail"><input type="checkbox" checked={mail} onChange={(e) => toggleMail(e.target.checked)} /> Mail</label>
-        <button className="call" onClick={press}
-          aria-label={waiting > 0 ? `Call Nexo, ${waiting} ${waiting === 1 ? 'card' : 'cards'} to revise` : 'Call Nexo'}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>
-          Call Nexo
-          {waiting > 0 ? <span className="call-count" aria-hidden="true">{waiting}</span> : null}
-        </button>
-        <a className="chat-btn" href="#/chat" aria-label="Live chat with Nexo">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg>
-          Live chat
-        </a>
+        <div className="deck">
+          <div className={`call-split${mail ? ' mail-on' : ''}`}>
+            <button className="call" onClick={press}
+              aria-label={waiting > 0 ? `Call Nexo, ${waiting} ${waiting === 1 ? 'card' : 'cards'} to revise` : 'Call Nexo'}>
+              <svg className="reactor" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" strokeDasharray="3 2.4" className="reactor-ring" /><circle cx="12" cy="12" r="6.2" /><circle cx="12" cy="12" r="2.4" fill="currentColor" />
+              </svg>
+              <span className="call-label">Call Nexo</span>
+              {waiting > 0 ? <span className="call-count" aria-hidden="true">{waiting}</span> : null}
+            </button>
+            <button className="mail-seg" type="button" aria-pressed={mail} aria-label="Also check my mail" title="Also check my mail" onClick={() => toggleMail(!mail)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m4 8 8 6 8-6" /></svg>
+              <span className="mail-tag">{mail ? 'ON' : 'MAIL'}</span>
+            </button>
+          </div>
+          <a className="chat-btn" href="#/chat" aria-label="Live chat with Nexo">
+            <span className={`live-dot${nexo?.health && nexo.health.state !== 'ok' ? ' off' : ''}`} aria-hidden="true" />
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg>
+            Live chat
+          </a>
         </div>
       </header>
       {nexo?.sleepUntil && Date.parse(nexo.sleepUntil) > now.getTime() ? (
