@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, summarise, topBars, yen } from './money';
+import { earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, qtyText, receiptMonths, receiptTotals, summarise, topBars, yen } from './money';
 import { ConfirmButton } from './ConfirmButton';
 import { ReceiptPhotos } from './ReceiptPhotos';
 import type { Alloc, CardFile, Market, Receipt } from './types';
@@ -167,6 +167,30 @@ function PhotoFold(props: React.ComponentProps<typeof ReceiptPhotos>) {
   );
 }
 
+function ReceiptDetails({ r }: { r: Receipt }) {
+  if (!r.lines || r.lines.length === 0) return null;
+  return (
+    <details className="shelf-sub rc-details">
+      <summary>Details <span className="mut">{r.lines.length} lines</span></summary>
+      <table className="rc-table">
+        <tbody>
+          {r.lines.map((l, i) => (
+            <tr key={i}>
+              <td><span className="rc-name">{l.name}</span>
+                {l.item ? <span className="rc-chip">on list as: {l.item}</span> : null}
+                {qtyText(l) ? <span className="rc-qty">{qtyText(l)}{l.tax ? ` · ${l.tax}%` : ''}</span> : l.tax ? <span className="rc-qty">{l.tax}%</span> : null}</td>
+              <td className="num">{yen(l.amount)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          {receiptTotals(r).map((t) => <tr key={t.label} className={t.strong ? 'strong' : ''}><td>{t.label}</td><td className="num">{yen(t.value)}</td></tr>)}
+        </tfoot>
+      </table>
+    </details>
+  );
+}
+
 function ReceiptsBlock({ receipts, onReceipt, onDeleteReceipt, onAttachReceipt, watchPhotos }: Pick<Props, 'onReceipt' | 'onDeleteReceipt' | 'onAttachReceipt' | 'watchPhotos'> & { receipts: Receipt[] }) {
   const [amount, setAmount] = useState('');
   const [cat, setCat] = useState('food');
@@ -189,6 +213,7 @@ function ReceiptsBlock({ receipts, onReceipt, onDeleteReceipt, onAttachReceipt, 
           <h3 className="group-title">{m.month} <span className="mut">{yen(m.total)}</span></h3>
           <p className="mut al-cats">{m.cats.map((c) => `${c.cat} ${yen(c.sum)}`).join(' · ')}</p>
           <ul className="res-list">{m.items.slice(0, 25).map((r) => <li key={r.id} className="res done"><span>{yen(r.amount)} · {r.vendor || r.cat}</span><span className="mut">{r.cat} · {new Date(r.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{r.files?.length ? ` · ${r.files.length} photo${r.files.length > 1 ? 's' : ''}` : ''}</span>
+            <ReceiptDetails r={r} />
             {onAttachReceipt && watchPhotos ? <PhotoFold receipt={r} watch={watchPhotos} onAttach={onAttachReceipt} /> : null}
             {onDeleteReceipt ? <ConfirmButton label="Delete" ariaLabel={`Delete receipt ${r.vendor || r.cat}`} onConfirm={() => onDeleteReceipt(r)} /> : null}</li>)}</ul>
         </div>

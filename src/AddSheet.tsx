@@ -1,11 +1,15 @@
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { connectDrive, driveReady } from './drive';
+import { addPicked, removePicked } from './addfiles';
 import { usePersisted } from './persist';
 import { parseQuickAdd } from './parse';
 import { dueText } from './urgency';
 
 interface Props {
-  onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low') => void;
+  onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low', files: File[]) => void;
+  /** Preview only: files already chosen. */
+  initialFiles?: File[];
   onClose: () => void;
 }
 
@@ -22,15 +26,33 @@ function Mirror({ text, tokens }: { text: string; tokens: { start: number; end: 
   return <div className="mirror" aria-hidden="true">{out}</div>;
 }
 
-export function AddSheet({ onAdd, onClose }: Props) {
+export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
   const [text, setText] = usePersisted('add');
   const [forWho, setForWho] = useState<'you' | 'nexo'>('you');
   const [prio, setPrio] = useState<'high' | 'normal' | 'low'>('normal');
+  const [files, setFiles] = useState<File[]>(initialFiles);
+  const [drive, setDrive] = useState(driveReady());
+  const [msg, setMsg] = useState('');
+  const urls = useMemo(() => files.map((f) => (f.type.startsWith('image/') ? URL.createObjectURL(f) : '')), [files]);
+  useEffect(() => () => urls.forEach((u) => { if (u) URL.revokeObjectURL(u); }), [urls]);
+  const pick = (list: FileList | File[] | null) => {
+    const more = Array.from(list ?? []);
+    if (more.length > 0) setFiles((cur) => addPicked(cur, more));
+  };
+  const onPaste = (e: React.ClipboardEvent) => {
+    const pasted = Array.from(e.clipboardData.files);
+    if (pasted.length === 0) return;
+    e.preventDefault();
+    pick(pasted);
+    if (!drive) setMsg('Connect Google Drive to upload these');
+  };
   const now = new Date();
   const parsed = parseQuickAdd(text, now);
   const submit = () => {
     if (!parsed.title) return;
-    onAdd(parsed.title, forWho, parsed.due, prio);
+    // The text is spent once the card exists, so it must not come back the next time the sheet opens.
+    setText('');
+    onAdd(parsed.title, forWho, parsed.due, prio, files);
     onClose();
   };
   return (
@@ -42,7 +64,7 @@ export function AddSheet({ onAdd, onClose }: Props) {
           <Mirror text={text} tokens={parsed.tokens} />
           <label className="sr" htmlFor="add-text">New task</label>
           <textarea id="add-text" className="add-input" autoFocus rows={1} placeholder="What needs doing? Try “call the office tomorrow 3pm”"
-            value={text} onChange={(e) => setText(e.target.value)}
+            value={text} onChange={(e) => setText(e.target.value)} onPaste={onPaste}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} />
         </div>
         <div className="chips">
@@ -56,6 +78,27 @@ export function AddSheet({ onAdd, onClose }: Props) {
             <button type="button" key={v} aria-pressed={prio === v} onClick={() => setPrio(v)}>{label}</button>
           ))}
         </div>
+        {files.length > 0 ? (
+          <ul className="add-files" aria-label="Chosen files">
+            {files.map((f, i) => (
+              <li key={`${f.name}-${f.size}-${i}`}>
+                {urls[i] ? <img src={urls[i]} alt={f.name} /> : <span className="rc-file">{f.name}</span>}
+                <button type="button" className="rm" aria-label={`Remove ${f.name}`} onClick={() => setFiles((cur) => removePicked(cur, i))}>×</button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="draft-more">
+          {drive ? (
+            <>
+              <label className="chip-btn small">Take a photo<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pick(e.target.files); e.target.value = ''; }} /></label>
+              <label className="chip-btn small">Choose photos or files<input type="file" accept="image/*,application/pdf" multiple hidden onChange={(e) => { pick(e.target.files); e.target.value = ''; }} /></label>
+            </>
+          ) : (
+            <button type="button" className="chip-btn small" onClick={() => { setMsg('Opening Google'); connectDrive().then(() => { setDrive(true); setMsg(''); }, (err: unknown) => setMsg(err instanceof Error ? err.message : 'Could not connect')); }}>Connect Google Drive</button>
+          )}
+        </div>
+        {msg ? <p className="mut" role="status">{msg}</p> : null}
         <div className="sheet-foot">
           <button type="button" className="chip-btn" onClick={() => setForWho(forWho === 'you' ? 'nexo' : 'you')}>
             For {forWho === 'you' ? 'me' : 'Nexo'}

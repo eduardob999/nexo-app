@@ -4,7 +4,7 @@ import { AddSheet } from './AddSheet';
 import type { WakeDoc } from './alarm';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -22,6 +22,7 @@ import type { ChatMsg } from './chatlogic';
 import { ToastHost } from './Toast';
 import { UpdateBar } from './UpdateBar';
 import { flash } from './toast';
+import { uploadFailText } from './addfiles';
 import { Trips } from './Trips';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
@@ -53,6 +54,15 @@ function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Dr
       onDelete={() => { void deleteCard(uid, card.id); window.location.hash = '#/'; flash('Card deleted'); }}
       onAttach={async (files) => { const done: { name: string; url: string }[] = []; for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); done.push({ name: up.name, url: up.viewUrl }); } flash('Attached'); return done; }} />
   );
+}
+
+/** Upload the files chosen in the Add sheet onto the card just made. Runs after the sheet has closed. */
+async function uploadNewCardFiles(uid: string, cardId: string, files: File[]): Promise<void> {
+  if (files.length === 0) return;
+  try {
+    for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId }, up, thumb); }
+    flash(files.length > 1 ? 'Card added with photos' : 'Card added with photo');
+  } catch (e) { flash(uploadFailText(e), 'warn'); }
 }
 
 export function App() {
@@ -238,7 +248,7 @@ export function App() {
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
         browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
-      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr) => { void addCard(user.uid, t, w, due, pr); }} /> : null}
+      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id).then(() => uploadNewCardFiles(user.uid, id, files)); }} /> : null}
     </>
   );
 }

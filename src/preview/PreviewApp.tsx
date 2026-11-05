@@ -176,6 +176,21 @@ export function PreviewApp() {
   if (which === 'search') {
     return (<><Search cards={FIXTURES} now={NOW} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
   }
+  if (which === 'receipt') {
+    const receipt = { id: 'sandi', amount: 1459, cat: 'food', vendor: 'サンディ 黄檗店', ts: '2026-11-05T18:42:00+09:00', subtotal: 1351, taxTotal: 108, paid: 10000, change: 8541, files: [{ id: 'p1', name: 'receipt.jpg', thumb: PHOTO }],
+      lines: [
+        { name: '袋代', amount: 10, tax: 10 },
+        { name: 'プリマロースハム', qty: 3, unit: 139, amount: 417, tax: 8, item: 'Jamón' },
+        { name: 'スライスチーズ', qty: 3, unit: 139, amount: 417, tax: 8, item: 'Queso' },
+        { name: 'とろけるスライスC', qty: 2, unit: 139, amount: 278, tax: 8, item: 'Queso' },
+        { name: 'パリパリバー', amount: 229, tax: 8, item: 'Helado' }] };
+    return (<><Money onAdd={() => {}} onToggle={() => {}} onEdit={() => {}} onRepeat={() => {}} onSeed={() => {}} allocations={[]} receipts={[receipt, { id: 'r2', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: '2026-11-04T12:00:00+09:00' }]}
+      onAttachReceipt={async () => {}} watchPhotos={(_id, on) => { on([{ id: 'p1', thumb: PHOTO }]); return () => {}; }} /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which === 'add-photos') {
+    const mk = (name: string, c: string) => new File([`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="${c}"/><rect x="22" y="14" width="52" height="68" fill="#fff"/></svg>`], name, { type: 'image/svg+xml' });
+    return (<><Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><AddSheet onAdd={() => {}} onClose={() => {}} initialFiles={[mk('receipt-1.svg', '#b9c4d6'), mk('receipt-2.svg', '#c9d6b9')]} /></>);
+  }
   if (which === 'add') {
     return (<><Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><AddSheet onAdd={() => {}} onClose={() => {}} /></>);
   }

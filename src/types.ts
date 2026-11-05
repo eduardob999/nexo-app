@@ -152,4 +152,5 @@ export interface Memo { id: string; tags: string[]; text: string; ts: string; de
 export interface Alloc { id: string; label: string; amount: number; done: boolean; ts?: string; month?: string; recurring?: boolean; tag?: string }
 
 export interface Market { items: { id: string; name: string }[]; log: { id: string; itemId?: string | null; name: string; ts: string; price?: number | null; receiptId?: string; deleted?: boolean }[] }
-export interface Receipt { id: string; amount: number; cat: string; vendor: string; ts: string; files?: CardFile[]; deleted?: boolean }
+export interface ReceiptLine { name: string; qty?: number; unit?: number; amount: number; tax?: number; item?: string }
+export interface Receipt { id: string; amount: number; cat: string; vendor: string; ts: string; files?: CardFile[]; deleted?: boolean; lines?: ReceiptLine[]; subtotal?: number; taxTotal?: number; paid?: number; change?: number }

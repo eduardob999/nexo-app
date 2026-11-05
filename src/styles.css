@@ -476,3 +476,20 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .d-opts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .d-sends { margin: 0; font-size: 14px; font-weight: 600; }
 .d-warn { margin: 0; font-size: 14px; color: var(--muted); }
+
+/* add sheet attachments */
+.add-files { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.add-files li { position: relative; }
+.add-files img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid var(--edge); display: block; }
+.add-files .rc-file { display: grid; place-items: center; width: 64px; height: 64px; padding: 4px; font-size: 11px; overflow: hidden; border: 1px solid var(--edge); border-radius: 10px; overflow-wrap: anywhere; }
+.add-files .rm { position: absolute; top: -8px; right: -8px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--edge); background: var(--surface); color: var(--ink); font-size: 18px; line-height: 1; }
+
+/* receipt breakdown */
+.rc-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+.rc-table td { padding: 6px 0; vertical-align: top; border-top: 1px solid var(--line); }
+.rc-table td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; padding-left: 12px; color: var(--ink); }
+.rc-name { display: block; color: var(--ink); overflow-wrap: anywhere; }
+.rc-qty { display: block; font-size: 13px; color: var(--muted); }
+.rc-chip { display: inline-block; margin-top: 2px; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: var(--today-tint); color: var(--today); }
+.rc-table tfoot td { color: var(--muted); }
+.rc-table tfoot tr.strong td { color: var(--ink); font-weight: 700; }

@@ -88,15 +88,20 @@ export function markLater(uid: string, card: Card): Promise<void> {
   return batch.commit();
 }
 
+/** A fresh card id, so a caller can attach files to a card it is about to create. */
+export function newCardId(now = new Date()): string {
+  return `n${now.getTime().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+}
+
 /**
  * A new card, with its first entry, in one batch. Every card gets a date, so
  * one made without a date lands on today; the entry count and last entry are
  * written with it so a list never needs the entries subcollection.
  */
-export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null, prio: 'high' | 'normal' | 'low' = 'normal'): Promise<void> {
+export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null, prio: 'high' | 'normal' | 'low' = 'normal', cardId?: string): Promise<void> {
   const now = new Date();
   const ts = now.toISOString();
-  const id = `n${now.getTime().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
+  const id = cardId ?? newCardId(now);
   const entryId = String(now.getTime());
   const entry = { by: 'eduardo', text, ts };
   const when = due ?? todayYmd(now);

@@ -78,3 +78,20 @@ export function receiptMonths(list: Receipt[]): { month: string; total: number; 
     return { month, total: items.reduce((s, r) => s + r.amount, 0), cats: [...cats].map(([cat, sum]) => ({ cat, sum })).sort((a, b) => b.sum - a.sum), items: items.sort((a, b) => b.ts.localeCompare(a.ts)) };
   });
 }
+
+/** "3 × ¥139" for a line with a quantity and unit price, otherwise nothing. */
+export function qtyText(l: { qty?: number; unit?: number }): string {
+  if (l.qty === undefined || l.unit === undefined) return l.qty && l.qty > 1 ? `${l.qty} ×` : '';
+  return `${l.qty} × ${yen(l.unit)}`;
+}
+
+/** Footer rows of a receipt breakdown: only the figures the receipt actually has, in reading order. */
+export function receiptTotals(r: { amount: number; subtotal?: number; taxTotal?: number; paid?: number; change?: number }): { label: string; value: number; strong?: boolean }[] {
+  const rows: { label: string; value: number; strong?: boolean }[] = [];
+  if (r.subtotal !== undefined) rows.push({ label: 'Subtotal', value: r.subtotal });
+  if (r.taxTotal !== undefined) rows.push({ label: 'Tax', value: r.taxTotal });
+  rows.push({ label: 'Total', value: r.amount, strong: true });
+  if (r.paid !== undefined) rows.push({ label: 'Paid', value: r.paid });
+  if (r.change !== undefined) rows.push({ label: 'Change', value: r.change });
+  return rows;
+}
