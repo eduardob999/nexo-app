@@ -51,6 +51,13 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
     setBusy(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}`);
     onAttach(files).then(() => setBusy('Attached'), (e: unknown) => { setBusy(e instanceof Error ? e.message : 'Upload failed'); setDrive(driveReady()); });
   };
+  const onPaste = (e: React.ClipboardEvent) => {
+    const files = Array.from(e.clipboardData.files);
+    if (files.length === 0 || !onAttach) return;
+    e.preventDefault();
+    if (!drive) { setAttaching(true); setBusy('Connect Google Drive, then paste again'); return; }
+    pick(e.clipboardData.files);
+  };
   const send = () => {
     const t = text.trim();
     if (!t) return;
@@ -135,7 +142,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         </div>
         <form className="reply-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
           <label className="sr" htmlFor="reply">Reply to this card</label>
-          <input id="reply" className="reply-input" placeholder="Reply" value={text} onChange={(e) => setText(e.target.value)} />
+          <input id="reply" className="reply-input" placeholder="Reply" onPaste={onPaste} value={text} onChange={(e) => setText(e.target.value)} />
           <button type="submit" className="send small" aria-label="Send reply" disabled={!text.trim()}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </button>
