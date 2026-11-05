@@ -6,6 +6,7 @@ import { isNewCard } from './seen';
 import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
 import { WakeSuggestion } from './WakeSuggestion';
+import type { SleepPlan, SleepRec } from './sleepmodel';
 import type { WakeDoc, WakeFeedback, WakePrefs, WakeRecord } from './alarm';
 import { Relays } from './Relays';
 import type { Card, NexoStatus, Relay, TodayInfo } from './types';
@@ -36,6 +37,13 @@ interface Props {
   wake?: WakeDoc | null | undefined;
   onRecordWake?: ((date: string, rec: WakeRecord) => void) | undefined;
   onAnswerWake?: ((date: string, rec: WakeRecord, feedback: WakeFeedback, prefs: WakePrefs) => void) | undefined;
+  sleep?: SleepRec[] | undefined;
+  sleepActions?: {
+    onGoToBed: () => void; onUndoBed: (night: string) => void; onImUp: (night: string) => void;
+    onRate: (night: string, rating: number | null, factors: Record<string, boolean | number>, note: string) => void;
+    onEditTimes: (night: string, times: { bed?: [number, number]; wake?: [number, number] | null }) => void;
+    onPlan: (plan: SleepPlan) => void;
+  } | undefined;
 }
 
 const BAND_LABEL: Record<Band, string> = {
@@ -125,7 +133,7 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
   return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], answeredRelays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, wake, onRecordWake, onAnswerWake }: Props) {
+export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], answeredRelays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, wake, onRecordWake, onAnswerWake, sleep, sleepActions }: Props) {
   const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane && !isHis(c))), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
@@ -185,7 +193,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNe
       <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
       {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : <Relays mode="answered" relays={answeredRelays} onAnswer={onAnswerRelay} onClose={onCloseRelay} />}
       {lane === 'you' ? <TodayStrip info={info} now={now} /> : null}
-      {lane === 'you' ? <WakeSuggestion cards={cards} now={now} wake={wake} onRecord={onRecordWake} onAnswer={onAnswerWake} /> : null}
+      {lane === 'you' ? <WakeSuggestion cards={cards} now={now} wake={wake} onRecord={onRecordWake} onAnswer={onAnswerWake} sleep={sleep} onGoToBed={sleepActions?.onGoToBed} onUndoBed={sleepActions?.onUndoBed} onImUp={sleepActions?.onImUp} onRate={sleepActions?.onRate} onEditTimes={sleepActions?.onEditTimes} onPlan={sleepActions?.onPlan} /> : null}
       {holiday && !info ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
       {lane === 'nexo' && sections.length > 0 ? (

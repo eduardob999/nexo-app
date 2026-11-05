@@ -10,6 +10,7 @@ const ITEMS = [
   { id: 'nexo', label: 'Nexo', hint: 'What the assistant is working on', href: '#/nexo' },
   { id: 'notes', label: 'Notes', hint: 'Things worth keeping', href: '#/notes' },
   { id: 'money', label: 'Money', hint: 'The set-aside list for the month', href: '#/money' },
+  { id: 'sleep', label: 'Sleep', hint: 'Nights, averages and tonight\'s plan', href: '#/sleep' },
   { id: 'trips', label: 'Trips', hint: 'Tickets for the trips ahead', href: '#/trips' },
   { id: 'shelf', label: 'Shelf', hint: 'Resources, done cards and closed threads', href: '#/shelf' },
 ] as const;

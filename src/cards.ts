@@ -1,10 +1,11 @@
 import { applyFeedback, type WakeDoc, type WakeFeedback, type WakePrefs, type WakeRecord } from './alarm';
-import { arrayUnion, collection, deleteField, doc, documentId, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
+import { arrayUnion, collection, deleteDoc, deleteField, doc, documentId, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { checklistLines } from './checklistlines';
 import type { DraftAttachment, Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 import { sortChat, type ChatMsg } from './chatlogic';
+import { bedDate, isoLocal, nightKey, planDoc, wakeDate, type SleepPlan, type SleepRec } from './sleepmodel';
 
 const root = (uid: string) => ['users', uid] as const;
 
@@ -575,4 +576,46 @@ export function watchReceiptFiles(uid: string, receiptId: string, onFiles: (f: C
   return onSnapshot(collection(db, ...root(uid), 'receipts', receiptId, 'files'), (snap) => {
     onFiles(snap.docs.map((d) => ({ ...(d.data() as Omit<CardFile, 'id'>), id: d.id })));
   }, () => onFiles([]));
+}
+
+// ---- Sleep: users/{uid}/sleep/{night}. Written straight to Firestore with merge; no sync intent is involved. ----
+
+const sleepDoc = (uid: string, night: string) => doc(db, ...root(uid), 'sleep', night);
+
+/** The last 90 nights, oldest first. */
+export function watchSleep(uid: string, on: (recs: SleepRec[]) => void, onError: (e: Error) => void = () => {}): () => void {
+  const q = query(collection(db, ...root(uid), 'sleep'), orderBy('night'), limitToLast(90));
+  return onSnapshot(q, (snap) => on(snap.docs.map((d) => d.data() as SleepRec)), onError);
+}
+
+/** Bedtime now. The night is the date of the bedtime from 12:00 on, else the day before. */
+export function goToBed(uid: string, now: Date): Promise<string> {
+  const night = nightKey(now);
+  return setDoc(sleepDoc(uid, night), { night, bed: isoLocal(now), wake: null, rating: null, factors: {}, note: '', source: 'nexo-app', createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).then(() => night);
+}
+
+/** Undo a bedtime pressed by mistake. */
+export function undoBed(uid: string, night: string): Promise<void> {
+  return deleteDoc(sleepDoc(uid, night));
+}
+
+export function imUp(uid: string, night: string, now: Date): Promise<void> {
+  return setDoc(sleepDoc(uid, night), { wake: isoLocal(now), updatedAt: serverTimestamp() }, { merge: true });
+}
+
+export function rateSleep(uid: string, night: string, rating: number | null, factors: Record<string, boolean | number>, note: string): Promise<void> {
+  return setDoc(sleepDoc(uid, night), { rating, factors, note, updatedAt: serverTimestamp() }, { merge: true });
+}
+
+/** Fix a forgotten bedtime or wake time. Times are clock values on the night's own dates. */
+export function editSleep(uid: string, night: string, times: { bed?: [number, number]; wake?: [number, number] | null }): Promise<void> {
+  const data: Record<string, unknown> = { updatedAt: serverTimestamp() };
+  if (times.bed) data['bed'] = isoLocal(bedDate(night, times.bed[0], times.bed[1]));
+  if (times.wake !== undefined) data['wake'] = times.wake === null ? null : isoLocal(wakeDate(night, times.wake[0], times.wake[1]));
+  return setDoc(sleepDoc(uid, night), data, { merge: true });
+}
+
+/** What the sync reads to send the bedtime reminder. */
+export function writeSleepPlan(uid: string, plan: SleepPlan): Promise<void> {
+  return setDoc(doc(db, ...root(uid), 'meta', 'sleepPlan'), { ...planDoc(plan), updatedAt: serverTimestamp() });
 }

@@ -8,6 +8,9 @@ import { Shelf } from '../Shelf';
 import { Trips } from '../Trips';
 import { Upcoming } from '../Upcoming';
 import { WakeSuggestion } from '../WakeSuggestion';
+import { SleepScreen } from '../SleepScreen';
+import { SleepFeedback } from '../SleepFeedback';
+import { bedDate, isoLocal, addDays, type SleepRec } from '../sleepmodel';
 import { Thread } from '../Thread';
 import { Chat } from '../Chat';
 import type { ChatMsg } from '../chatlogic';
@@ -75,9 +78,40 @@ const WORKING: NexoStatus = {
 // A flat grey-blue square standing in for a photographed receipt.
 const PHOTO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#b9c4d6"/><rect x="22" y="14" width="52" height="68" fill="#fff"/><path d="M30 28h36M30 38h36M30 48h24" stroke="#889" stroke-width="3"/></svg>')}`;
 
+/** Invented nights ending 2026-11-04, with a believable spread of hours, ratings and factors. */
+function fakeNights(): SleepRec[] {
+  const spec: [number, number, number, number | null, string[]][] = [
+    // [bed hour, bed minute, hours, rating, factors]
+    [23, 10, 7.8, 4, ['exercise']], [23, 40, 6.5, 2, ['caffeine', 'screen']], [0, 20, 6.2, 2, ['screen', 'stress']], [23, 0, 8.1, 5, ['exercise']],
+    [23, 30, 7.4, 3, []], [0, 40, 8.6, 4, ['alcohol']], [1, 10, 8.0, 3, ['alcohol', 'lateMeal']], [23, 15, 7.5, 4, []],
+    [23, 50, 6.8, 2, ['caffeine', 'slowToSleep']], [22, 50, 8.2, 5, ['exercise']], [23, 20, 7.2, 3, ['stress']], [0, 5, 6.6, 2, ['screen', 'caffeine']],
+    [23, 25, 7.9, 4, []], [23, 45, 7.0, 3, ['noiseLight']],
+  ];
+  return spec.map(([h, m, hours, rating, f], i) => {
+    const night = addDays('2026-11-04', -(spec.length - 1 - i));
+    const bed = bedDate(night, h, m);
+    return { night, bed: isoLocal(bed), wake: isoLocal(new Date(bed.getTime() + hours * 3_600_000)), rating, factors: Object.fromEntries(f.map((k) => [k, true])), note: '', source: 'nexo-app' };
+  });
+}
+
 export function PreviewApp() {
   const which = window.location.hash.replace('#/preview', '').replace(/^\//, '');
   const card = { ...(FIXTURES[2] as Card), bring: [{ t: 'Signed lease form', got: true }, { t: 'Residence card' }, { t: 'Pen' }], items: [{ id: 'i1', text: 'Ask about the deposit', done: false }], ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
+  if (which === 'sleep') {
+    return (<><SleepScreen recs={fakeNights()} cards={[{ id: 'e', status: 'open', for: 'you', title: 'Lecture, room A', due: '2026-11-06T09:00:00+09:00', place: 'Yoshida campus' }]} now={new Date('2026-11-05T21:10:00+09:00')} /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which.startsWith('sleep-card')) {
+    const nights = fakeNights();
+    const nowS = new Date(which === 'sleep-card-morning' ? '2026-11-06T07:10:00+09:00' : (which === 'sleep-card-asleep' || which === 'sleep-card-edit') ? '2026-11-06T00:05:00+09:00' : '2026-11-05T22:10:00+09:00');
+    const open = { night: '2026-11-05', bed: isoLocal(new Date('2026-11-05T23:44:31+09:00')), wake: null, rating: null, factors: {}, note: '' } as SleepRec;
+    const recs = which === 'sleep-card-evening' ? nights : [...nights, open];
+    const cs: Card[] = [{ id: 'e', status: 'open', for: 'you', title: 'Lecture, room A', due: '2026-11-06T09:00:00+09:00', place: 'Yoshida campus' }];
+    return (<><main className="screen"><header className="top"><div><span className="kicker">THURSDAY 5 NOVEMBER</span><h1>Today</h1></div></header>
+      <WakeSuggestion cards={cs} now={nowS} sleep={recs} onGoToBed={() => {}} onUndoBed={() => {}} onImUp={() => {}} onRate={() => {}} onEditTimes={() => {}} startOpen={which === 'sleep-card-edit' ? 'edit' : undefined} /></main><TabBar current="today" draftCount={0} /></>);
+  }
+  if (which === 'sleep-feedback') {
+    return (<><Today cards={[]} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><SleepFeedbackPreview /></>);
+  }
   if (which === 'incoming') {
     const n = new Date('2026-11-02T12:00:00+09:00');
     const at = (min: number) => new Date(n.getTime() + min * 60_000).toISOString();
@@ -246,4 +280,9 @@ export function PreviewApp() {
 /** Today with a fixed status and a fixed clock, so each state can be rendered. */
 function NexoShell({ status }: { status: NexoStatus }) {
   return <Today cards={FIXTURES} now={new Date('2026-11-02T12:00:00+09:00')} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} waiting={4} nexo={status} />;
+}
+
+function SleepFeedbackPreview() {
+  const rec: SleepRec = { night: '2026-11-05', bed: isoLocal(new Date('2026-11-05T23:44:31+09:00')), wake: isoLocal(new Date('2026-11-06T07:12:00+09:00')), rating: 4, factors: { screen: true, caffeine: true }, note: '' };
+  return <SleepFeedback rec={rec} wakeLog={{ minutes: 430, basis: 'travel', lead: 90 }} onSave={() => {}} onClose={() => {}} />;
 }
