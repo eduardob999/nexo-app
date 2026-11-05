@@ -413,7 +413,7 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .bubble.typing i:nth-child(2) { animation-delay: .15s; } .bubble.typing i:nth-child(3) { animation-delay: .3s; }
 @keyframes chat-dot { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .bubble.typing i { animation: none; opacity: .6; } }
-.chat-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--edge); background: var(--surface); color: var(--ink); display: grid; place-items: center; flex: none; text-decoration: none; }
+.chat-btn { height: 44px; padding: 0 14px; gap: 6px; border-radius: 22px; font-weight: 600; font-size: 15px; border: 1px solid var(--edge); background: var(--surface); color: var(--ink); display: flex; align-items: center; flex: none; text-decoration: none; white-space: nowrap; }
 /* The date line takes its own row so the controls (Mail, Call Nexo, chat) fit beside the title at 390px. */
 .top-wrap { flex-wrap: wrap; align-items: flex-end; row-gap: 0; }
 .top-wrap .kicker { flex: 0 0 100%; white-space: nowrap; }
@@ -421,3 +421,5 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .top-wrap .call { padding: 0 12px; gap: 6px; }
 .top-wrap .call-count { margin-left: 0; }
 .chat .qchips { flex-wrap: wrap; overflow-x: visible; }
+
+.top-wrap .call-wrap { flex: 0 0 100%; margin-top: 12px; justify-content: space-between; }
