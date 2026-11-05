@@ -1,15 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { calendarLabel, cardTag, placeLabel, placeUrl, priorityLabel } from './cardmeta';
+import { calendarLabel, cardTag, cardTags, holidayLine, placeLabel, placeUrl, priorityLabel } from './cardmeta';
 import type { Card } from './types';
 
 const c = (extra: Partial<Card>): Card => ({ id: 'x', status: 'open', for: 'you', ...extra });
 
 describe('cardTag', () => {
-  it('prefers an explicit type, then ask, then trip', () => {
+  it('prefers an explicit type, then a question, then trip, lane and date', () => {
     expect(cardTag(c({ type: 'info', ask: 'q?' }))).toBe('INFO');
     expect(cardTag(c({ ask: 'q?' }))).toBe('QUESTION');
+    expect(cardTag(c({ last: { by: 'nexo', text: 'Which day suits you?', ts: 'x' } }))).toBe('QUESTION');
+    expect(cardTag(c({ last: { by: 'nexo', text: 'Booked.', ts: 'x' }, due: '2026-11-05' }))).toBe('TASK');
     expect(cardTag(c({ trip: true }))).toBe('TRIP');
-    expect(cardTag(c({}))).toBeNull();
+    expect(cardTag(c({ for: 'nexo' }))).toBe('NEXO');
+    expect(cardTag(c({ due: '2026-11-05' }))).toBe('TASK');
+    expect(cardTag(c({}))).toBe('INFO');
+  });
+  it('wears none when finished or a relay mirror, and two on a trip with a question', () => {
+    expect(cardTag(c({ status: 'done', due: '2026-11-05' }))).toBeNull();
+    expect(cardTag(c({ relay: 'G-001' }))).toBeNull();
+    expect(cardTags(c({ trip: true, ask: 'q?' }))).toEqual(['QUESTION', 'TRIP']);
+    expect(cardTags(c({ trip: true, ask: 'q?', type: 'TRIP' }))).toEqual(['TRIP']);
+  });
+});
+
+describe('holidayLine', () => {
+  const day = new Date('2026-11-03T12:00:00+09:00');
+  it('says whether to go in, today or ahead', () => {
+    expect(holidayLine(c({ type: 'HOLIDAY', due: '2026-11-03' }), day)).toBe('Holiday today. You do not have to come to the lab.');
+    expect(holidayLine(c({ type: 'HOLIDAY', due: '2026-11-23' }), day)).toBe('Holiday. No lab that day.');
+    expect(holidayLine(c({ type: 'HOLIDAY', due: '2026-11-20', lab: 'confirm' }), day)).toBe('University break: no classes. Lab: confirm.');
+    expect(holidayLine(c({ type: 'HOLIDAY', due: '2026-11-01', dueEnd: '2026-11-04', lab: 'confirm' }), day)).toBe('University break today: no classes. Lab: confirm before going in.');
+    expect(holidayLine(c({ type: 'TASK', due: '2026-11-03' }), day)).toBeNull();
   });
 });
 

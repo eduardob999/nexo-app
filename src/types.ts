@@ -19,6 +19,8 @@ export interface Card {
   /** Set by the sync when he deletes the card; the record is kept in state.json but hidden everywhere. */
   deleted?: boolean;
   place?: string;
+  /** On a holiday card: `confirm` when classes are off but the lab may be open. */
+  lab?: string;
   /** `high` is the old board's Urgent flag; `normal`, `med` and `low` carry no queue meaning. */
   prio?: string;
   /** A question or decision Nexo has put to him. Present only while it is open. */
@@ -27,6 +29,11 @@ export interface Card {
   cal?: string | null;
   calEvent?: unknown;
   trip?: boolean;
+  /** Set on a card that mirrors a relay thread (a P- or G- card); it carries no type tag. */
+  relay?: string;
+  /** Set when he reopens a finished card. */
+  reopenedAt?: string;
+  doneAt?: string;
   /** Easy to miss: true always alerts 15 minutes before, false never, absent uses the heuristic. */
   incoming?: boolean;
   /** Personalised reply options Nexo wrote for this card. */
@@ -52,6 +59,7 @@ export interface CardFile {
   viewUrl?: string;
   driveId?: string;
   thumb?: string;
+  size?: number;
 }
 
 export interface Entry {

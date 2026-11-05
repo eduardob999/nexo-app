@@ -43,6 +43,23 @@ export function markDone(uid: string, id: string): Promise<void> {
   return batch.commit();
 }
 
+/** Put a finished card back on his list. Only that card; whatever it was tied to stays as it is. */
+export function reopenCard(uid: string, id: string): Promise<void> {
+  const at = new Date().toISOString();
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', id), { status: 'open', doneAt: deleteField(), reopenedAt: at });
+  intent(batch, uid, { type: 'reopen', cardId: id, at });
+  return batch.commit();
+}
+
+/** One card by id, open or done, so a finished card's thread can still be read. */
+export function watchCard(uid: string, id: string, on: (c: Card | null) => void): () => void {
+  return onSnapshot(doc(db, ...root(uid), 'cards', id), (snap) => {
+    const d = snap.data() as (Omit<Card, 'id'> & { deleted?: boolean }) | undefined;
+    on(d && !d.deleted ? { ...d, id: snap.id } : null);
+  }, () => on(null));
+}
+
 /** The "call Nexo" button: the listener on the loop's machine turns this write into a tick. */
 export function callNexo(uid: string): Promise<void> {
   return setDoc(doc(db, ...root(uid), 'meta', 'wake'), { at: serverTimestamp() });

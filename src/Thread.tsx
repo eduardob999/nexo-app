@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePersisted } from './persist';
 import { markSeen } from './seen';
 import type { Card, CardFile, Draft, Entry } from './types';
-import { calendarLabel, cardTag, placeLabel, placeUrl, priorityLabel } from './cardmeta';
+import { calendarLabel, cardTags, holidayLine, placeLabel, placeUrl, priorityLabel } from './cardmeta';
 import { Checklists } from './Checklists';
 import { Linkified } from './Linkified';
 import { TripTicket } from './TripTicket';
@@ -28,6 +28,8 @@ interface Props {
   onRemoveItem?: (itemId: string) => void;
   /** Delete the card (kept in the records, hidden everywhere). Asked twice before it runs. */
   onDelete?: () => void;
+  /** Put a finished card back on his list. */
+  onReopen?: () => void;
   /** Upload picked files to Drive and record them on the card. Resolves when all are done. */
   onAttach?: (files: File[]) => Promise<{ name: string; url: string }[] | void>;
 }
@@ -50,7 +52,7 @@ function incomingState(card: Card): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onIncoming = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onAttach }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onIncoming = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onReopen, onAttach }: Props) {
   const [attaching, setAttaching] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
@@ -105,13 +107,17 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         <button className="icon-btn" aria-label="Back" onClick={onBack}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>
         </button>
-        <span className="kicker">{dueText(card, now)}{cardTag(card) ? ` · ${cardTag(card)}` : ''}</span>
+        <span className="kicker">{dueText(card, now)}{cardTags(card).length ? ` · ${cardTags(card).join(' · ')}` : ''}</span>
       </header>
       <h1 className="thread-title">{card.title ?? card.id}</h1>
+      {holidayLine(card, now) ? <p className="row-hol thread-hol">{holidayLine(card, now)}</p> : null}
+      {card.status === 'done' ? (
+        <div className="done-note"><span>Done{card.doneAt ? ` ${stamp(card.doneAt)}` : ''}.</span>{onReopen ? <button className="chip-btn small" onClick={onReopen}>Reopen</button> : null}</div>
+      ) : null}
       <ul className="props">
         <li><Icon d="M4 5h16v15H4zM4 10h16M9 3v4M15 3v4" /><span>{dueText(card, now)}</span></li>
         {card.place ? <li><Icon d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11zM12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" />{placeLabel(card) ? <a href={placeUrl(card.place)} target="_blank" rel="noreferrer">{card.place} <span className="mut">open in Maps</span></a> : <span>{card.place}</span>}</li> : null}
-        {cardTag(card) ? <li><Icon d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01" /><span>{cardTag(card)}</span></li> : null}
+        {cardTags(card).length ? <li><Icon d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01" /><span>{cardTags(card).join(' · ')}</span></li> : null}
         <li><Icon d="M5 3v18M5 4h12l-2 4 2 4H5" /><button className="prio-btn" onClick={onPriority} aria-label={`Priority ${priorityLabel(card)}, tap to change`}>{priorityLabel(card)} <span className="mut">tap to change</span></button></li>
         <li><Icon d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 20a2 2 0 0 0 3.4 0" /><button className="prio-btn" onClick={() => onIncoming(card.incoming === undefined ? true : card.incoming ? false : null)} aria-label={`Alert 15 min before: ${incomingState(card)}, tap to change`}>Alert 15 min before <span className="mut">{incomingState(card)}</span></button></li>
         {calendarLabel(card) ? <li><Icon d="M4 5h16v15H4zM4 10h16M9 3v4M15 3v4M9 15l2 2 4-4" /><span>{calendarLabel(card)}</span></li> : null}
@@ -130,6 +136,19 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
               </figure>
             ))}
           </section>
+        ) : null;
+      })()}
+      {(() => {
+        const plain = withThumbs.filter((f) => !f.thumb);
+        return plain.length > 0 ? (
+          <div className="att-chips" aria-label="Files">
+            {plain.map((f) => {
+              const size = f.size ? (f.size >= 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`) : '';
+              const sub = [size, f.viewUrl ? 'Drive' : ''].filter(Boolean).join(' · ');
+              const body = <><b>{f.name ?? 'File'}</b>{sub ? <small>{sub}</small> : null}</>;
+              return f.viewUrl ? <a key={f.id} className="att-chip" href={f.viewUrl} target="_blank" rel="noreferrer">{body}</a> : <span key={f.id} className="att-chip">{body}</span>;
+            })}
+          </div>
         ) : null;
       })()}
       {card.plan ? <TripTicket plan={card.plan} /> : null}

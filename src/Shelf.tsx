@@ -11,6 +11,8 @@ interface Props {
   onArchive: (r: Resource, archived: boolean) => void;
   /** Delete the finished cards with these ids (kept in the records, hidden everywhere). */
   onClearDone?: (ids: string[]) => void;
+  /** Put a finished card back on his list. */
+  onReopen?: (card: Card) => void;
 }
 
 const KINDS = ['link', 'file', 'deck', 'paper', 'repo', 'doc'];
@@ -35,7 +37,7 @@ function ResourceRow({ r, onArchive }: { r: Resource; onArchive: Props['onArchiv
   );
 }
 
-export function Shelf({ done, closed, resources, onAdd, onArchive, onClearDone }: Props) {
+export function Shelf({ done, closed, resources, onAdd, onArchive, onClearDone, onReopen }: Props) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [note, setNote] = useState('');
@@ -80,7 +82,7 @@ export function Shelf({ done, closed, resources, onAdd, onArchive, onClearDone }
         <summary>Done <span className="mut">{finished.length}</span></summary>
         <ul className="res-list">
           {(more ? finished : finished.slice(0, 40)).map((c) => (
-            <li key={c.id} className="res done"><a href={`#/card/${c.id}`}>{c.title ?? c.id}</a></li>
+            <li key={c.id} className="res done"><a href={`#/card/${c.id}`}>{c.title ?? c.id}</a>{onReopen ? <button className="chip-btn small" onClick={() => onReopen(c)}>Reopen</button> : null}</li>
           ))}
         </ul>
         {finished.length > 40 && !more ? <button className="chip-btn" onClick={() => setMore(true)}>Show all {finished.length}</button> : null}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cardTag, placeLabel, placeUrl } from './cardmeta';
+import { cardTags, holidayLine, placeLabel, placeUrl } from './cardmeta';
 import { isHis, nexoSection, SECTION_LABEL, SECTION_ORDER } from './nexo';
 import { NexoPanel } from './NexoPanel';
 import { isNewCard } from './seen';
@@ -17,6 +17,8 @@ interface Props {
   fromCache: boolean;
   onDone: (card: Card) => void;
   onLater: (card: Card) => void;
+  /** Join the picked cards into one. Nothing is deleted: the originals are closed and point at the new card. */
+  onJoin?: ((cards: Card[]) => void) | undefined;
   onCallNexo: (mail?: boolean) => void;
   onWake?: () => void;
   lane?: 'you' | 'nexo';
@@ -66,27 +68,34 @@ function MailIcon() {
   );
 }
 
-function Row({ card, now, onDone, onLater, hasDraft, closeable = false }: { card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean; closeable?: boolean }) {
+type PickProps = { selecting: boolean; picked: boolean; onPick: (card: Card) => void };
+const NOPICK: PickProps = { selecting: false, picked: false, onPick: () => {} };
+
+function Row({ card, now, onDone, onLater, hasDraft, closeable = false, pick = NOPICK }: { card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean; closeable?: boolean; pick?: PickProps }) {
   const [open, setOpen] = useState(false);
   const band = bandOf(card, now);
   const title = card.title ?? card.id;
   const mins = band === 'incoming' ? minutesToStart(card, now) : null;
   const link = band === 'incoming' ? meetingLink(card) : null;
+  const hol = holidayLine(card, now);
   return (
-    <li className={`row band-${band}${isNewCard(card) ? ' is-new' : ''}`}>
-      <button className="ring" aria-label={`Mark done: ${title}`} onClick={() => onDone(card)} />
+    <li className={`row band-${band}${isNewCard(card) ? ' is-new' : ''}${pick.picked ? ' picked' : ''}`}>
+      {pick.selecting
+        ? <input type="checkbox" className="pickbox" checked={pick.picked} aria-label={`Select: ${title}`} onChange={() => pick.onPick(card)} />
+        : <button className="ring" aria-label={`Mark done: ${title}`} onClick={() => onDone(card)} />}
       <div className="row-body">
-        <button className="row-main" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <button className="row-main" aria-expanded={open} onClick={() => (pick.selecting ? pick.onPick(card) : setOpen(!open))}>
           <span className="row-title">{isNewCard(card) ? <i className="new-dot" aria-label="New message from Nexo" /> : null}{title}</span>
           <span className="row-meta">
-            {cardTag(card) ? <span className="tagchip">{cardTag(card)}</span> : null}
+            {cardTags(card).map((t) => <span key={t} className="tagchip">{t}</span>)}
             {mins !== null ? <span className="countdown">{countdownText(mins)}</span> : null}
             <CalendarIcon />{dueText(card, now)}
             {card.for === 'nexo' ? <span className="draft-flag">With Nexo</span> : null}
             {hasDraft ? <span className="draft-flag"><MailIcon />Draft</span> : null}
           </span>
           {card.ask ? <span className="row-ask"><b>Nexo asks</b> {card.ask}</span> : null}
-          {open && card.last && !card.ask ? (
+          {hol ? <span className="row-hol">{hol}</span> : null}
+          {card.last && !card.ask && (open || (card.entryCount ?? 0) >= 2) ? (
             <span className="row-last"><b>{card.last.by === 'eduardo' ? 'You' : 'Nexo'}</b> {card.last.text}</span>
           ) : null}
         </button>
@@ -114,7 +123,7 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
   return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, wake, onRecordWake, onAnswerWake }: Props) {
+export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, wake, onRecordWake, onAnswerWake }: Props) {
   const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane && !isHis(c))), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
@@ -127,6 +136,11 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
   const count = lane === 'nexo' ? mine.length : groups.reduce((n, g) => n + g.items.length, 0);
   const stamp = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
   const holiday = lane === 'you' ? todayHoliday(cards, now) : undefined;
+  const [selecting, setSelecting] = useState(false);
+  const [picks, setPicks] = useState<string[]>([]);
+  const togglePick = (c: Card) => setPicks((p) => (p.includes(c.id) ? p.filter((x) => x !== c.id) : [...p, c.id]));
+  const pickFor = (c: Card): PickProps => ({ selecting, picked: picks.includes(c.id), onPick: togglePick });
+  const stopSelecting = () => { setSelecting(false); setPicks([]); };
   const hidden = lane === 'you' ? mine.filter((c) => bandOf(c, now) === 'other').length : 0;
 
   return (
@@ -136,6 +150,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
           ? <i className="health-dot" role="img" aria-label="Nexo is online" title="Nexo is online" />
           : <span className={`health health-${nexo.health.state}`} title={nexo.health.note || undefined}> · {HEALTH_LABEL[nexo.health.state]}</span>) : null}</span>
         <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
+        {onJoin && count > 1 && !selecting ? <button className="chip-btn small sel-btn" onClick={() => setSelecting(true)}>Select</button> : null}
         <div className="deck">
           <div className={`call-split${mail ? ' mail-on' : ''}`}>
             <button className="call" onClick={press}
@@ -177,7 +192,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
             <section key={g.key}>
               <h2 className={`band-title sec-${g.key}`}>{SECTION_LABEL[g.key]} <span>{g.items.length}</span></h2>
               <ul className="rows">
-                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} closeable={g.key === 'close'} />)}
+                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} closeable={g.key === 'close'} pick={pickFor(c)} />)}
               </ul>
             </section>
           ))}
@@ -188,12 +203,19 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
             <section key={g.band}>
               <h2 className={`band-title band-${g.band}`}>{BAND_LABEL[g.band]} <span>{g.items.length}</span></h2>
               <ul className="rows">
-                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} />)}
+                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} pick={pickFor(c)} />)}
               </ul>
             </section>
           ))}
         </div>
       )}
+      {selecting ? (
+        <div className="join-bar" role="group" aria-label="Join cards">
+          <span>{picks.length === 0 ? 'Tick two or more cards that are one request' : `${picks.length} selected`}</span>
+          <button className="copy-main alt" disabled={picks.length < 2} onClick={() => { onJoin?.(mine.filter((c) => picks.includes(c.id))); stopSelecting(); }}>Join {picks.length >= 2 ? picks.length : ''}</button>
+          <button className="chip-btn" onClick={stopSelecting}>Cancel</button>
+        </div>
+      ) : null}
       {hidden > 0 ? <a className="more-link" href="#/upcoming">{hidden} more in Upcoming</a> : null}
     </main>
   );

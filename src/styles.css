@@ -496,3 +496,14 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .add-cl { justify-self: start; }
 .add-list .relay-answer { width: 100%; }
 .draft-more .chip-btn[aria-pressed='true'] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.row-hol { font-size: 14px; color: var(--muted); line-height: 1.35; }
+.pickbox { flex: none; width: 28px; height: 28px; margin: 0; accent-color: var(--accent); }
+.row.picked { background: var(--chip); }
+.top-wrap { position: relative; } .sel-btn { position: absolute; right: 0; top: 22px; }
+.join-bar { position: sticky; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 20; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 12px 12px 0; padding: 10px 14px; background: var(--surface); border: 1px solid var(--edge); border-radius: 16px; box-shadow: 0 6px 20px rgba(21, 23, 27, .12); }
+.join-bar span { flex: 1 1 100%; font-size: 14px; color: var(--muted); }
+.att-chips { margin: 14px 8px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.att-chip { display: inline-flex; flex-direction: column; max-width: 100%; padding: 8px 12px; border: 1px solid var(--edge); border-radius: 12px; background: var(--surface); text-decoration: none; color: var(--ink); font-size: 15px; font-weight: 500; }
+.att-chip small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.att-chip b { font-weight: 600; overflow-wrap: anywhere; }
+.done-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 8px 0; padding: 10px 14px; border-radius: 14px; background: var(--chip); font-size: 15px; }

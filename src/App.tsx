@@ -4,7 +4,7 @@ import { AddSheet } from './AddSheet';
 import type { WakeDoc } from './alarm';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -41,6 +41,14 @@ function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
   );
 }
 
+/** A card that is not among the open ones: read it directly, so a finished card's thread opens and can be reopened. */
+function ClosedThread({ uid, id, drafts, fromCache }: { uid: string; id: string; drafts: Draft[]; fromCache: boolean }) {
+  const [card, setCard] = useState<Card | null | undefined>(undefined);
+  useEffect(() => watchCard(uid, id, setCard), [uid, id]);
+  if (card) return <ThreadView uid={uid} card={card} drafts={drafts} />;
+  return <main className="screen center"><p className="notice">{card === undefined || fromCache ? 'Loading' : 'That card is closed or not found.'}</p><a className="chip-btn link" href="#/">Back</a></main>;
+}
+
 function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Draft[] }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   useEffect(() => watchEntries(uid, card.id, setEntries, (e) => console.warn('[entries]', e)), [uid, card.id]);
@@ -51,6 +59,7 @@ function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Dr
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }}
       onPriority={() => { void cyclePriority(uid, card); }} onIncoming={(v) => { void setIncoming(uid, card, v); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} onRemoveItem={(id) => { void removeItem(uid, card, id); }}
+      onReopen={() => { void reopenCard(uid, card.id); flash('Reopened'); }}
       onDelete={() => { void deleteCard(uid, card.id); window.location.hash = '#/'; flash('Card deleted'); }}
       onAttach={async (files) => { const done: { name: string; url: string }[] = []; for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); done.push({ name: up.name, url: up.viewUrl }); } flash('Attached'); return done; }} />
   );
@@ -181,11 +190,7 @@ export function App() {
   }
 
   if (route.name === 'card') {
-    return card ? (
-      <ThreadView uid={user.uid} card={card} drafts={drafts} />
-    ) : (
-      <main className="screen center"><p className="notice">{fromCache ? 'Loading' : 'That card is closed or not found.'}</p><a className="chip-btn link" href="#/">Back</a></main>
-    );
+    return card ? <ThreadView uid={user.uid} card={card} drafts={drafts} /> : <ClosedThread uid={user.uid} id={route.id} drafts={drafts} fromCache={fromCache} />;
   }
 
   const tab = route.name;
@@ -211,6 +216,7 @@ export function App() {
       ) : tab === 'shelf' ? (
         <Shelf done={doneCards} closed={closedRelays} resources={resources}
           onAdd={(r) => { void addResource(user.uid, r); }} onArchive={(r, a) => { void archiveResource(user.uid, r, a); }}
+          onReopen={(c) => { void reopenCard(user.uid, c.id); flash('Reopened'); }}
           onClearDone={(ids) => { void clearDoneCards(user.uid, ids); flash(`Cleared ${ids.length} done cards`); }} />
       ) : tab === 'search' ? (
         <Search cards={cards} now={new Date()} />
@@ -239,7 +245,7 @@ export function App() {
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info} wake={wake}
           onRecordWake={(d, r) => { void recordWake(user.uid, d, r); }} onAnswerWake={(d, r, f, p) => { void answerWake(user.uid, d, r, f, p); flash('Thanks, noted'); }}
           relays={relays} onAnswerRelay={(r, t) => { void answerRelay(user.uid, r, t); }} onCloseRelay={(r) => { void closeRelay(user.uid, r); }}
-          onDone={done} onLater={later} onCallNexo={(mail) => { void callNexo(user.uid); if (mail) void requestMailCheck(user.uid); flash(mail ? 'Nexo called, mail check included' : 'Nexo called'); }} onWake={() => { void setSleep(user.uid, null); }} />
+          onDone={done} onLater={later} onJoin={(cs) => { void joinCards(user.uid, cs).then(() => flash(`Joined ${cs.length} cards`)); }} onCallNexo={(mail) => { void callNexo(user.uid); if (mail) void requestMailCheck(user.uid); flash(mail ? 'Nexo called, mail check included' : 'Nexo called'); }} onWake={() => { void setSleep(user.uid, null); }} />
       )}
       {tab === 'today' ? (
         <button className="fab" aria-label="Add a task" onClick={() => setAdding(true)}>

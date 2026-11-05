@@ -96,6 +96,16 @@ export function PreviewApp() {
     const bare: Card = { ...(FIXTURES[3] as Card) };
     return <Thread card={bare} entries={ENTRIES} drafts={[]} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} />;
   }
+  if (which === 'join') {
+    const cs: Card[] = [...FIXTURES, { id: 'hl', status: 'open', for: 'you', type: 'HOLIDAY', lab: 'confirm', title: 'University break: November Festival', due: '2026-11-02', dueEnd: '2026-11-04' }];
+    return (<><Today cards={cs} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onJoin={() => {}} onCallNexo={() => {}} withDraft={new Set(['b'])} info={INFO} /><TabBar current="today" draftCount={0} /></>);
+  }
+  if (which === 'thread-done') {
+    const done: Card = { ...(FIXTURES[2] as Card), status: 'done', doneAt: '2026-11-02T09:30:00+09:00', files: [
+      { id: 'q1', name: 'lease-form-signed.pdf', type: 'application/pdf', size: 482_000, viewUrl: 'https://example.org/lease.pdf' },
+      { id: 'q2', name: 'residence-card-copy.pdf', type: 'application/pdf', size: 1_900_000 }] };
+    return <Thread card={done} entries={ENTRIES} drafts={[]} now={NOW} onBack={() => {}} onReply={() => {}} onReopen={() => {}} />;
+  }
   if (which === 'window') {
     return <Thread card={{ ...card, due: '2026-11-05T17:00:00+09:00', dueEnd: '18:00' }} entries={ENTRIES} drafts={[]} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} />;
   }
