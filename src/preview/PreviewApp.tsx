@@ -92,6 +92,10 @@ export function PreviewApp() {
   if (which === 'thread') {
     return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} onRemoveItem={() => {}} />;
   }
+  if (which === 'checklist-none') {
+    const bare: Card = { ...(FIXTURES[3] as Card) };
+    return <Thread card={bare} entries={ENTRIES} drafts={[]} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} />;
+  }
   if (which === 'window') {
     return <Thread card={{ ...card, due: '2026-11-05T17:00:00+09:00', dueEnd: '18:00' }} entries={ENTRIES} drafts={[]} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} />;
   }

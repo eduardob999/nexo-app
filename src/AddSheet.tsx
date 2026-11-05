@@ -5,9 +5,10 @@ import { addPicked, removePicked } from './addfiles';
 import { usePersisted } from './persist';
 import { parseQuickAdd } from './parse';
 import { dueText } from './urgency';
+import { checklistLines } from './checklistlines';
 
 interface Props {
-  onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low', files: File[]) => void;
+  onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low', files: File[], lines: string[]) => void;
   /** Preview only: files already chosen. */
   initialFiles?: File[];
   onClose: () => void;
@@ -33,6 +34,8 @@ export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
   const [files, setFiles] = useState<File[]>(initialFiles);
   const [drive, setDrive] = useState(driveReady());
   const [msg, setMsg] = useState('');
+  const [listOn, setListOn] = useState(false);
+  const [list, setList] = useState('');
   const urls = useMemo(() => files.map((f) => (f.type.startsWith('image/') ? URL.createObjectURL(f) : '')), [files]);
   useEffect(() => () => urls.forEach((u) => { if (u) URL.revokeObjectURL(u); }), [urls]);
   const pick = (list: FileList | File[] | null) => {
@@ -52,7 +55,7 @@ export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
     if (!parsed.title) return;
     // The text is spent once the card exists, so it must not come back the next time the sheet opens.
     setText('');
-    onAdd(parsed.title, forWho, parsed.due, prio, files);
+    onAdd(parsed.title, forWho, parsed.due, prio, files, listOn ? checklistLines(list) : []);
     onClose();
   };
   return (
@@ -78,6 +81,12 @@ export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
             <button type="button" key={v} aria-pressed={prio === v} onClick={() => setPrio(v)}>{label}</button>
           ))}
         </div>
+        {listOn ? (
+          <div className="add-list">
+            <label className="sr" htmlFor="add-list">Checklist, one item per line</label>
+            <textarea id="add-list" className="relay-answer" rows={3} placeholder="Checklist, one item per line" value={list} onChange={(e) => setList(e.target.value)} />
+          </div>
+        ) : null}
         {files.length > 0 ? (
           <ul className="add-files" aria-label="Chosen files">
             {files.map((f, i) => (
@@ -89,6 +98,7 @@ export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
           </ul>
         ) : null}
         <div className="draft-more">
+          <button type="button" className="chip-btn small" aria-pressed={listOn} onClick={() => setListOn(!listOn)}>Checklist</button>
           {drive ? (
             <>
               <label className="chip-btn small">Take a photo<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pick(e.target.files); e.target.value = ''; }} /></label>

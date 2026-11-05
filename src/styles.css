@@ -493,3 +493,6 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .rc-chip { display: inline-block; margin-top: 2px; padding: 1px 8px; border-radius: 10px; font-size: 12px; background: var(--today-tint); color: var(--today); }
 .rc-table tfoot td { color: var(--muted); }
 .rc-table tfoot tr.strong td { color: var(--ink); font-weight: 700; }
+.add-cl { justify-self: start; }
+.add-list .relay-answer { width: 100%; }
+.draft-more .chip-btn[aria-pressed='true'] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }

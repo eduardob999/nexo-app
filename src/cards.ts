@@ -1,6 +1,7 @@
 import { applyFeedback, type WakeDoc, type WakeFeedback, type WakePrefs, type WakeRecord } from './alarm';
 import { arrayUnion, collection, deleteField, doc, documentId, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
+import { checklistLines } from './checklistlines';
 import type { DraftAttachment, Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 import { sortChat, type ChatMsg } from './chatlogic';
@@ -98,7 +99,7 @@ export function newCardId(now = new Date()): string {
  * one made without a date lands on today; the entry count and last entry are
  * written with it so a list never needs the entries subcollection.
  */
-export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null, prio: 'high' | 'normal' | 'low' = 'normal', cardId?: string): Promise<void> {
+export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null, prio: 'high' | 'normal' | 'low' = 'normal', cardId?: string, lines: string[] = []): Promise<void> {
   const now = new Date();
   const ts = now.toISOString();
   const id = cardId ?? newCardId(now);
@@ -106,12 +107,14 @@ export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?:
   const entry = { by: 'eduardo', text, ts };
   const when = due ?? todayYmd(now);
   const batch = writeBatch(db);
+  // A checklist typed with the card travels with the add intent, so no later intent can arrive before the card exists.
+  const items = checklistLines(lines).map((t, i) => ({ id: `it${now.getTime().toString(36)}${i}`, text: t, done: false }));
   batch.set(doc(db, ...root(uid), 'cards', id), {
     status: 'open', for: forWho, type: 'TASK', title: text, due: when, ts, prio,
-    entryCount: 1, last: entry, hasEntries: true,
+    entryCount: 1, last: entry, hasEntries: true, ...(items.length ? { items } : {}),
   });
   batch.set(doc(db, ...root(uid), 'cards', id, 'entries', entryId), entry);
-  intent(batch, uid, { type: 'add', cardId: id, text, for: forWho, due: when, ts, entryId, prio });
+  intent(batch, uid, { type: 'add', cardId: id, text, for: forWho, due: when, ts, entryId, prio, ...(items.length ? { items: items.map(({ id: iid, text: t }) => ({ id: iid, text: t })) } : {}) });
   return batch.commit();
 }
 

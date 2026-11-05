@@ -248,7 +248,7 @@ export function App() {
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
         browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
-      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id).then(() => uploadNewCardFiles(user.uid, id, files)); }} /> : null}
+      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files, lines) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id, lines).then(() => uploadNewCardFiles(user.uid, id, files)); }} /> : null}
     </>
   );
 }

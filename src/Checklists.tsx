@@ -29,7 +29,11 @@ export function Checklists({ card, onBring, onItem, onAdd, onRemove }: Props) {
   const items = Array.isArray(card.items) ? card.items.filter((x) => !x.deleted) : null;
   const bringDone = bring.filter((b) => b.got).length;
   const itemsDone = (items ?? []).filter((x) => x.done).length;
-  if (bring.length === 0 && items === null) return null;
+  const [started, setStarted] = useState(false);
+  // A card with no list yet offers to start one; the first item added creates it.
+  if (bring.length === 0 && items === null && !started) {
+    return card.status === 'open' ? <button type="button" className="chip-btn add-cl" onClick={() => setStarted(true)}>Add checklist</button> : null;
+  }
   return (
     <>
       {bring.length > 0 ? (
@@ -44,13 +48,13 @@ export function Checklists({ card, onBring, onItem, onAdd, onRemove }: Props) {
           </ul>
         </details>
       ) : null}
-      {items !== null ? (
+      {items !== null || started ? (
         <div className="checklist">
-          {items.length > 0 ? (
+          {(items ?? []).length > 0 ? (
             <>
-              <div className="clhead"><span className="blabel">Checklist</span><span className="bcount">{itemsDone}/{items.length}</span><Bar done={itemsDone} total={items.length} /></div>
+              <div className="clhead"><span className="blabel">Checklist</span><span className="bcount">{itemsDone}/{(items ?? []).length}</span><Bar done={itemsDone} total={(items ?? []).length} /></div>
               <ul className="clist">
-                {items.map((x) => (
+                {(items ?? []).map((x) => (
                   <li key={x.id} className={x.done ? 'citem done' : 'citem'}>
                     <label><input type="checkbox" checked={Boolean(x.done)} onChange={(e) => onItem(x.id, e.target.checked)} /><span>{x.text}</span></label>
                     {onRemove ? <ConfirmButton label="×" armedLabel="Remove?" ariaLabel={`Remove ${x.text}`} className="item-x" onConfirm={() => onRemove(x.id)} /> : null}
@@ -61,7 +65,7 @@ export function Checklists({ card, onBring, onItem, onAdd, onRemove }: Props) {
           ) : null}
           <form className="cladd" onSubmit={(e) => { e.preventDefault(); if (text.trim()) { onAdd(text.trim()); setText(''); } }}>
             <label className="sr" htmlFor={`ci-${card.id}`}>Add an item</label>
-            <input id={`ci-${card.id}`} className="search-input" placeholder="Add an item" value={text} onChange={(e) => setText(e.target.value)} />
+            <input id={`ci-${card.id}`} className="search-input" placeholder="Add an item" autoFocus={started && items === null} value={text} onChange={(e) => setText(e.target.value)} />
             <button type="submit" className="chip-btn" disabled={!text.trim()}>Add</button>
           </form>
         </div>
