@@ -52,7 +52,9 @@ function startOf(card: Card, tomorrow: string): number | null {
   const due = card.due ?? '';
   if (due.length <= 10 || due.slice(0, 10) !== tomorrow) return null;
   const at = hm(due.slice(11, 16));
-  if (at === null) return null;
+  // 00:00 is how a deadline "by the end of the day" is stored, and a report to submit online is not something
+  // he has to be awake early for: neither is an event with a start time.
+  if (at === null || at === 0 || (card.type ?? '').toUpperCase() === 'ASSIGNMENT') return null;
   const leave = hm(card.plan?.out?.leave);
   return leave !== null && leave <= at ? leave : at;
 }

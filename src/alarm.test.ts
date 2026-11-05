@@ -56,3 +56,14 @@ describe('applyFeedback', () => {
     expect(applyFeedback({ ...DEFAULT_PREFS, leadTravel: 175 }, 'travel', 'late').leadTravel).toBe(180);
   });
 });
+
+describe('suggestWake ignores deadlines', () => {
+  it('a midnight deadline and an assignment do not set the wake-up time', () => {
+    const now = new Date('2026-11-05T20:00:00+09:00');
+    const cards = [
+      { id: 'a', status: 'open', title: 'Report', due: '2026-11-06T00:00:00+09:00' },
+      { id: 'b', status: 'open', title: 'Homework', type: 'ASSIGNMENT', due: '2026-11-06T06:00:00+09:00' },
+    ] as never[];
+    expect(suggestWake(cards, now).basis).toBe('usual');
+  });
+});
