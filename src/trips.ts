@@ -6,6 +6,12 @@ export function isTrip(card: Card): boolean {
 
 const DAY = 86_400_000;
 
+/** Finished trips, most recent first, for the Past fold. */
+export function pastTrips(done: Card[]): Card[] {
+  const t = (c: Card) => Date.parse(c.due ? (c.due.length <= 10 ? `${c.due}T12:00:00` : c.due) : '') || 0;
+  return done.filter((c) => isTrip(c) && !c.deleted).sort((a, b) => t(b) - t(a));
+}
+
 /**
  * Open trips by how close they are. The old board folded a trip until it was imminent so the list stays
  * clean; the same line: soon is up to three days out, everything after that is Later. A trip with no date

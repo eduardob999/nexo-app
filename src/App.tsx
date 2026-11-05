@@ -4,7 +4,7 @@ import { AddSheet } from './AddSheet';
 import type { WakeDoc } from './alarm';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addAlloc, addCard, attachFile, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -49,7 +49,8 @@ function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Dr
     <Thread card={card} entries={entries} pics={pics} drafts={drafts} now={new Date()}
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }}
-      onPriority={() => { void cyclePriority(uid, card); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }}
+      onPriority={() => { void cyclePriority(uid, card); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} onRemoveItem={(id) => { void removeItem(uid, card, id); }}
+      onDelete={() => { void deleteCard(uid, card.id); window.location.hash = '#/'; flash('Card deleted'); }}
       onAttach={async (files) => { const done: { name: string; url: string }[] = []; for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); done.push({ name: up.name, url: up.viewUrl }); } flash('Attached'); return done; }} />
   );
 }
@@ -144,6 +145,11 @@ export function App() {
   }, [user, onNotes]);
 
   const onShelf = route.name === 'shelf';
+  const onTrips = route.name === 'trips';
+  useEffect(() => {
+    if (!user || !onTrips) return undefined;
+    return watchDoneCards(user.uid, setDoneCards, (e) => console.warn('[trips]', e));
+  }, [user, onTrips]);
   useEffect(() => {
     if (!user || !onShelf) return undefined;
     const warn = (e: Error) => console.warn('[shelf]', e);
@@ -184,14 +190,18 @@ export function App() {
       {tab === 'money' ? (
         <Money allocations={allocs} onAdd={(a) => { void addAlloc(user.uid, a); }} onToggle={(a) => { void toggleAlloc(user.uid, a); }}
           onEdit={(a, c) => { void editAlloc(user.uid, a, c); }} onRepeat={(a) => { void repeatAlloc(user.uid, a); }} onSeed={(m) => { void seedAllocMonth(user.uid, m); }}
-          market={market} receipts={receipts} onLog={(i) => { void logPurchase(user.uid, i); }} onAddItem={(n) => { void addMarketItem(user.uid, n); }} onReceipt={(r) => { void addReceipt(user.uid, r); }} />
+          market={market} receipts={receipts} onLog={(i) => { void logPurchase(user.uid, i); }} onAddItem={(n) => { void addMarketItem(user.uid, n); }} onReceipt={(r) => { void addReceipt(user.uid, r); }}
+          onUndo={(id) => { if (market) void undoPurchase(user.uid, market, id); }} onDeleteReceipt={(r) => { void deleteReceipt(user.uid, r.id); flash('Receipt deleted'); }}
+          watchPhotos={(id, on) => watchReceiptFiles(user.uid, id, on)}
+          onAttachReceipt={async (r, files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(user.uid, { receiptId: r.id }, up, thumb); } flash('Photo attached'); }} />
       ) : tab === 'notes' ? (
-        <Notes memos={memos} onKeep={(t, g) => { void addMemo(user.uid, t, g); }} />
+        <Notes memos={memos} onKeep={(t, g) => { void addMemo(user.uid, t, g); }} onDelete={(m) => { void deleteMemo(user.uid, m.id); flash('Note deleted'); }} />
       ) : tab === 'trips' ? (
-        <Trips cards={cards} now={new Date()} />
+        <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (
         <Shelf done={doneCards} closed={closedRelays} resources={resources}
-          onAdd={(r) => { void addResource(user.uid, r); }} onArchive={(r, a) => { void archiveResource(user.uid, r, a); }} />
+          onAdd={(r) => { void addResource(user.uid, r); }} onArchive={(r, a) => { void archiveResource(user.uid, r, a); }}
+          onClearDone={(ids) => { void clearDoneCards(user.uid, ids); flash(`Cleared ${ids.length} done cards`); }} />
       ) : tab === 'search' ? (
         <Search cards={cards} now={new Date()} />
       ) : tab === 'upcoming' ? (

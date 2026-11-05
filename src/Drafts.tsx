@@ -1,3 +1,4 @@
+import { ConfirmButton } from './ConfirmButton';
 import { useState } from 'react';
 import type { Draft, NexoStatus } from './types';
 
@@ -128,7 +129,7 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
           <p className="need">Needs from you: {draft.need ?? 'more information'}</p>
           <div className="draft-more">
             <button className="chip-btn small" onClick={() => open('edit')}>Write it</button>
-            <button className="chip-btn small" onClick={() => onDiscard(draft.id)}>Discard</button>
+            <ConfirmButton label="Discard" onConfirm={() => onDiscard(draft.id)} />
           </div>
         </>
       ) : (
@@ -151,7 +152,7 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
             {revising ? null : <button className="chip-btn small" onClick={() => open('revise')}>Ask Nexo to revise</button>}
             {draft.subject ? <CopyChip label="Copy subject" text={draft.subject} /> : null}
             {to ? <CopyChip label="Copy address" text={to} /> : null}
-            <button className="chip-btn small" onClick={() => onDiscard(draft.id)}>Discard</button>
+            <ConfirmButton label="Discard" onConfirm={() => onDiscard(draft.id)} />
           </div>
         </>
       )}

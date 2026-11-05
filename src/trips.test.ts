@@ -17,3 +17,16 @@ describe('tripGroups', () => {
     expect(g.later.map((x) => x.id)).toEqual(['far']);
   });
 });
+
+describe('pastTrips', () => {
+  it('lists finished trips newest first and leaves out deleted ones', async () => {
+    const { pastTrips } = await import('./trips');
+    const done = [
+      c('old', { status: 'done', due: '2026-10-01' }),
+      c('new', { status: 'done', due: '2026-10-20T09:00' }),
+      c('gone', { status: 'done', due: '2026-10-25', deleted: true }),
+      { id: 'plain', status: 'done', for: 'you', due: '2026-10-30' } as Card,
+    ];
+    expect(pastTrips(done).map((x) => x.id)).toEqual(['new', 'old']);
+  });
+});

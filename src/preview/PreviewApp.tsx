@@ -66,11 +66,17 @@ const WORKING: NexoStatus = {
   ],
 };
 
+// A flat grey-blue square standing in for a photographed receipt.
+const PHOTO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#b9c4d6"/><rect x="22" y="14" width="52" height="68" fill="#fff"/><path d="M30 28h36M30 38h36M30 48h24" stroke="#889" stroke-width="3"/></svg>')}`;
+
 export function PreviewApp() {
   const which = window.location.hash.replace('#/preview', '').replace(/^\//, '');
   const card = { ...(FIXTURES[2] as Card), bring: [{ t: 'Signed lease form', got: true }, { t: 'Residence card' }, { t: 'Pen' }], items: [{ id: 'i1', text: 'Ask about the deposit', done: false }], ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
   if (which === 'thread') {
-    return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} />;
+    return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} onRemoveItem={() => {}} />;
+  }
+  if (which === 'window') {
+    return <Thread card={{ ...card, due: '2026-11-05T17:00:00+09:00', dueEnd: '18:00' }} entries={ENTRIES} drafts={[]} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} />;
   }
   if (which === 'chat' || which === 'chat-empty') {
     const at = (min: number) => new Date(new Date('2026-11-05T09:00:00+09:00').getTime() + min * 60_000).toISOString();
@@ -105,12 +111,12 @@ export function PreviewApp() {
       { id: '3', label: 'Carla (debt)', amount: 5500, done: false, month, tag: 'Carla' },
       { id: '4', label: 'Motorcycle lessons', amount: 11000, done: false, month, recurring: false },
       { id: '5', label: 'Old', amount: 9000, done: true, month: '2026-09' }]}
-      onLog={() => {}} onAddItem={() => {}} onReceipt={() => {}}
+      onLog={() => {}} onAddItem={() => {}} onReceipt={() => {}} onUndo={() => {}} onDeleteReceipt={() => {}} onAttachReceipt={async () => {}} watchPhotos={(_id, on) => { on([{ id: 'p1', thumb: PHOTO }]); return () => {}; }}
       market={{ items: [{ id: 'a', name: 'Rice' }, { id: 'b', name: 'Eggs' }, { id: 'c', name: 'Milk' }], log: [{ id: 'l1', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 3 * 3_600_000).toISOString() }, { id: 'l2', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 2 * 86_400_000).toISOString() }] }}
-      receipts={[{ id: 'r1', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: new Date().toISOString() }, { id: 'r2', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: new Date().toISOString() }, { id: 'r3', amount: 439, cat: 'food', vendor: 'Shop (granola)', ts: new Date().toISOString() }, { id: 'r4', amount: 120, cat: 'supplies', vendor: 'Daiso (bag)', ts: new Date().toISOString() }]} /><TabBar current="browse" draftCount={0} /></>);
+      receipts={[{ id: 'r1', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: new Date().toISOString(), files: [{ id: 'p1', name: 'receipt.jpg', viewUrl: 'https://example.org' }] }, { id: 'r2', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: new Date().toISOString() }, { id: 'r3', amount: 439, cat: 'food', vendor: 'Shop (granola)', ts: new Date().toISOString() }, { id: 'r4', amount: 120, cat: 'supplies', vendor: 'Daiso (bag)', ts: new Date().toISOString() }]} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'notes') {
-    return (<><Notes onKeep={() => {}} memos={[
+    return (<><Notes onKeep={() => {}} onDelete={() => {}} memos={[
       { id: 'a', text: 'Try the gradient trick from the OFDFT paper on the small system first.', tags: ['research'], ts: '2026-11-03T10:00:00Z' },
       { id: 'b', text: 'Kanji for medicine words come up in every lecture: drill them.', tags: ['japan', 'study'], ts: '2026-11-02T10:00:00Z' },
       { id: 'c', text: 'Ask about the second seminar slot.', tags: ['research'], ts: '2026-11-01T10:00:00Z' },
@@ -121,14 +127,14 @@ export function PreviewApp() {
       plan: { from: 'Home', to: 'The dojo', why: 'Guide shift, ends about 11:00 (end time assumed).',
         out: { leave: '08:50', from: 'Home (Uji)', arrive: '09:45', to: 'The dojo, behind the shrine', legs: [{ t: '08:50', txt: 'Keihan Uji line, change at Chushojima to an express', dur: 'about 45 min' }, { t: '09:45', txt: 'Gion-Shijo, exit 6, walk about 8 min' }] },
         back: { leave: '11:00', arrive: 'about 12:00', txt: 'Keihan back to Uji.' }, know: ['Arrive 15 min before the start.'], est: 'Trains and walk are estimates.' } };
-    return (<><Trips cards={[trip, { ...trip, id: 't2', title: 'Later trip', due: '2026-11-20T10:00:00+09:00' }]} now={NOW} /><TabBar current="browse" draftCount={0} /></>);
+    return (<><Trips cards={[trip, { ...trip, id: 't2', title: 'Later trip', due: '2026-11-20T10:00:00+09:00' }]} now={NOW} done={[{ ...trip, id: 'p1', status: 'done', title: 'Trip to Osaka for the visa office', due: '2026-10-28T09:00:00+09:00' }]} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'shelf') {
     return (<><Shelf
       done={[{ id: 'x1', status: 'done', for: 'you', title: 'Renew the library card' }, { id: 'x2', status: 'done', for: 'you', title: 'Pay the electricity bill' }]}
       closed={[{ id: 'P-011', status: 'closed', topic: 'Driving test day logistics' }]}
       resources={[{ id: 'a', kind: 'deck', title: 'Whiteboard, one slide', url: 'https://example.org/deck', note: 'The version for the meeting.' }, { id: 'b', kind: 'file', title: 'Residence card scan', url: '/home/me/docs/card.pdf' }, { id: 'c', kind: 'link', title: 'Old link', url: 'https://example.org', archived: true }]}
-      onAdd={() => {}} onArchive={() => {}} /><TabBar current="browse" draftCount={0} /></>);
+      onAdd={() => {}} onArchive={() => {}} onClearDone={() => {}} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'nexolane') {
     const mk = (id: string, title: string, last: string, extra: Partial<Card> = {}): Card => ({ id, status: 'open', for: 'nexo', title, last: { by: 'nexo', text: last, ts: '2026-11-02T10:00:00+09:00' }, ...extra });

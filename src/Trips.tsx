@@ -1,5 +1,5 @@
 import { dueText } from './urgency';
-import { tripGroups } from './trips';
+import { pastTrips, tripGroups } from './trips';
 import { TripTicket } from './TripTicket';
 import type { Card } from './types';
 
@@ -15,8 +15,9 @@ function TripRow({ card, now }: { card: Card; now: Date }) {
   );
 }
 
-export function Trips({ cards, now }: { cards: Card[]; now: Date }) {
+export function Trips({ cards, now, done = [] }: { cards: Card[]; now: Date; done?: Card[] }) {
   const g = tripGroups(cards, now);
+  const past = pastTrips(done);
   return (
     <main className="screen">
       <header className="top"><div><span className="kicker">{g.soon.length + g.later.length} OPEN</span><h1>Trips</h1></div></header>
@@ -25,6 +26,11 @@ export function Trips({ cards, now }: { cards: Card[]; now: Date }) {
       {g.later.length ? (
         <details className="shelf-fold"><summary>Later <span className="mut">{g.later.length}</span></summary>
           <ul className="trips">{g.later.map((c) => <TripRow key={c.id} card={c} now={now} />)}</ul>
+        </details>
+      ) : null}
+      {past.length ? (
+        <details className="shelf-fold"><summary>Past <span className="mut">{past.length}</span></summary>
+          <ul className="trips">{past.slice(0, 30).map((c) => <TripRow key={c.id} card={c} now={now} />)}</ul>
         </details>
       ) : null}
     </main>

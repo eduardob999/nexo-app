@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmButton } from './ConfirmButton';
 import type { Card } from './types';
 
 interface Props {
@@ -6,6 +7,7 @@ interface Props {
   onBring: (index: number, got: boolean) => void;
   onItem: (itemId: string, done: boolean) => void;
   onAdd: (text: string) => void;
+  onRemove?: ((itemId: string) => void) | undefined;
 }
 
 /** "Bring" on a dated card, "Steps" otherwise, unless the card names its own heading. */
@@ -21,10 +23,10 @@ function Bar({ done, total }: { done: number; total: number }) {
  * The two checklists a card can carry. Ticking all of "Bring" reads as finished and closes nothing: closing
  * stays a deliberate act. `items` is a free list that can grow in the shop aisle, so it has its own add row.
  */
-export function Checklists({ card, onBring, onItem, onAdd }: Props) {
+export function Checklists({ card, onBring, onItem, onAdd, onRemove }: Props) {
   const [text, setText] = useState('');
   const bring = card.bring ?? [];
-  const items = Array.isArray(card.items) ? card.items : null;
+  const items = Array.isArray(card.items) ? card.items.filter((x) => !x.deleted) : null;
   const bringDone = bring.filter((b) => b.got).length;
   const itemsDone = (items ?? []).filter((x) => x.done).length;
   if (bring.length === 0 && items === null) return null;
@@ -51,6 +53,7 @@ export function Checklists({ card, onBring, onItem, onAdd }: Props) {
                 {items.map((x) => (
                   <li key={x.id} className={x.done ? 'citem done' : 'citem'}>
                     <label><input type="checkbox" checked={Boolean(x.done)} onChange={(e) => onItem(x.id, e.target.checked)} /><span>{x.text}</span></label>
+                    {onRemove ? <ConfirmButton label="×" armedLabel="Remove?" ariaLabel={`Remove ${x.text}`} className="item-x" onConfirm={() => onRemove(x.id)} /> : null}
                   </li>
                 ))}
               </ul>

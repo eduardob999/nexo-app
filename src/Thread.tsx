@@ -7,6 +7,7 @@ import { Checklists } from './Checklists';
 import { Linkified } from './Linkified';
 import { TripTicket } from './TripTicket';
 import { dueText } from './urgency';
+import { ConfirmButton } from './ConfirmButton';
 import { connectDrive, driveReady } from './drive';
 
 interface Props {
@@ -22,6 +23,9 @@ interface Props {
   onBring?: (index: number, got: boolean) => void;
   onItem?: (itemId: string, done: boolean) => void;
   onAddItem?: (text: string) => void;
+  onRemoveItem?: (itemId: string) => void;
+  /** Delete the card (kept in the records, hidden everywhere). Asked twice before it runs. */
+  onDelete?: () => void;
   /** Upload picked files to Drive and record them on the card. Resolves when all are done. */
   onAttach?: (files: File[]) => Promise<{ name: string; url: string }[] | void>;
 }
@@ -38,7 +42,7 @@ export function stamp(ts: string): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onAttach }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onAttach }: Props) {
   const [attaching, setAttaching] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
@@ -120,7 +124,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         ) : null;
       })()}
       {card.plan ? <TripTicket plan={card.plan} /> : null}
-      <div className="cl-wrap"><Checklists card={card} onBring={onBring} onItem={onItem} onAdd={onAddItem} /></div>
+      <div className="cl-wrap"><Checklists card={card} onBring={onBring} onItem={onItem} onAdd={onAddItem} onRemove={onRemoveItem} /></div>
 
       <ol className="bubbles">
         {entries.map((e) => {
@@ -137,6 +141,8 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         })}
       </ol>
       {mine.length > 0 ? <a className="draft-link" href="#/drafts">Open the draft{mine.length > 1 ? 's' : ''}</a> : null}
+
+      {onDelete ? <div className="thread-foot"><ConfirmButton label="Delete card" armedLabel="Tap again to delete" className="chip-btn small" onConfirm={onDelete} /></div> : null}
 
       <div className="reply-bar" ref={barRef}>
         {card.ask ? (

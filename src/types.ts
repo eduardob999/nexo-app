@@ -14,6 +14,10 @@ export interface Card {
   type?: string;
   /** ISO date or date-time. */
   due?: string | null;
+  /** End of an hour window (HH:MM or an ISO time), or the last day of a multi-day card (a date). */
+  dueEnd?: string | null;
+  /** Set by the sync when he deletes the card; the record is kept in state.json but hidden everywhere. */
+  deleted?: boolean;
   place?: string;
   /** `high` is the old board's Urgent flag; `normal`, `med` and `low` carry no queue meaning. */
   prio?: string;
@@ -30,7 +34,7 @@ export interface Card {
   /** Things to bring and a plan: either marks a card as needing preparation. */
   bring?: { t: string; got?: boolean }[];
   bringAs?: string;
-  items?: { id: string; text: string; done?: boolean }[];
+  items?: { id: string; text: string; done?: boolean; deleted?: boolean }[];
   plan?: Plan;
   /** Denormalised by the writer so a list never has to read the entries subcollection. */
   files?: CardFile[];
@@ -137,9 +141,9 @@ export interface Plan {
   maps?: string;
 }
 
-export interface Memo { id: string; tags: string[]; text: string; ts: string }
+export interface Memo { id: string; tags: string[]; text: string; ts: string; deleted?: boolean }
 
 export interface Alloc { id: string; label: string; amount: number; done: boolean; ts?: string; month?: string; recurring?: boolean; tag?: string }
 
-export interface Market { items: { id: string; name: string }[]; log: { id: string; itemId?: string | null; name: string; ts: string; price?: number | null; receiptId?: string }[] }
-export interface Receipt { id: string; amount: number; cat: string; vendor: string; ts: string }
+export interface Market { items: { id: string; name: string }[]; log: { id: string; itemId?: string | null; name: string; ts: string; price?: number | null; receiptId?: string; deleted?: boolean }[] }
+export interface Receipt { id: string; amount: number; cat: string; vendor: string; ts: string; files?: CardFile[]; deleted?: boolean }

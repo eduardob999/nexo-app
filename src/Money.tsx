@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, summarise, topBars, yen } from './money';
-import type { Alloc, Market, Receipt } from './types';
+import { ConfirmButton } from './ConfirmButton';
+import { ReceiptPhotos } from './ReceiptPhotos';
+import type { Alloc, CardFile, Market, Receipt } from './types';
 
 interface Props {
   allocations: Alloc[];
@@ -14,6 +16,10 @@ interface Props {
   onLog?: ((item: { id: string; name: string }) => void) | undefined;
   onAddItem?: ((name: string) => void) | undefined;
   onReceipt?: ((r: { amount: number; cat: string; vendor: string }) => void) | undefined;
+  onUndo?: ((logId: string) => void) | undefined;
+  onDeleteReceipt?: ((r: Receipt) => void) | undefined;
+  onAttachReceipt?: ((r: Receipt, files: File[]) => Promise<void>) | undefined;
+  watchPhotos?: ((receiptId: string, on: (f: CardFile[]) => void) => () => void) | undefined;
 }
 
 function Line({ a, onToggle, onEdit, onRepeat }: { a: Alloc } & Pick<Props, 'onToggle' | 'onEdit' | 'onRepeat'>) {
@@ -46,7 +52,7 @@ function Line({ a, onToggle, onEdit, onRepeat }: { a: Alloc } & Pick<Props, 'onT
 }
 
 /** The month's set-aside checklist. A new month seeds itself from the last one's repeating lines. */
-export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt }: Props) {
+export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt, onUndo, onDeleteReceipt, onAttachReceipt, watchPhotos }: Props) {
   const month = jstMonth(new Date());
   const seeded = useRef(false);
   useEffect(() => {
@@ -82,9 +88,9 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, 
         </form>
         {msg ? <p className="notice" role="status">{msg}</p> : null}
       </section>
-      <MarketBlock market={market} onLog={onLog} onAddItem={onAddItem} />
+      <MarketBlock market={market} onLog={onLog} onAddItem={onAddItem} onUndo={onUndo} />
       <Charts receipts={receipts} />
-      <ReceiptsBlock receipts={receipts} onReceipt={onReceipt} />
+      <ReceiptsBlock receipts={receipts} onReceipt={onReceipt} onDeleteReceipt={onDeleteReceipt} onAttachReceipt={onAttachReceipt} watchPhotos={watchPhotos} />
       {earlierMonths(allocations, month).length ? (
         <details className="shelf-fold"><summary>Earlier months</summary>
           {earlierMonths(allocations, month).map((m) => (
@@ -99,7 +105,7 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, 
 
 const CATS = ['food', 'transport', 'supplies', 'health', 'fees', 'other'];
 
-function MarketBlock({ market, onLog, onAddItem }: Pick<Props, 'market' | 'onLog' | 'onAddItem'>) {
+function MarketBlock({ market, onLog, onAddItem, onUndo }: Pick<Props, 'market' | 'onLog' | 'onAddItem' | 'onUndo'>) {
   const [q, setQ] = useState('');
   const [name, setName] = useState('');
   if (!market || !onLog) return null;
@@ -123,7 +129,7 @@ function MarketBlock({ market, onLog, onAddItem }: Pick<Props, 'market' | 'onLog
         </form>
       ) : null}
       <details className="shelf-sub"><summary>Recent log</summary>
-        <ul className="res-list">{market.log.slice(0, 20).map((l) => <li key={l.id} className="res done">{l.name} <span className="mut">{new Date(l.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{l.price ? ` · ${yen(l.price)}` : ''}</span></li>)}</ul>
+        <ul className="res-list">{market.log.slice(0, 20).map((l) => <li key={l.id} className="res done">{l.name} <span className="mut">{new Date(l.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{l.price ? ` · ${yen(l.price)}` : ''}</span>{onUndo ? <ConfirmButton label="Undo" ariaLabel={`Undo ${l.name}`} onConfirm={() => onUndo(l.id)} /> : null}</li>)}</ul>
       </details>
     </details>
   );
@@ -150,7 +156,18 @@ function Charts({ receipts }: { receipts: Receipt[] }) {
   );
 }
 
-function ReceiptsBlock({ receipts, onReceipt }: { receipts: Receipt[]; onReceipt?: Props['onReceipt'] }) {
+/** Photos load only when the fold is opened, so a long month does not open a listener per receipt. */
+function PhotoFold(props: React.ComponentProps<typeof ReceiptPhotos>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="shelf-sub" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary>Photos{props.receipt.files?.length ? ` (${props.receipt.files.length})` : ''}</summary>
+      {open ? <ReceiptPhotos {...props} /> : null}
+    </details>
+  );
+}
+
+function ReceiptsBlock({ receipts, onReceipt, onDeleteReceipt, onAttachReceipt, watchPhotos }: Pick<Props, 'onReceipt' | 'onDeleteReceipt' | 'onAttachReceipt' | 'watchPhotos'> & { receipts: Receipt[] }) {
   const [amount, setAmount] = useState('');
   const [cat, setCat] = useState('food');
   const [vendor, setVendor] = useState('');
@@ -171,7 +188,9 @@ function ReceiptsBlock({ receipts, onReceipt }: { receipts: Receipt[]; onReceipt
         <div key={m.month}>
           <h3 className="group-title">{m.month} <span className="mut">{yen(m.total)}</span></h3>
           <p className="mut al-cats">{m.cats.map((c) => `${c.cat} ${yen(c.sum)}`).join(' · ')}</p>
-          <ul className="res-list">{m.items.slice(0, 25).map((r) => <li key={r.id} className="res done"><span>{yen(r.amount)} · {r.vendor || r.cat}</span><span className="mut">{r.cat} · {new Date(r.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span></li>)}</ul>
+          <ul className="res-list">{m.items.slice(0, 25).map((r) => <li key={r.id} className="res done"><span>{yen(r.amount)} · {r.vendor || r.cat}</span><span className="mut">{r.cat} · {new Date(r.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{r.files?.length ? ` · ${r.files.length} photo${r.files.length > 1 ? 's' : ''}` : ''}</span>
+            {onAttachReceipt && watchPhotos ? <PhotoFold receipt={r} watch={watchPhotos} onAttach={onAttachReceipt} /> : null}
+            {onDeleteReceipt ? <ConfirmButton label="Delete" ariaLabel={`Delete receipt ${r.vendor || r.cat}`} onConfirm={() => onDeleteReceipt(r)} /> : null}</li>)}</ul>
         </div>
       ))}
     </details>

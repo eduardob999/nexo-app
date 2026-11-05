@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ConfirmButton } from './ConfirmButton';
 import { groupResources, isWebLink, recentDone } from './shelf';
 import type { Card, Relay, Resource } from './types';
 
@@ -8,6 +9,8 @@ interface Props {
   resources: Resource[];
   onAdd: (r: { title: string; url: string; note: string; kind: string }) => void;
   onArchive: (r: Resource, archived: boolean) => void;
+  /** Delete the finished cards with these ids (kept in the records, hidden everywhere). */
+  onClearDone?: (ids: string[]) => void;
 }
 
 const KINDS = ['link', 'file', 'deck', 'paper', 'repo', 'doc'];
@@ -32,7 +35,7 @@ function ResourceRow({ r, onArchive }: { r: Resource; onArchive: Props['onArchiv
   );
 }
 
-export function Shelf({ done, closed, resources, onAdd, onArchive }: Props) {
+export function Shelf({ done, closed, resources, onAdd, onArchive, onClearDone }: Props) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [note, setNote] = useState('');
@@ -81,6 +84,9 @@ export function Shelf({ done, closed, resources, onAdd, onArchive }: Props) {
           ))}
         </ul>
         {finished.length > 40 && !more ? <button className="chip-btn" onClick={() => setMore(true)}>Show all {finished.length}</button> : null}
+        {onClearDone && finished.length > 0 ? (
+          <div className="selrow"><ConfirmButton label="Clear done" armedLabel={`Tap again to clear ${finished.length}`} className="chip-btn" onConfirm={() => onClearDone(finished.map((c) => c.id))} /></div>
+        ) : null}
       </details>
 
       <details className="shelf-fold">

@@ -83,6 +83,13 @@ export function sortQueue(cards: Card[], now: Date): Card[] {
   });
 }
 
+/** The end of an hour window as HH:MM, from a bare HH:MM or an ISO time. Anything else is no window. */
+export function windowEnd(raw: string | null | undefined): string {
+  const e = String(raw ?? '');
+  const hm = e.length > 5 ? e.slice(11, 16) : e;
+  return /^\d\d:\d\d$/.test(hm) ? hm : '';
+}
+
 export function dueText(card: Card, now: Date): string {
   if (!card.due) return 'No date';
   const due = parseDue(card.due);
@@ -93,7 +100,8 @@ export function dueText(card: Card, now: Date): string {
   const day =
     days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days === -1 ? 'Yesterday' :
     due.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
-  return time ? `${day} ${time}` : day;
+  const end = time ? windowEnd(card.dueEnd) : '';
+  return time ? `${day} ${time}${end ? `\u2013${end}` : ''}` : day;
 }
 
 function ymd(d: Date): string {

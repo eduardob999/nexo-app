@@ -12,12 +12,15 @@ const root = (uid: string) => ['users', uid] as const;
  * there is one, so the board renders before the network answers; Firestore
  * then reconciles in the background and only changed documents are billed.
  */
+/** Anything he deleted is flagged and kept; every list leaves it out. */
+export const shown = <T extends { deleted?: boolean }>(x: T): boolean => !x.deleted;
+
 export function watchOpenCards(uid: string, onCards: (cards: Card[], fromCache: boolean) => void, onError: (e: Error) => void): () => void {
   const q = query(collection(db, ...root(uid), 'cards'), where('status', '==', 'open'));
   return onSnapshot(
     q,
     { includeMetadataChanges: true },
-    (snap) => onCards(snap.docs.map((d) => ({ ...(d.data() as Omit<Card, 'id'>), id: d.id })), snap.metadata.fromCache),
+    (snap) => onCards(snap.docs.map((d) => ({ ...(d.data() as Omit<Card, 'id'>), id: d.id })).filter(shown), snap.metadata.fromCache),
     onError,
   );
 }
@@ -282,7 +285,7 @@ export function requestMailCheck(uid: string): Promise<void> {
 /** Cards he has finished. Read only while the Shelf is open: a few hundred documents, cached after the first time. */
 export function watchDoneCards(uid: string, onCards: (c: Card[]) => void, onError: (e: Error) => void): () => void {
   const q = query(collection(db, ...root(uid), 'cards'), where('status', '==', 'done'));
-  return onSnapshot(q, (snap) => onCards(snap.docs.map((d) => ({ ...(d.data() as Omit<Card, 'id'>), id: d.id }))), onError);
+  return onSnapshot(q, (snap) => onCards(snap.docs.map((d) => ({ ...(d.data() as Omit<Card, 'id'>), id: d.id })).filter(shown)), onError);
 }
 
 export function watchClosedRelays(uid: string, onRelays: (r: Relay[]) => void, onError: (e: Error) => void): () => void {
@@ -311,7 +314,7 @@ export function archiveResource(uid: string, r: Resource, archived: boolean): Pr
 }
 
 export function watchMemos(uid: string, onItems: (m: Memo[]) => void, onError: (e: Error) => void): () => void {
-  return onSnapshot(collection(db, ...root(uid), 'memos'), (snap) => onItems(snap.docs.map((d) => ({ ...(d.data() as Omit<Memo, 'id'>), id: d.id }))), onError);
+  return onSnapshot(collection(db, ...root(uid), 'memos'), (snap) => onItems(snap.docs.map((d) => ({ ...(d.data() as Omit<Memo, 'id'>), id: d.id })).filter(shown)), onError);
 }
 
 /** Keep a thought. Tags are set by hand now: the old board asked a model on the page to tag it, which the page can no longer do. */
@@ -367,12 +370,16 @@ export function seedAllocMonth(uid: string, month: string): Promise<void> {
 }
 
 /** The market list and its log live in one document, `meta/market`, under `value`. */
+function withoutUndone(m: Market | null): Market | null {
+  return m ? { ...m, log: m.log.filter(shown) } : null;
+}
+
 export function watchMarket(uid: string, onMarket: (m: Market | null) => void): () => void {
-  return onSnapshot(doc(db, ...root(uid), 'meta', 'market'), (snap) => onMarket(snap.exists() ? ((snap.data() as { value?: Market }).value ?? null) : null), () => onMarket(null));
+  return onSnapshot(doc(db, ...root(uid), 'meta', 'market'), (snap) => onMarket(snap.exists() ? withoutUndone((snap.data() as { value?: Market }).value ?? null) : null), () => onMarket(null));
 }
 
 export function watchReceipts(uid: string, onItems: (r: Receipt[]) => void, onError: (e: Error) => void): () => void {
-  return onSnapshot(collection(db, ...root(uid), 'receipts'), (snap) => onItems(snap.docs.map((d) => ({ ...(d.data() as Omit<Receipt, 'id'>), id: d.id }))), onError);
+  return onSnapshot(collection(db, ...root(uid), 'receipts'), (snap) => onItems(snap.docs.map((d) => ({ ...(d.data() as Omit<Receipt, 'id'>), id: d.id })).filter(shown)), onError);
 }
 
 const rid = (p: string) => `${p}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
@@ -449,4 +456,68 @@ export function watchChat(uid: string, onMsgs: (m: ChatMsg[]) => void, onError: 
 export function sendChat(uid: string, text: string): Promise<void> {
   const id = String(Date.now());
   return setDoc(doc(db, ...root(uid), 'chat', id), { by: 'you', text, ts: new Date().toISOString(), status: 'new' });
+}
+
+// ---- deletes -------------------------------------------------------------------------------------
+// Nothing is removed. The record gets `deleted: true` in state.json (the sync does that) and is left out of
+// Firestore; here the flag is written at once so the row leaves the screen before the sync answers.
+
+const DELETED = () => ({ deleted: true, deletedAt: new Date().toISOString() });
+
+/** Delete a card. An open one is closed with it, so no list can pick it up again. */
+export function deleteCard(uid: string, id: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', id), { ...DELETED(), status: 'done' });
+  intent(batch, uid, { type: 'delete', kind: 'card', id });
+  return batch.commit();
+}
+
+/** "Clear done": the finished cards on the Shelf, by id, so a card finished a moment later is not swept up. */
+export function clearDoneCards(uid: string, ids: string[]): Promise<void> {
+  const out: Promise<void>[] = [];
+  for (let i = 0; i < ids.length; i += 200) {
+    const part = ids.slice(i, i + 200);
+    const batch = writeBatch(db);
+    for (const id of part) batch.update(doc(db, ...root(uid), 'cards', id), DELETED());
+    intent(batch, uid, { type: 'delete', kind: 'done-cards', ids: part });
+    out.push(batch.commit());
+  }
+  return Promise.all(out).then(() => undefined);
+}
+
+export function deleteMemo(uid: string, id: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'memos', id), DELETED());
+  intent(batch, uid, { type: 'delete', kind: 'memo', id });
+  return batch.commit();
+}
+
+export function deleteReceipt(uid: string, id: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'receipts', id), DELETED());
+  intent(batch, uid, { type: 'delete', kind: 'receipt', id });
+  return batch.commit();
+}
+
+/** Undo a market log line. The log is one document, so the line is rewritten with the flag. */
+export function undoPurchase(uid: string, market: Market, logId: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'meta', 'market'), { 'value.log': market.log.map((l) => (l.id === logId ? { ...l, deleted: true } : l)) });
+  intent(batch, uid, { type: 'market', action: 'undo', logId });
+  return batch.commit();
+}
+
+/** Remove a line from a card's free checklist. */
+export function removeItem(uid: string, card: Card, itemId: string): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', card.id), { items: (card.items ?? []).map((x) => (x.id === itemId ? { ...x, deleted: true } : x)) });
+  intent(batch, uid, { type: 'checklist', cardId: card.id, action: 'item-remove', itemId });
+  return batch.commit();
+}
+
+/** The photos on a receipt, from its files subcollection (the receipt document holds only their names). */
+export function watchReceiptFiles(uid: string, receiptId: string, onFiles: (f: CardFile[]) => void): () => void {
+  return onSnapshot(collection(db, ...root(uid), 'receipts', receiptId, 'files'), (snap) => {
+    onFiles(snap.docs.map((d) => ({ ...(d.data() as Omit<CardFile, 'id'>), id: d.id })));
+  }, () => onFiles([]));
 }

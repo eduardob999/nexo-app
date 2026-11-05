@@ -423,3 +423,21 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .chat .qchips { flex-wrap: wrap; overflow-x: visible; }
 
 .top-wrap .call-wrap { flex: 0 0 100%; margin-top: 12px; justify-content: space-between; }
+
+/* Tap-again buttons: the armed state reads as a warning without a modal. */
+.chip-btn.danger { background: var(--urgent-tint); color: var(--urgent); border-color: var(--urgent); }
+.row-del { margin-left: auto; }
+.res .mut-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.rc-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.rc-photos a { display: inline-block; max-width: 96px; }
+.rc-photos img { width: 96px; height: 96px; object-fit: cover; border-radius: 10px; border: 1px solid var(--edge); display: block; }
+.rc-file { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; border: 1px solid var(--edge); border-radius: 10px; font-size: 14px; }
+.clist .citem .x { margin-left: auto; }
+.clist .citem { display: flex; align-items: center; gap: 8px; }
+.clist .citem label { flex: 1; }
+.item-x { height: 36px; min-width: 36px; padding: 0 8px; border: 0; background: transparent; color: var(--muted); font-size: 20px; }
+.res > .chip-btn, .res > .draft-more { justify-self: start; }
+.rc-photos-wrap { display: grid; gap: 8px; margin-top: 6px; }
+.selrow { display: flex; justify-content: flex-end; padding: 12px 0 4px; }
+.al-add { grid-template-columns: minmax(0, 1fr); } .res-add { grid-template-columns: minmax(0, 1fr); }
+.thread-foot { display: flex; justify-content: center; padding: 16px 0 8px; }

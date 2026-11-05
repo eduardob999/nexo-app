@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { usePersisted } from './persist';
 import { groupMemos, parseTags } from './notes';
+import { ConfirmButton } from './ConfirmButton';
 import type { Memo } from './types';
 
-export function Notes({ memos, onKeep }: { memos: Memo[]; onKeep: (text: string, tags: string[]) => void }) {
+export function Notes({ memos, onKeep, onDelete }: { memos: Memo[]; onKeep: (text: string, tags: string[]) => void; onDelete?: (m: Memo) => void }) {
   const [text, setText] = usePersisted('memo');
   const [tags, setTags] = useState('');
   const [q, setQ] = useState('');
@@ -32,7 +33,7 @@ export function Notes({ memos, onKeep }: { memos: Memo[]; onKeep: (text: string,
           <h2 className="day-title">{g.tag ? `#${g.tag}` : 'Untagged'} <span className="mut">{g.items.length}</span></h2>
           <ul className="res-list panel-flat memo-list">
             {g.items.map((m) => (
-              <li key={m.id} className="res"><span className="memo-text">{m.text}</span><span className="mut">{new Date(m.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{m.tags.length ? ` · ${m.tags.map((t) => `#${t}`).join(' ')}` : ''}</span></li>
+              <li key={m.id} className="res"><span className="memo-text">{m.text}</span><span className="mut">{new Date(m.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{m.tags.length ? ` · ${m.tags.map((t) => `#${t}`).join(' ')}` : ''}</span>{onDelete ? <ConfirmButton label="Delete" ariaLabel="Delete this note" onConfirm={() => onDelete(m)} /> : null}</li>
             ))}
           </ul>
         </section>
