@@ -44,6 +44,7 @@ export interface CardFile {
   name?: string;
   type?: string;
   viewUrl?: string;
+  driveId?: string;
   thumb?: string;
 }
 

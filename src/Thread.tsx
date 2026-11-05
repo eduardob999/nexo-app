@@ -77,6 +77,10 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
     if (!drive) { setAttaching(true); setBusy('Connect Google Drive, then paste again'); return; }
     pick(e.clipboardData.files);
   };
+  // Pictures sent from the app are shown under the message that carried their Drive links; any others stay in the block at the top.
+  const withThumbs = (card.files ?? []).map((f) => ({ ...f, thumb: pics.find((p) => p.id === f.id)?.thumb ?? f.thumb }));
+  const filesIn = (text: string) => withThumbs.filter((f) => f.thumb && f.driveId && text.includes(f.driveId));
+  const inChat = new Set(entries.flatMap((e) => filesIn(e.text).map((f) => f.id)));
   const send = () => {
     const t = text.trim();
     if (!t) return;
@@ -103,7 +107,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
       </ul>
 
       {(() => {
-        const shown = (card.files ?? []).map((f) => ({ ...f, thumb: pics.find((p) => p.id === f.id)?.thumb ?? f.thumb })).filter((f) => f.thumb);
+        const shown = withThumbs.filter((f) => f.thumb && !inChat.has(f.id));
         return shown.length > 0 ? (
           <section className="pics" aria-label="Attachments">
             {shown.map((f) => (
@@ -125,6 +129,9 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
             <li key={e.id} className={`bubble-wrap ${you ? 'you' : 'nexo'}`}>
               <span className="who">{you ? 'YOU' : 'NEXO'} · <span className="mono">{stamp(e.ts)}</span></span>
               <div className="bubble"><Linkified text={e.text} /></div>
+              {filesIn(e.text).map((f) => (
+                <a key={f.id} className="chat-pic" href={f.viewUrl ?? f.thumb} target="_blank" rel="noreferrer"><img src={f.thumb} alt={f.name ?? 'Attachment'} /></a>
+              ))}
             </li>
           );
         })}
