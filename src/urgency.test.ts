@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandOf, onTodayBoard, postpone, sortQueue } from './urgency';
+import { bandOf, countdownText, isEasyToMiss, isIncoming, meetingLink, minutesToStart, onTodayBoard, postpone, sortQueue } from './urgency';
 import type { Card } from './types';
 
 const now = new Date('2026-11-02T12:00:00+09:00');
@@ -108,5 +108,57 @@ describe('questions and answers', () => {
   });
   it('leaves a finished one alone', () => {
     expect(bandOf(c('d', { status: 'done', type: 'ANSWER', due: '2026-11-02' }), now)).toBe('today');
+  });
+});
+
+describe('incoming', () => {
+  const at = (min: number) => new Date(now.getTime() + min * 60_000).toISOString();
+  const cls = (min: number, extra: Partial<Card> = {}) => c('k', { title: 'Japanese class', due: at(min), ...extra });
+
+  it('isEasyToMiss follows the flag first', () => {
+    expect(isEasyToMiss(cls(5, { incoming: false }))).toBe(false);
+    expect(isEasyToMiss(c('x', { title: 'Buy milk', due: at(5), incoming: true }))).toBe(true);
+    expect(isEasyToMiss(c('x', { title: 'Buy milk', incoming: true }))).toBe(true);
+  });
+  it('isEasyToMiss needs a clock time for the heuristic', () => {
+    expect(isEasyToMiss(c('x', { title: 'Zoom class', due: '2026-11-02' }))).toBe(false);
+    expect(isEasyToMiss(c('x', { title: 'Zoom class', due: '2026-11-02T00:00:00' }))).toBe(false);
+    expect(isEasyToMiss(c('x', { title: 'Zoom class' }))).toBe(false);
+  });
+  it('isEasyToMiss reads type, words and links', () => {
+    expect(isEasyToMiss(c('x', { type: 'meeting', title: 'Alpha', due: at(5) }))).toBe(true);
+    expect(isEasyToMiss(c('x', { title: 'ゼミ', due: at(5) }))).toBe(true);
+    expect(isEasyToMiss(c('x', { title: 'Seminar', due: at(5) }))).toBe(true);
+    expect(isEasyToMiss(c('x', { title: 'Bank', due: at(5), last: { by: 'nexo', text: 'Link https://us02web.zoom.us/j/123', ts: '' } }))).toBe(true);
+    expect(isEasyToMiss(c('x', { title: 'Bank', due: at(5), place: 'meet.google.com/abc' }))).toBe(true);
+    expect(isEasyToMiss(c('x', { title: 'Dentist', due: at(5), place: 'Uji' }))).toBe(false);
+    expect(isEasyToMiss(c('x', { title: 'Recall the form', due: at(5) }))).toBe(false);
+  });
+  it('minutesToStart rounds up before and down after', () => {
+    expect(minutesToStart(cls(8), now)).toBe(8);
+    expect(minutesToStart(cls(0), now)).toBe(0);
+    expect(minutesToStart(cls(-3), now)).toBe(-3);
+    expect(minutesToStart(c('x', { due: '2026-11-02' }), now)).toBeNull();
+  });
+  it('isIncoming covers 15 minutes before to 10 after, open cards only', () => {
+    expect(isIncoming(cls(15), now)).toBe(true);
+    expect(isIncoming(cls(16), now)).toBe(false);
+    expect(isIncoming(cls(-9), now)).toBe(true);
+    expect(isIncoming(cls(-10), now)).toBe(false);
+    expect(isIncoming(cls(5, { status: 'done' }), now)).toBe(false);
+    expect(isIncoming(cls(5, { incoming: false }), now)).toBe(false);
+    expect(isIncoming(c('x', { title: 'Buy milk', due: at(5) }), now)).toBe(false);
+  });
+  it('puts an incoming card above an assignment and out of other bands', () => {
+    const inc = cls(8, { prio: 'high', ask: 'Ready?' });
+    const asg = c('asg', { type: 'ASSIGNMENT', due: '2026-11-03' });
+    expect(bandOf(inc, now)).toBe('incoming');
+    expect(sortQueue([asg, inc], now).map((x) => x.id)).toEqual(['k', 'asg']);
+    expect(bandOf(cls(30), now)).toBe('today');
+  });
+  it('extracts the first https meeting link and words the countdown', () => {
+    expect(meetingLink(c('x', { place: 'Room 3', last: { by: 'nexo', text: 'Join: https://us02web.zoom.us/j/99?pwd=a), ok', ts: '' } }))).toBe('https://us02web.zoom.us/j/99?pwd=a');
+    expect(meetingLink(c('x', { place: 'Uji' }))).toBeNull();
+    expect([countdownText(12), countdownText(0), countdownText(-3)]).toEqual(['in 12 min', 'starting now', 'started 3 min ago']);
   });
 });

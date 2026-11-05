@@ -27,6 +27,8 @@ export interface Card {
   cal?: string | null;
   calEvent?: unknown;
   trip?: boolean;
+  /** Easy to miss: true always alerts 15 minutes before, false never, absent uses the heuristic. */
+  incoming?: boolean;
   /** Personalised reply options Nexo wrote for this card. */
   qreplies?: string[];
   /** Days ahead this card should start showing under Preparation, overriding the default for its kind. */

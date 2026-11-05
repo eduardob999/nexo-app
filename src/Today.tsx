@@ -9,7 +9,7 @@ import { WakeSuggestion } from './WakeSuggestion';
 import type { WakeDoc, WakeFeedback, WakePrefs, WakeRecord } from './alarm';
 import { Relays } from './Relays';
 import type { Card, NexoStatus, Relay, TodayInfo } from './types';
-import { bandOf, dueText, onTodayBoard, sortQueue, type Band } from './urgency';
+import { bandOf, countdownText, dueText, meetingLink, minutesToStart, onTodayBoard, sortQueue, type Band } from './urgency';
 
 interface Props {
   cards: Card[];
@@ -35,11 +35,11 @@ interface Props {
 }
 
 const BAND_LABEL: Record<Band, string> = {
-  assignment: 'Assignments', qa: 'Questions and answers', urgent: 'Urgent', overdue: 'Overdue', today: 'Today', prep: 'Preparation', other: 'Later',
+  incoming: 'Incoming', assignment: 'Assignments', qa: 'Questions and answers', urgent: 'Urgent', overdue: 'Overdue', today: 'Today', prep: 'Preparation', other: 'Later',
 };
 /** Today shows five groups. Nexo's own lane has no date rules of its own, so it also shows the rest. */
 const HEALTH_LABEL = { ok: 'online', late: 'late', offline: 'OFFLINE', blocked: 'BLOCKED', asleep: 'asleep' } as const;
-const YOU_BANDS: Band[] = ['assignment', 'qa', 'urgent', 'overdue', 'today', 'prep'];
+const YOU_BANDS: Band[] = ['incoming', 'assignment', 'qa', 'urgent', 'overdue', 'today', 'prep'];
 const NEXO_BANDS: Band[] = [...YOU_BANDS, 'other'];
 
 function CalendarIcon() {
@@ -70,6 +70,8 @@ function Row({ card, now, onDone, onLater, hasDraft, closeable = false }: { card
   const [open, setOpen] = useState(false);
   const band = bandOf(card, now);
   const title = card.title ?? card.id;
+  const mins = band === 'incoming' ? minutesToStart(card, now) : null;
+  const link = band === 'incoming' ? meetingLink(card) : null;
   return (
     <li className={`row band-${band}${isNewCard(card) ? ' is-new' : ''}`}>
       <button className="ring" aria-label={`Mark done: ${title}`} onClick={() => onDone(card)} />
@@ -78,6 +80,7 @@ function Row({ card, now, onDone, onLater, hasDraft, closeable = false }: { card
           <span className="row-title">{isNewCard(card) ? <i className="new-dot" aria-label="New message from Nexo" /> : null}{title}</span>
           <span className="row-meta">
             {cardTag(card) ? <span className="tagchip">{cardTag(card)}</span> : null}
+            {mins !== null ? <span className="countdown">{countdownText(mins)}</span> : null}
             <CalendarIcon />{dueText(card, now)}
             {card.for === 'nexo' ? <span className="draft-flag">With Nexo</span> : null}
             {hasDraft ? <span className="draft-flag"><MailIcon />Draft</span> : null}
@@ -87,7 +90,8 @@ function Row({ card, now, onDone, onLater, hasDraft, closeable = false }: { card
             <span className="row-last"><b>{card.last.by === 'eduardo' ? 'You' : 'Nexo'}</b> {card.last.text}</span>
           ) : null}
         </button>
-        {placeLabel(card) ? <a className="pin pin-link" href={placeUrl(placeLabel(card) as string)} target="_blank" rel="noreferrer" aria-label={`Open ${placeLabel(card)} in Google Maps`}><PinIcon />{placeLabel(card)}</a> : null}
+        {link ? <a className="join-link" href={link} target="_blank" rel="noreferrer">Join</a> : null}
+        {placeLabel(card) && placeLabel(card) !== link ? <a className="pin pin-link" href={placeUrl(placeLabel(card) as string)} target="_blank" rel="noreferrer" aria-label={`Open ${placeLabel(card)} in Google Maps`}><PinIcon />{placeLabel(card)}</a> : null}
         {closeable ? (
           <div className="row-actions">
             <span className="mut">Nothing is owed on this.</span>

@@ -6,7 +6,7 @@ import { calendarLabel, cardTag, placeLabel, placeUrl, priorityLabel } from './c
 import { Checklists } from './Checklists';
 import { Linkified } from './Linkified';
 import { TripTicket } from './TripTicket';
-import { dueText } from './urgency';
+import { dueText, isEasyToMiss } from './urgency';
 import { ConfirmButton } from './ConfirmButton';
 import { connectDrive, driveReady } from './drive';
 
@@ -20,6 +20,8 @@ interface Props {
   onBack: () => void;
   onReply: (text: string) => void;
   onPriority?: () => void;
+  /** Easy-to-miss flag: true, false, or null for Auto. */
+  onIncoming?: (value: boolean | null) => void;
   onBring?: (index: number, got: boolean) => void;
   onItem?: (itemId: string, done: boolean) => void;
   onAddItem?: (text: string) => void;
@@ -40,9 +42,15 @@ export function stamp(ts: string): string {
   return d.toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+function incomingState(card: Card): string {
+  if (card.incoming === true) return 'On';
+  if (card.incoming === false) return 'Off';
+  return `Auto: ${isEasyToMiss(card) ? 'on' : 'off'}`;
+}
+
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onAttach }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onIncoming = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onAttach }: Props) {
   const [attaching, setAttaching] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
@@ -105,6 +113,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         {card.place ? <li><Icon d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11zM12 7.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" />{placeLabel(card) ? <a href={placeUrl(card.place)} target="_blank" rel="noreferrer">{card.place} <span className="mut">open in Maps</span></a> : <span>{card.place}</span>}</li> : null}
         {cardTag(card) ? <li><Icon d="M4 4h8l8 8-8 8-8-8zM8.5 8.5h.01" /><span>{cardTag(card)}</span></li> : null}
         <li><Icon d="M5 3v18M5 4h12l-2 4 2 4H5" /><button className="prio-btn" onClick={onPriority} aria-label={`Priority ${priorityLabel(card)}, tap to change`}>{priorityLabel(card)} <span className="mut">tap to change</span></button></li>
+        <li><Icon d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8M10.3 20a2 2 0 0 0 3.4 0" /><button className="prio-btn" onClick={() => onIncoming(card.incoming === undefined ? true : card.incoming ? false : null)} aria-label={`Alert 15 min before: ${incomingState(card)}, tap to change`}>Alert 15 min before <span className="mut">{incomingState(card)}</span></button></li>
         {calendarLabel(card) ? <li><Icon d="M4 5h16v15H4zM4 10h16M9 3v4M15 3v4M9 15l2 2 4-4" /><span>{calendarLabel(card)}</span></li> : null}
         <li><Icon d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /><span>{card.for === 'you' ? 'Waiting on you' : 'With Nexo'}</span></li>
         {mine.length > 0 ? <li><Icon d="M3 6h18v12H3zM4 8l8 6 8-6" /><span>{mine.length} draft{mine.length > 1 ? 's' : ''}</span></li> : null}

@@ -72,6 +72,17 @@ const PHOTO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://
 export function PreviewApp() {
   const which = window.location.hash.replace('#/preview', '').replace(/^\//, '');
   const card = { ...(FIXTURES[2] as Card), bring: [{ t: 'Signed lease form', got: true }, { t: 'Residence card' }, { t: 'Pen' }], items: [{ id: 'i1', text: 'Ask about the deposit', done: false }], ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
+  if (which === 'incoming') {
+    const n = new Date('2026-11-02T12:00:00+09:00');
+    const at = (min: number) => new Date(n.getTime() + min * 60_000).toISOString();
+    const cs: Card[] = [
+      { id: 'i1', status: 'open', for: 'you', type: 'CLASS', title: 'Online Japanese class with Handa sensei', due: at(8), place: 'Zoom', last: { by: 'nexo', text: 'Join here: https://us02web.zoom.us/j/81234567890?pwd=abc', ts: at(-600) } },
+      { id: 'i2', status: 'open', for: 'you', type: 'MEETING', title: 'Lab meeting', due: at(-3), place: 'Building 3, room 204' },
+      { id: 'i3', status: 'open', for: 'you', type: 'TASK', title: 'Reply to the housing office about the lease form', due: '2026-11-02' },
+      FIXTURES[0] as Card,
+    ];
+    return (<><Today cards={cs} now={n} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><TabBar current="today" draftCount={0} /></>);
+  }
   if (which === 'thread') {
     return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} onRemoveItem={() => {}} />;
   }

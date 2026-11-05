@@ -1,5 +1,5 @@
 import { applyFeedback, type WakeDoc, type WakeFeedback, type WakePrefs, type WakeRecord } from './alarm';
-import { arrayUnion, collection, doc, documentId, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
+import { arrayUnion, collection, deleteField, doc, documentId, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
@@ -443,6 +443,14 @@ export function cyclePriority(uid: string, card: Card): Promise<void> {
   const batch = writeBatch(db);
   batch.update(doc(db, ...root(uid), 'cards', card.id), { prio: next });
   intent(batch, uid, { type: 'priority', cardId: card.id, prio: next });
+  return batch.commit();
+}
+
+/** Easy-to-miss flag: true always alerts 15 minutes before, false never, null goes back to Auto. */
+export function setIncoming(uid: string, card: Card, value: boolean | null): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', card.id), { incoming: value === null ? deleteField() : value });
+  intent(batch, uid, { type: 'incoming', cardId: card.id, value });
   return batch.commit();
 }
 

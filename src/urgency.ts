@@ -1,7 +1,7 @@
 import { isHis } from './nexo';
 import type { Card } from './types';
 
-export type Band = 'assignment' | 'qa' | 'urgent' | 'overdue' | 'today' | 'prep' | 'other';
+export type Band = 'incoming' | 'assignment' | 'qa' | 'urgent' | 'overdue' | 'today' | 'prep' | 'other';
 
 const DAY = 86_400_000;
 /** How far ahead each kind of card is allowed to appear under Preparation. */
@@ -40,6 +40,7 @@ function isNotice(card: Card): boolean {
  * lives in Upcoming and Search.
  */
 export function bandOf(card: Card, now: Date): Band {
+  if (isIncoming(card, now)) return 'incoming';
   if (card.type === 'ASSIGNMENT') return 'assignment';
   if (isQA(card)) return 'qa';
   const due = card.due ? parseDue(card.due) : null;
@@ -61,7 +62,7 @@ export function bandOf(card: Card, now: Date): Band {
   return days <= horizon ? 'prep' : 'other';
 }
 
-const ORDER: Record<Band, number> = { assignment: 0, qa: 1, urgent: 2, overdue: 3, today: 4, prep: 5, other: 6 };
+const ORDER: Record<Band, number> = { incoming: 0, assignment: 1, qa: 2, urgent: 3, overdue: 4, today: 5, prep: 6, other: 7 };
 
 /** A question Nexo put to him, or an answer he asked for: both are highly relevant, so they are pinned on Today at any date. */
 export function isQA(card: Card): boolean {
@@ -138,5 +139,68 @@ export function postpone(due: string | null | undefined, now: Date): string {
 export function onTodayBoard(card: Card, now: Date): boolean {
   if (card.for === 'you' || isHis(card) || isQA(card)) return true;
   const band = bandOf(card, now);
-  return card.for === 'nexo' && (band === 'urgent' || band === 'today');
+  return card.for === 'nexo' && (band === 'urgent' || band === 'today' || band === 'incoming');
+}
+
+const INCOMING_BEFORE_MIN = 15;
+const INCOMING_AFTER_MIN = 10;
+const EASY_TYPES = ['CLASS', 'MEETING', 'CALL'];
+const EASY_WORDS = /\b(zoom|teams|meet|online|webinar|class|lecture|seminar|call)\b|授業|講義|ミーティング|オンライン|面談|ゼミ/i;
+const LINK_HOSTS = /(?:zoom\.us|meet\.google\.com|teams\.microsoft\.com|teams\.live\.com)/i;
+const LINK_URL = /https?:\/\/(?:[\w-]+\.)*(?:zoom\.us|meet\.google\.com|teams\.microsoft\.com|teams\.live\.com)[^\s)\]>"'<]*/i;
+
+/** The start of a card with a real clock time, or null for no due, a date only, or midnight. */
+function startTime(card: Card): Date | null {
+  const m = /T(\d\d):(\d\d)/.exec(card.due ?? '');
+  if (!m || (m[1] === '00' && m[2] === '00')) return null;
+  const d = new Date(card.due as string);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function linkTexts(card: Card): string[] {
+  return [card.title, card.place, card.ask, card.last?.text].filter((t): t is string => Boolean(t));
+}
+
+/** The first https meeting link on the card (place, question or latest entry), or null. */
+export function meetingLink(card: Card): string | null {
+  for (const t of [card.place, card.ask, card.last?.text, card.title]) {
+    const m = t ? LINK_URL.exec(t) : null;
+    if (m) return m[0];
+  }
+  return null;
+}
+
+/** Whether missing this one would be easy: an online class or call. His own flag wins either way. */
+export function isEasyToMiss(card: Card): boolean {
+  if (card.incoming === false) return false;
+  if (card.incoming === true) return true;
+  if (!startTime(card)) return false;
+  if (EASY_TYPES.includes((card.type ?? '').toUpperCase())) return true;
+  if (EASY_WORDS.test([card.title, card.place, card.ask].filter(Boolean).join(' '))) return true;
+  return linkTexts(card).some((t) => LINK_HOSTS.test(t));
+}
+
+/** Whole minutes until the card starts (negative once started), or null without a clock time. */
+export function minutesToStart(card: Card, now: Date): number | null {
+  const start = startTime(card);
+  if (!start) return null;
+  const diff = start.getTime() - now.getTime();
+  const mins = diff > 0 ? Math.ceil(diff / 60_000) : -Math.floor(-diff / 60_000);
+  return mins === 0 ? 0 : mins;
+}
+
+/** Open, easy to miss, and from 15 minutes before the start until 10 minutes after it. */
+export function isIncoming(card: Card, now: Date): boolean {
+  if (card.status !== 'open' || card.deleted || !isEasyToMiss(card)) return false;
+  const start = startTime(card);
+  if (!start) return false;
+  const t = now.getTime() - start.getTime();
+  return t >= -INCOMING_BEFORE_MIN * 60_000 && t < INCOMING_AFTER_MIN * 60_000;
+}
+
+/** "in 12 min", "starting now" or "started 3 min ago". */
+export function countdownText(mins: number): string {
+  if (mins > 0) return `in ${mins} min`;
+  if (mins === 0) return 'starting now';
+  return `started ${-mins} min ago`;
 }

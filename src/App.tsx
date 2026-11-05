@@ -4,7 +4,7 @@ import { AddSheet } from './AddSheet';
 import type { WakeDoc } from './alarm';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -49,7 +49,7 @@ function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Dr
     <Thread card={card} entries={entries} pics={pics} drafts={drafts} now={new Date()}
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }}
-      onPriority={() => { void cyclePriority(uid, card); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} onRemoveItem={(id) => { void removeItem(uid, card, id); }}
+      onPriority={() => { void cyclePriority(uid, card); }} onIncoming={(v) => { void setIncoming(uid, card, v); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} onRemoveItem={(id) => { void removeItem(uid, card, id); }}
       onDelete={() => { void deleteCard(uid, card.id); window.location.hash = '#/'; flash('Card deleted'); }}
       onAttach={async (files) => { const done: { name: string; url: string }[] = []; for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); done.push({ name: up.name, url: up.viewUrl }); } flash('Attached'); return done; }} />
   );
