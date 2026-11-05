@@ -468,7 +468,7 @@ const DELETED = () => ({ deleted: true, deletedAt: new Date().toISOString() });
 export function deleteCard(uid: string, id: string): Promise<void> {
   const batch = writeBatch(db);
   batch.update(doc(db, ...root(uid), 'cards', id), { ...DELETED(), status: 'done' });
-  intent(batch, uid, { type: 'delete', kind: 'card', id });
+  intent(batch, uid, { type: 'delete', kind: 'card', targetId: id });
   return batch.commit();
 }
 
@@ -488,14 +488,14 @@ export function clearDoneCards(uid: string, ids: string[]): Promise<void> {
 export function deleteMemo(uid: string, id: string): Promise<void> {
   const batch = writeBatch(db);
   batch.update(doc(db, ...root(uid), 'memos', id), DELETED());
-  intent(batch, uid, { type: 'delete', kind: 'memo', id });
+  intent(batch, uid, { type: 'delete', kind: 'memo', targetId: id });
   return batch.commit();
 }
 
 export function deleteReceipt(uid: string, id: string): Promise<void> {
   const batch = writeBatch(db);
   batch.update(doc(db, ...root(uid), 'receipts', id), DELETED());
-  intent(batch, uid, { type: 'delete', kind: 'receipt', id });
+  intent(batch, uid, { type: 'delete', kind: 'receipt', targetId: id });
   return batch.commit();
 }
 
