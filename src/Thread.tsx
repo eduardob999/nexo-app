@@ -23,7 +23,7 @@ interface Props {
   onItem?: (itemId: string, done: boolean) => void;
   onAddItem?: (text: string) => void;
   /** Upload picked files to Drive and record them on the card. Resolves when all are done. */
-  onAttach?: (files: File[]) => Promise<void>;
+  onAttach?: (files: File[]) => Promise<{ name: string; url: string }[] | void>;
 }
 
 function Icon({ d }: { d: string }) {
@@ -49,7 +49,14 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
     const files = Array.from(list ?? []);
     if (files.length === 0 || !onAttach) return;
     setBusy(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}`);
-    onAttach(files).then(() => setBusy('Attached'), (e: unknown) => { setBusy(e instanceof Error ? e.message : 'Upload failed'); setDrive(driveReady()); });
+    onAttach(files).then((done) => {
+      setBusy('Attached');
+      // The upload alone tells Nexo nothing, so it goes out as a reply, together with anything typed in the box.
+      const links = (done ?? []).map((d) => `${d.name}: ${d.url}`).join('\n');
+      const typed = text.trim();
+      onReply([typed, links ? `Attached:\n${links}` : ''].filter(Boolean).join('\n\n'));
+      setText('');
+    }, (e: unknown) => { setBusy(e instanceof Error ? e.message : 'Upload failed'); setDrive(driveReady()); });
   };
   const onPaste = (e: React.ClipboardEvent) => {
     const files = Array.from(e.clipboardData.files);

@@ -48,7 +48,7 @@ function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Dr
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }}
       onPriority={() => { void cyclePriority(uid, card); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }}
-      onAttach={async (files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); } flash('Attached'); }} />
+      onAttach={async (files) => { const done: { name: string; url: string }[] = []; for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); done.push({ name: up.name, url: up.viewUrl }); } flash('Attached'); return done; }} />
   );
 }
 
