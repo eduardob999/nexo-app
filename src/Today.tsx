@@ -29,6 +29,8 @@ interface Props {
   nexo?: NexoStatus | null | undefined;
   info?: TodayInfo | null | undefined;
   relays?: Relay[];
+  /** Answers he has pasted back, shown on Nexo's lane until it files them. */
+  answeredRelays?: Relay[];
   onAnswerRelay?: (relay: Relay, text: string) => void;
   onCloseRelay?: (relay: Relay) => void;
   wake?: WakeDoc | null | undefined;
@@ -123,7 +125,7 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
   return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, wake, onRecordWake, onAnswerWake }: Props) {
+export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], answeredRelays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, wake, onRecordWake, onAnswerWake }: Props) {
   const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane && !isHis(c))), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
@@ -181,7 +183,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNe
         </section>
       ) : null}
       <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
-      {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : null}
+      {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : <Relays mode="answered" relays={answeredRelays} onAnswer={onAnswerRelay} onClose={onCloseRelay} />}
       {lane === 'you' ? <TodayStrip info={info} now={now} /> : null}
       {lane === 'you' ? <WakeSuggestion cards={cards} now={now} wake={wake} onRecord={onRecordWake} onAnswer={onAnswerWake} /> : null}
       {holiday && !info ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}

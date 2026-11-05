@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { usePersisted } from './persist';
 import { groupMemos, parseTags } from './notes';
 import { ConfirmButton } from './ConfirmButton';
+import { readClipboard } from './clipboard';
 import type { Memo } from './types';
 
 export function Notes({ memos, onKeep, onDelete }: { memos: Memo[]; onKeep: (text: string, tags: string[]) => void; onDelete?: (m: Memo) => void }) {
@@ -18,7 +19,10 @@ export function Notes({ memos, onKeep, onDelete }: { memos: Memo[]; onKeep: (tex
         <textarea id="memo-text" className="relay-answer" rows={3} placeholder="Something worth keeping" value={text} onChange={(e) => setText(e.target.value)} />
         <label className="sr" htmlFor="memo-tags">Tags</label>
         <input id="memo-tags" className="search-input" placeholder="Tags, up to three (research japan)" value={tags} onChange={(e) => setTags(e.target.value)} />
-        <button type="submit" className="copy-main" disabled={!text.trim()}>Keep it</button>
+        <div className="draft-more">
+          <button type="submit" className="copy-main" disabled={!text.trim()}>Keep it</button>
+          <button type="button" className="chip-btn" onClick={() => { void readClipboard().then(({ text: t }) => { if (t) setText(text ? `${text}\n${t}` : t); }); }}>Paste</button>
+        </div>
       </form>
       <label className="sr" htmlFor="memo-q">Search text or tag</label>
       <input id="memo-q" className="search-input" type="search" placeholder="Search text or tag" value={q} onChange={(e) => setQ(e.target.value)} />

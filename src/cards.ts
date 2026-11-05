@@ -272,6 +272,12 @@ export function watchRelays(uid: string, onRelays: (r: Relay[]) => void, onError
   return onSnapshot(q, (snap) => onRelays(snap.docs.map((d) => ({ ...(d.data() as Omit<Relay, 'id'>), id: d.id }))), onError);
 }
 
+/** Answers he has pasted back that Nexo has not filed yet. */
+export function watchAnsweredRelays(uid: string, onRelays: (r: Relay[]) => void, onError: (e: Error) => void): () => void {
+  const q = query(collection(db, ...root(uid), 'relays'), where('status', '==', 'answered'));
+  return onSnapshot(q, (snap) => onRelays(snap.docs.map((d) => ({ ...(d.data() as Omit<Relay, 'id'>), id: d.id }))), onError);
+}
+
 export function answerRelay(uid: string, relay: Relay, text: string): Promise<void> {
   const batch = writeBatch(db);
   batch.update(doc(db, ...root(uid), 'relays', relay.id), { response: text, status: 'answered', answeredAt: new Date().toISOString() });

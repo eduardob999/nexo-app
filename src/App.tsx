@@ -4,7 +4,7 @@ import { AddSheet } from './AddSheet';
 import type { WakeDoc } from './alarm';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -83,6 +83,7 @@ export function App() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [nexo, setNexo] = useState<NexoStatus | null | undefined>(undefined);
   const [relays, setRelays] = useState<Relay[]>([]);
+  const [answeredRelays, setAnsweredRelays] = useState<Relay[]>([]);
   const [info, setInfo] = useState<TodayInfo | null>(null);
   const [wake, setWake] = useState<WakeDoc | null>(null);
   const [doneCards, setDoneCards] = useState<Card[]>([]);
@@ -123,6 +124,11 @@ export function App() {
   useEffect(() => {
     if (!user) return undefined;
     return watchRelays(user.uid, setRelays, (e) => setError(e.message));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    return watchAnsweredRelays(user.uid, setAnsweredRelays, (e) => console.warn('[relays]', e));
   }, [user]);
 
   useEffect(() => {
@@ -223,7 +229,7 @@ export function App() {
       ) : tab === 'upcoming' ? (
         <Upcoming cards={cards} now={new Date()} onDone={done} />
       ) : tab === 'browse' ? (
-        <Browse uid={user.uid} nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.length} settings={settings} onSettings={changeSettings}
+        <Browse uid={user.uid} nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.filter((d) => d.status !== 'sent').length} settings={settings} onSettings={changeSettings}
           onSleep={(until) => { void setSleep(user.uid, until); }} />
       ) : tab === 'drafts' ? (
         <Drafts drafts={drafts} cards={cards}
@@ -244,7 +250,7 @@ export function App() {
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info} wake={wake}
           onRecordWake={(d, r) => { void recordWake(user.uid, d, r); }} onAnswerWake={(d, r, f, p) => { void answerWake(user.uid, d, r, f, p); flash('Thanks, noted'); }}
-          relays={relays} onAnswerRelay={(r, t) => { void answerRelay(user.uid, r, t); }} onCloseRelay={(r) => { void closeRelay(user.uid, r); }}
+          relays={relays} answeredRelays={answeredRelays} onAnswerRelay={(r, t) => { void answerRelay(user.uid, r, t); }} onCloseRelay={(r) => { void closeRelay(user.uid, r); }}
           onDone={done} onLater={later} onJoin={(cs) => { void joinCards(user.uid, cs).then(() => flash(`Joined ${cs.length} cards`)); }} onCallNexo={(mail) => { void callNexo(user.uid); if (mail) void requestMailCheck(user.uid); flash(mail ? 'Nexo called, mail check included' : 'Nexo called'); }} onWake={() => { void setSleep(user.uid, null); }} />
       )}
       {tab === 'today' ? (
@@ -253,7 +259,7 @@ export function App() {
         </button>
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
-        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files, lines) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id, lines).then(() => uploadNewCardFiles(user.uid, id, files)); }} /> : null}
     </>
   );

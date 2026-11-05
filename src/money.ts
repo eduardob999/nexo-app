@@ -79,6 +79,13 @@ export function receiptMonths(list: Receipt[]): { month: string; total: number; 
   });
 }
 
+/** Totals over every receipt on record, by category, biggest first. Only worth showing once there is more than one month. */
+export function allTimeTotals(list: Receipt[]): { total: number; cats: { cat: string; sum: number }[]; months: number } {
+  const cats = new Map<string, number>();
+  for (const r of list) cats.set(r.cat || 'other', (cats.get(r.cat || 'other') ?? 0) + r.amount);
+  return { total: list.reduce((s, r) => s + r.amount, 0), cats: [...cats].map(([cat, sum]) => ({ cat, sum })).sort((a, b) => b.sum - a.sum), months: new Set(list.map((r) => jstMonth(new Date(r.ts)))).size };
+}
+
 /** "3 × ¥139" for a line with a quantity and unit price, otherwise nothing. */
 export function qtyText(l: { qty?: number; unit?: number }): string {
   if (l.qty === undefined || l.unit === undefined) return l.qty && l.qty > 1 ? `${l.qty} ×` : '';

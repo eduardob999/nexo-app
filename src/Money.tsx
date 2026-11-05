@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, qtyText, receiptMonths, receiptTotals, summarise, topBars, yen } from './money';
+import { allTimeTotals, earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, qtyText, receiptMonths, receiptTotals, summarise, topBars, yen } from './money';
 import { ConfirmButton } from './ConfirmButton';
 import { ReceiptPhotos } from './ReceiptPhotos';
 import type { Alloc, CardFile, Market, Receipt } from './types';
@@ -197,6 +197,8 @@ function ReceiptsBlock({ receipts, onReceipt, onDeleteReceipt, onAttachReceipt, 
   const [vendor, setVendor] = useState('');
   const [msg, setMsg] = useState('');
   const months = receiptMonths(receipts);
+  const all = allTimeTotals(receipts);
+  const [showAll, setShowAll] = useState<string[]>([]);
   return (
     <details className="shelf-fold"><summary>Receipts <span className="mut">{receipts.length}</span></summary>
       {onReceipt ? (
@@ -208,14 +210,21 @@ function ReceiptsBlock({ receipts, onReceipt, onDeleteReceipt, onAttachReceipt, 
         </form>
       ) : null}
       {msg ? <p className="notice" role="status">{msg}</p> : null}
+      {all.months > 1 ? (
+        <div>
+          <h3 className="group-title">All time <span className="mut">{yen(all.total)}</span></h3>
+          <p className="mut al-cats">{all.cats.map((c) => `${c.cat} ${yen(c.sum)}`).join(' · ')}</p>
+        </div>
+      ) : null}
       {months.map((m) => (
         <div key={m.month}>
           <h3 className="group-title">{m.month} <span className="mut">{yen(m.total)}</span></h3>
           <p className="mut al-cats">{m.cats.map((c) => `${c.cat} ${yen(c.sum)}`).join(' · ')}</p>
-          <ul className="res-list">{m.items.slice(0, 25).map((r) => <li key={r.id} className="res done"><span>{yen(r.amount)} · {r.vendor || r.cat}</span><span className="mut">{r.cat} · {new Date(r.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{r.files?.length ? ` · ${r.files.length} photo${r.files.length > 1 ? 's' : ''}` : ''}</span>
+          <ul className="res-list">{(showAll.includes(m.month) ? m.items : m.items.slice(0, 25)).map((r) => <li key={r.id} className="res done"><span>{yen(r.amount)} · {r.vendor || r.cat}</span><span className="mut">{r.cat} · {new Date(r.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}{r.files?.length ? ` · ${r.files.length} photo${r.files.length > 1 ? 's' : ''}` : ''}</span>
             <ReceiptDetails r={r} />
             {onAttachReceipt && watchPhotos ? <PhotoFold receipt={r} watch={watchPhotos} onAttach={onAttachReceipt} /> : null}
             {onDeleteReceipt ? <ConfirmButton label="Delete" ariaLabel={`Delete receipt ${r.vendor || r.cat}`} onConfirm={() => onDeleteReceipt(r)} /> : null}</li>)}</ul>
+          {m.items.length > 25 && !showAll.includes(m.month) ? <button className="chip-btn small" onClick={() => setShowAll([...showAll, m.month])}>Show all {m.items.length}</button> : null}
         </div>
       ))}
     </details>

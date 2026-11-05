@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allocMonth, earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, summarise, topBars, yen } from './money';
+import { allTimeTotals, allocMonth, earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, summarise, topBars, yen } from './money';
 import type { Alloc } from './types';
 
 const a = (id: string, amount: number, done: boolean, extra: Partial<Alloc> = {}): Alloc => ({ id, label: id, amount, done, ...extra });
@@ -45,5 +45,15 @@ describe('market and receipts', () => {
     const m = receiptMonths([r('1', 100, 'food', '2026-10-05T00:00:00Z'), r('2', 300, 'supplies', '2026-10-06T00:00:00Z'), r('3', 50, 'food', '2026-09-30T00:00:00Z')]);
     expect(m.map((x) => x.month)).toEqual(['2026-10', '2026-09']);
     expect(m[0]).toMatchObject({ total: 400, cats: [{ cat: 'supplies', sum: 300 }, { cat: 'food', sum: 100 }] });
+  });
+});
+
+describe('allTimeTotals', () => {
+  it('sums every receipt by category and counts months', () => {
+    const r = (id: string, amount: number, cat: string, ts: string) => ({ id, amount, cat, ts, vendor: '' });
+    const t = allTimeTotals([r('1', 300, 'food', '2026-10-05T00:00:00Z'), r('2', 200, 'food', '2026-11-05T00:00:00Z'), r('3', 900, 'fees', '2026-11-06T00:00:00Z')]);
+    expect(t.total).toBe(1400);
+    expect(t.cats).toEqual([{ cat: 'fees', sum: 900 }, { cat: 'food', sum: 500 }]);
+    expect(t.months).toBe(2);
   });
 });

@@ -6,6 +6,7 @@ import { usePersisted } from './persist';
 import { parseQuickAdd } from './parse';
 import { dueText } from './urgency';
 import { checklistLines } from './checklistlines';
+import { readClipboard } from './clipboard';
 
 interface Props {
   onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low', files: File[], lines: string[]) => void;
@@ -98,6 +99,7 @@ export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
           </ul>
         ) : null}
         <div className="draft-more">
+          <button type="button" className="chip-btn small" onClick={() => { void readClipboard().then(({ files: fs, text: t }) => { if (fs.length) { pick(fs); if (!drive) setMsg('Connect Google Drive to upload these'); } else if (t) setText(text ? `${text} ${t}` : t); else setMsg('The clipboard is empty or not readable'); }); }}>Paste</button>
           <button type="button" className="chip-btn small" aria-pressed={listOn} onClick={() => setListOn(!listOn)}>Checklist</button>
           {drive ? (
             <>

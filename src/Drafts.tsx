@@ -58,12 +58,19 @@ function hhmm(iso?: string): string {
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
 }
 
+function dayHm(iso?: string): string {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return '';
+  const today = d.toDateString() === new Date().toDateString();
+  return today ? hhmm(iso) : `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} ${hhmm(iso)}`;
+}
+
 function SentLine({ draft }: { draft: Draft }) {
   const to = (draft.to ?? []).join(', ');
   const names = (draft.attachments ?? []).map((f) => f.name).join(', ');
   return (
     <li className="draft sent-line">
-      <span className="who">SENT · {hhmm(draft.sentAt)}{draft.sentVia === 'elsewhere' ? ' · by you, elsewhere' : ''}</span>
+      <span className="who">SENT · {dayHm(draft.sentAt)}{draft.sentVia === 'elsewhere' ? ' · by you, elsewhere' : ''}</span>
       <span>{draft.subject ?? draft.topic ?? draft.id}{to ? ` to ${to}` : ''}</span>
       {names ? <span className="mut">Attached: {names}</span> : null}
     </li>
@@ -169,10 +176,14 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
       <div className="draft-head">
         <div>
           {to ? <span className="who">TO · {to}</span> : null}
+          {draft.contact && draft.contact !== to ? <span className="who">REPLY TO · {draft.contact}</span> : null}
           <h2 className="draft-title">{draft.subject ?? draft.topic ?? draft.id}</h2>
         </div>
         {flash || draft.copiedAt ? <span className="pill-ok">COPIED</span> : null}
       </div>
+      {draft.editedAt ? <p className="d-sends">Edited by you {dayHm(draft.editedAt)}</p> : null}
+      {draft.revisedAt && !revising ? <p className="d-sends">Revised by Nexo {dayHm(draft.revisedAt)}</p> : null}
+      {draft.status === 'needs-info' && draft.answeredAt ? <p className="d-sends">You answered {dayHm(draft.answeredAt)}, Nexo redrafts it next</p> : null}
       {revising ? (
         <p className="revise-wait">Waiting for Nexo to revise since {hhmm(draft.revise?.at)}: “{draft.revise?.text}”</p>
       ) : null}
@@ -235,6 +246,7 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
             {revising ? null : <button className="chip-btn small" onClick={() => open('revise')}>Ask Nexo to revise</button>}
             {draft.subject ? <CopyChip label="Copy subject" text={draft.subject} /> : null}
             {to ? <CopyChip label="Copy address" text={to} /> : null}
+            {draft.contact && draft.contact !== to ? <CopyChip label="Copy reply-to" text={draft.contact} /> : null}
             <ConfirmButton label="Discard" onConfirm={() => onDiscard(draft.id)} />
           </div>
         </>
@@ -249,6 +261,7 @@ export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, on
   const waiting = drafts.filter((d) => d.status !== 'sent');
   const dayAgo = Date.now() - 24 * 3600_000;
   const sent = drafts.filter((d) => d.status === 'sent' && Date.parse(d.sentAt ?? '') > dayAgo);
+  const earlier = drafts.filter((d) => d.status === 'sent' && !(Date.parse(d.sentAt ?? '') > dayAgo)).sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
   return (
     <main className="screen">
       <header className="top">
@@ -270,6 +283,11 @@ export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, on
         {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} cards={cards} watchPics={watchPics} onAttachExisting={onAttachExisting} onDetach={onDetach} onUpload={onUpload} />)}
         {sent.map((d) => <SentLine key={d.id} draft={d} />)}
       </ul>
+      {earlier.length > 0 ? (
+        <details className="shelf-fold"><summary>Sent earlier <span className="mut">{earlier.length}</span></summary>
+          <ul className="drafts">{earlier.slice(0, 60).map((d) => <SentLine key={d.id} draft={d} />)}</ul>
+        </details>
+      ) : null}
     </main>
   );
 }

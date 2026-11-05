@@ -9,6 +9,7 @@ import { TripTicket } from './TripTicket';
 import { dueText, isEasyToMiss } from './urgency';
 import { ConfirmButton } from './ConfirmButton';
 import { connectDrive, driveReady } from './drive';
+import { readClipboard } from './clipboard';
 
 interface Props {
   card: Card;
@@ -71,7 +72,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
   const [text, setText] = usePersisted(`reply-${card.id}`);
   useEffect(() => { markSeen(card.id); }, [card.id, entries.length]);
   const mine = drafts.filter((d) => d.linkedNote === card.id);
-  const pick = (list: FileList | null) => {
+  const pick = (list: FileList | File[] | null) => {
     const files = Array.from(list ?? []);
     if (files.length === 0 || !onAttach) return;
     setBusy(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}`);
@@ -83,6 +84,15 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
       onReply([typed, links ? `Attached:\n${links}` : ''].filter(Boolean).join('\n\n'));
       setText('');
     }, (e: unknown) => { setBusy(e instanceof Error ? e.message : 'Upload failed'); setDrive(driveReady()); });
+  };
+  const pasteButton = () => {
+    void readClipboard().then(({ files, text: t }) => {
+      if (files.length > 0 && onAttach) {
+        if (!drive) { setAttaching(true); setBusy('Connect Google Drive, then paste again'); return; }
+        pick(files);
+      } else if (t) setText(text ? `${text}\n${t}` : t);
+      else setBusy('The clipboard is empty or not readable. Long press the box to paste.');
+    });
   };
   const onPaste = (e: React.ClipboardEvent) => {
     const files = Array.from(e.clipboardData.files);
@@ -181,6 +191,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
         ) : null}
         <div className="reply-actions">
           {onAttach ? <button className="chip-btn" onClick={() => setAttaching((a) => !a)}>Attach</button> : null}
+          <button className="chip-btn" type="button" onClick={pasteButton}>Paste</button>
         </div>
         {attaching && onAttach ? (
           <section className="join-pane" aria-label="Attach a photo or file">

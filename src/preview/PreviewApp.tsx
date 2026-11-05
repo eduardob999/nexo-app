@@ -167,6 +167,24 @@ export function PreviewApp() {
       resources={[{ id: 'a', kind: 'deck', title: 'Whiteboard, one slide', url: 'https://example.org/deck', note: 'The version for the meeting.' }, { id: 'b', kind: 'file', title: 'Residence card scan', url: '/home/me/docs/card.pdf' }, { id: 'c', kind: 'link', title: 'Old link', url: 'https://example.org', archived: true }]}
       onAdd={() => {}} onArchive={() => {}} onClearDone={() => {}} /><TabBar current="browse" draftCount={0} /></>);
   }
+  if (which === 'money-all') {
+    const rs = Array.from({ length: 30 }, (_, i) => ({ id: `m${i}`, amount: 200 + i * 10, cat: i % 3 ? 'food' : 'transport', vendor: `Shop ${i}`, ts: new Date(Date.now() - i * 3_600_000).toISOString() }))
+      .concat([{ id: 'o1', amount: 18104, cat: 'fees', vendor: 'Dojo fee', ts: '2026-10-05T10:00:00+09:00' }]);
+    return (<><Money onAdd={() => {}} onToggle={() => {}} onEdit={() => {}} onRepeat={() => {}} onSeed={() => {}} allocations={[]} receipts={rs} onReceipt={() => {}} /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which === 'nexolane-relays') {
+    const lane: Card[] = [{ id: 'n2', status: 'open', for: 'nexo', title: 'Look up the carrier for the lens parcel', last: { by: 'nexo', text: 'Checking the carrier site now', ts: '2026-11-02T10:00:00+09:00' } }];
+    return (<><Today cards={lane} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} lane="nexo"
+      answeredRelays={[{ id: 'P-017', target: 'Perplexity', mode: 'Pro Search', status: 'answered', topic: 'Delta learning uncertainty', prompt: 'P-017\n\nWhat is delta learning?', response: 'Delta learning trains a model on the difference between two levels of theory.' }]} /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which === 'drafts-meta') {
+    const ds: Draft[] = [
+      { id: 'x1', status: 'drafted', contact: '075-123-4567 (Dr Nakata clinic)', subject: 'Call about the appointment', text: 'Hello, I would like to move my appointment to Friday.', editedAt: new Date(Date.now() - 3_600_000).toISOString(), revisedAt: new Date(Date.now() - 7_200_000).toISOString() },
+      { id: 'x2', status: 'needs-info', topic: 'Reply about the dojo shift', need: 'which Saturday you can cover', answeredAt: new Date(Date.now() - 1_800_000).toISOString() },
+      { id: 'x3', status: 'sent', to: ['a@example.org'], subject: 'Re: Old thing', text: 'x', sentAt: '2026-10-20T10:00:00+09:00', sentBy: 'nexo' },
+    ];
+    return (<><Drafts drafts={ds} cards={[]} onDetach={() => {}} onAttachExisting={() => {}} onUpload={async () => {}} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} onEdit={() => {}} onRevise={() => {}} onAnswer={() => {}} /><TabBar current="drafts" draftCount={2} /></>);
+  }
   if (which === 'nexolane') {
     const mk = (id: string, title: string, last: string, extra: Partial<Card> = {}): Card => ({ id, status: 'open', for: 'nexo', title, last: { by: 'nexo', text: last, ts: '2026-11-02T10:00:00+09:00' }, ...extra });
     const lane: Card[] = [

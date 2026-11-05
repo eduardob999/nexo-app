@@ -92,6 +92,9 @@ export interface Draft {
   answeredAt?: string;
   editedAt?: string;
   editedBy?: string;
+  /** Where a reply goes when it is not an email address: a phone number, a form, a person. */
+  contact?: string;
+  revisedAt?: string;
   sentAt?: string;
   sentBy?: string;
   sentVia?: string;
