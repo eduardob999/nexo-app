@@ -393,3 +393,5 @@ a.act-ink { display: inline-flex; align-items: center; text-decoration: none; }
 .call-wrap { display: flex; align-items: center; gap: 10px; flex: none; }
 .call-mail { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mut, #5F646C); white-space: nowrap; }
 .call-mail input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }

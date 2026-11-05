@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePersisted } from './persist';
 import { markSeen } from './seen';
 import type { Card, CardFile, Draft, Entry } from './types';
@@ -40,6 +40,18 @@ const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
 export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onAttach }: Props) {
   const [attaching, setAttaching] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLElement>(null);
+  // The reply bar is fixed and changes height (ask block, attach pane, chips), so the page keeps clear of its real height.
+  useEffect(() => {
+    const bar = barRef.current; const page = pageRef.current;
+    if (!bar || !page || typeof ResizeObserver === 'undefined') return;
+    const set = () => page.style.setProperty('--reply-h', `${bar.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, []);
   const [drive, setDrive] = useState(driveReady());
   const [busy, setBusy] = useState('');
   const [text, setText] = usePersisted(`reply-${card.id}`);
@@ -72,7 +84,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
     setText('');
   };
   return (
-    <main className="screen thread">
+    <main className="screen thread" ref={pageRef}>
       <header className="thread-top">
         <button className="icon-btn" aria-label="Back" onClick={onBack}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>
@@ -119,7 +131,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
       </ol>
       {mine.length > 0 ? <a className="draft-link" href="#/drafts">Open the draft{mine.length > 1 ? 's' : ''}</a> : null}
 
-      <div className="reply-bar">
+      <div className="reply-bar" ref={barRef}>
         {card.ask ? (
           <aside className="ask-block" aria-label="What Nexo needs from you">
             <b>What I need from you</b>
