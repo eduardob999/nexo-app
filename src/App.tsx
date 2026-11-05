@@ -4,7 +4,7 @@ import { AddSheet } from './AddSheet';
 import type { WakeDoc } from './alarm';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { addAlloc, addCard, attachFile, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { addAlloc, addCard, attachFile, cyclePriority, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchOpenCards, watchRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -17,6 +17,8 @@ import { Browse } from './Browse';
 import { bandOf } from './urgency';
 import { Drafts } from './Drafts';
 import { Thread } from './Thread';
+import { Chat } from './Chat';
+import type { ChatMsg } from './chatlogic';
 import { ToastHost } from './Toast';
 import { UpdateBar } from './UpdateBar';
 import { flash } from './toast';
@@ -121,6 +123,13 @@ export function App() {
     return () => { stop(); stopNexo(); window.clearInterval(tick); };
   }, [user]);
 
+  const onChat = route.name === 'chat';
+  const [chat, setChat] = useState<ChatMsg[]>([]);
+  useEffect(() => {
+    if (!user || !onChat) return undefined;
+    return watchChat(user.uid, setChat, (e) => console.warn('[chat]', e));
+  }, [user, onChat]);
+
   const onMoney = route.name === 'money';
   useEffect(() => {
     if (!user || !onMoney) return undefined;
@@ -150,6 +159,10 @@ export function App() {
   const done = (c: Card) => { void markDone(user.uid, c.id); flash('Marked done'); };
   const later = (c: Card) => { void markLater(user.uid, c); flash('Moved one day on'); };
   const card = route.name === 'card' ? cards.find((c) => c.id === route.id) : undefined;
+
+  if (route.name === 'chat') {
+    return <Chat msgs={chat} onBack={() => { window.location.hash = '#/'; }} onSend={(t) => { void sendChat(user.uid, t); }} />;
+  }
 
   if (route.name === 'card') {
     return card ? (

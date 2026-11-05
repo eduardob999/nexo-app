@@ -127,13 +127,11 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
 
   return (
     <main className="screen">
-      <header className="top">
-        <div>
-          <span className="kicker">{stamp} · {count} {lane === 'you' ? 'LEFT' : 'WITH NEXO'}{nexo?.health && nexo.health.state !== 'asleep' ? (nexo.health.state === 'ok'
-            ? <i className="health-dot" role="img" aria-label="Nexo is online" title="Nexo is online" />
-            : <span className={`health health-${nexo.health.state}`} title={nexo.health.note || undefined}> · {HEALTH_LABEL[nexo.health.state]}</span>) : null}</span>
-          <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
-        </div>
+      <header className="top top-wrap">
+        <span className="kicker">{stamp} · {count} {lane === 'you' ? 'LEFT' : 'WITH NEXO'}{nexo?.health && nexo.health.state !== 'asleep' ? (nexo.health.state === 'ok'
+          ? <i className="health-dot" role="img" aria-label="Nexo is online" title="Nexo is online" />
+          : <span className={`health health-${nexo.health.state}`} title={nexo.health.note || undefined}> · {HEALTH_LABEL[nexo.health.state]}</span>) : null}</span>
+        <h1>{lane === 'you' ? 'Today' : 'Nexo'}</h1>
         <div className="call-wrap">
         <label className="call-mail" title="Also check my mail"><input type="checkbox" checked={mail} onChange={(e) => toggleMail(e.target.checked)} /> Mail</label>
         <button className="call" onClick={press}
@@ -142,6 +140,9 @@ export function Today({ cards, now, fromCache, onDone, onLater, onCallNexo, onWa
           Call Nexo
           {waiting > 0 ? <span className="call-count" aria-hidden="true">{waiting}</span> : null}
         </button>
+        <a className="chat-btn" href="#/chat" aria-label="Chat with Nexo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" /></svg>
+        </a>
         </div>
       </header>
       {nexo?.sleepUntil && Date.parse(nexo.sleepUntil) > now.getTime() ? (

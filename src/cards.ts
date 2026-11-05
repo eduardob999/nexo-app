@@ -1,8 +1,9 @@
 import { applyFeedback, type WakeDoc, type WakeFeedback, type WakePrefs, type WakeRecord } from './alarm';
-import { arrayUnion, collection, doc, documentId, increment, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
+import { arrayUnion, collection, doc, documentId, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
+import { sortChat, type ChatMsg } from './chatlogic';
 
 const root = (uid: string) => ['users', uid] as const;
 
@@ -436,4 +437,16 @@ export function cyclePriority(uid: string, card: Card): Promise<void> {
   batch.update(doc(db, ...root(uid), 'cards', card.id), { prio: next });
   intent(batch, uid, { type: 'priority', cardId: card.id, prio: next });
   return batch.commit();
+}
+
+/** The last 80 chat messages with Nexo, oldest first. Works from the local cache when offline. */
+export function watchChat(uid: string, onMsgs: (m: ChatMsg[]) => void, onError: (e: Error) => void): () => void {
+  const q = query(collection(db, ...root(uid), 'chat'), orderBy('ts'), limitToLast(80));
+  return onSnapshot(q, (snap) => onMsgs(sortChat(snap.docs.map((d) => ({ ...(d.data() as Omit<ChatMsg, 'id'>), id: d.id })))), onError);
+}
+
+/** One message from him. Firestore queues the write offline, so this resolves when it is saved or synced. */
+export function sendChat(uid: string, text: string): Promise<void> {
+  const id = String(Date.now());
+  return setDoc(doc(db, ...root(uid), 'chat', id), { by: 'you', text, ts: new Date().toISOString(), status: 'new' });
 }

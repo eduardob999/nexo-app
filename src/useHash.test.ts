@@ -9,6 +9,7 @@ describe('parseHash', () => {
   it('reads tabs and cards', () => {
     expect(parseHash('#/drafts')).toEqual({ name: 'drafts' });
     expect(parseHash('#/nexo')).toEqual({ name: 'nexo' });
+    expect(parseHash('#/chat')).toEqual({ name: 'chat' });
     expect(parseHash('#/upcoming')).toEqual({ name: 'upcoming' });
     expect(parseHash('#/browse')).toEqual({ name: 'browse' });
     expect(parseHash('#/search')).toEqual({ name: 'search' });

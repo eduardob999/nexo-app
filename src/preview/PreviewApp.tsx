@@ -9,6 +9,8 @@ import { Trips } from '../Trips';
 import { Upcoming } from '../Upcoming';
 import { WakeSuggestion } from '../WakeSuggestion';
 import { Thread } from '../Thread';
+import { Chat } from '../Chat';
+import type { ChatMsg } from '../chatlogic';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
 import type { Card, Draft, Entry, NexoStatus } from '../types';
@@ -69,6 +71,17 @@ export function PreviewApp() {
   const card = { ...(FIXTURES[2] as Card), bring: [{ t: 'Signed lease form', got: true }, { t: 'Residence card' }, { t: 'Pen' }], items: [{ id: 'i1', text: 'Ask about the deposit', done: false }], ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
   if (which === 'thread') {
     return <Thread card={card} entries={ENTRIES} drafts={DRAFTS} now={NOW} onBack={() => {}} onReply={() => {}} />;
+  }
+  if (which === 'chat' || which === 'chat-empty') {
+    const at = (min: number) => new Date(new Date('2026-11-05T09:00:00+09:00').getTime() + min * 60_000).toISOString();
+    const msgs: ChatMsg[] = which === 'chat-empty' ? [] : [
+      { id: '1', by: 'you', text: 'What is left today?', ts: at(0), status: 'done' },
+      { id: '2', by: 'nexo', text: 'Two things: the bicycle registration at 11:00 (bring your ID card) and the lab seminar at 15:00 in Building 3, room 204.', ts: at(1), route: 'answer' },
+      { id: '3', by: 'you', text: 'Add a task: buy stamps, and move the seminar prep to tomorrow', ts: at(3), status: 'done' },
+      { id: '4', by: 'nexo', text: 'Done. Details: https://example.org/stamps', ts: at(4), route: 'act', did: ['Added card: Buy stamps', 'Moved Seminar prep to Fri 6 Nov'] },
+      { id: '5', by: 'you', text: 'When do I need to leave tomorrow?', ts: at(6), status: 'working' },
+    ];
+    return <Chat msgs={msgs} onBack={() => {}} onSend={() => {}} />;
   }
   if (which === 'wakeq') {
     return <WakeSuggestion cards={[]} now={new Date('2026-11-05T08:10:00+09:00')} wake={{ prefs: { n: 4 }, log: { '2026-11-05': { minutes: 450, basis: 'travel', lead: 90, first: 'Lab meeting with Mamitsuka-sensei' } } }} onAnswer={() => {}} />;
