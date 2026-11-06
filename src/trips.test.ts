@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isTrip, tripGroups } from './trips';
+import { isTrip, mergeById, tripGroups } from './trips';
 import type { Card } from './types';
 
 const now = new Date('2026-11-04T12:00:00+09:00');
@@ -28,5 +28,15 @@ describe('pastTrips', () => {
       { id: 'plain', status: 'done', for: 'you', due: '2026-10-30' } as Card,
     ];
     expect(pastTrips(done).map((x) => x.id)).toEqual(['new', 'old']);
+  });
+});
+
+describe('mergeById', () => {
+  it('keeps one card per id and lets the second list win', () => {
+    const a = [{ id: 'x', title: 'old' }, { id: 'y', title: 'y' }] as never[];
+    const b = [{ id: 'x', title: 'new' }, { id: 'z', title: 'z' }] as never[];
+    const m = mergeById(a, b) as unknown as { id: string; title: string }[];
+    expect(m.map((c) => c.id).sort()).toEqual(['x', 'y', 'z']);
+    expect(m.find((c) => c.id === 'x')?.title).toBe('new');
   });
 });

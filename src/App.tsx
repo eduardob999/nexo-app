@@ -6,7 +6,8 @@ import type { SleepRec } from './sleepmodel';
 import { SleepScreen } from './SleepScreen';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { doneCutoff } from './shelf';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -90,6 +91,7 @@ export function App() {
   const [wake, setWake] = useState<WakeDoc | null>(null);
   const [sleep, setSleepRecs] = useState<SleepRec[]>([]);
   const [doneCards, setDoneCards] = useState<Card[]>([]);
+  const [showOlderDone, setShowOlderDone] = useState(false);
   const [closedRelays, setClosedRelays] = useState<Relay[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [memos, setMemos] = useState<Memo[]>([]);
@@ -181,14 +183,15 @@ export function App() {
   const onTrips = route.name === 'trips';
   useEffect(() => {
     if (!user || !onTrips) return undefined;
-    return watchDoneCards(user.uid, setDoneCards, (e) => console.warn('[trips]', e));
+    return watchDoneTrips(user.uid, setDoneCards, (e) => console.warn('[trips]', e));
   }, [user, onTrips]);
   useEffect(() => {
     if (!user || !onShelf) return undefined;
     const warn = (e: Error) => console.warn('[shelf]', e);
-    const stops = [watchDoneCards(user.uid, setDoneCards, warn), watchClosedRelays(user.uid, setClosedRelays, warn), watchResources(user.uid, setResources, warn)];
+    // The last month by default; "Show older" asks for everything, once, and only when he taps it.
+    const stops = [showOlderDone ? watchDoneCards(user.uid, setDoneCards, warn) : watchRecentDoneCards(user.uid, doneCutoff(new Date(), 30), setDoneCards, warn), watchClosedRelays(user.uid, setClosedRelays, warn), watchResources(user.uid, setResources, warn)];
     return () => stops.forEach((s) => s());
-  }, [user, onShelf]);
+  }, [user, onShelf, showOlderDone]);
 
   if (!isFirebaseConfigured) return <main className="screen center"><p className="notice">Firebase is not configured. Fill in .env.local.</p></main>;
   if (user === undefined) return <main className="screen center"><p className="notice">Loading</p></main>;
@@ -230,7 +233,7 @@ export function App() {
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (
-        <Shelf done={doneCards} closed={closedRelays} resources={resources}
+        <Shelf done={doneCards} closed={closedRelays} resources={resources} onShowOlder={showOlderDone ? undefined : () => setShowOlderDone(true)}
           onAdd={(r) => { void addResource(user.uid, r); }} onArchive={(r, a) => { void archiveResource(user.uid, r, a); }}
           onReopen={(c) => { void reopenCard(user.uid, c.id); flash('Reopened'); }}
           onClearDone={(ids) => { void clearDoneCards(user.uid, ids); flash(`Cleared ${ids.length} done cards`); }} />

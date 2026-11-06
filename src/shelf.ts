@@ -17,6 +17,16 @@ export function isWebLink(target: string): boolean {
   return /^https?:\/\/[^\s"'<>]+$/i.test(target.trim());
 }
 
+/** The moment `days` days before `now`, as the ISO text `doneAt` is stored in. The Shelf asks Firestore only for cards finished after it. */
+export function doneCutoff(now: Date, days = 30): string {
+  return new Date(now.getTime() - days * 86_400_000).toISOString();
+}
+
+/** A window query on doneAt can still return a card that was reopened in the meantime; only finished cards belong on the Shelf. */
+export function onlyDone(cards: Card[]): Card[] {
+  return cards.filter((c) => c.status === 'done');
+}
+
 /** Finished cards, most recently finished first. */
 export function recentDone(cards: Card[]): Card[] {
   const t = (c: Card) => Date.parse((c as Card & { doneAt?: string }).doneAt ?? c.due ?? '') || 0;
