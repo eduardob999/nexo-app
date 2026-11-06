@@ -6,6 +6,14 @@ export function isTrip(card: Card): boolean {
 
 const DAY = 86_400_000;
 
+/** Two lists of cards merged by id, the second winning, so two queries can feed one screen. */
+export function mergeById(a: Card[], b: Card[]): Card[] {
+  const m = new Map<string, Card>();
+  for (const c of a) m.set(c.id, c);
+  for (const c of b) m.set(c.id, c);
+  return [...m.values()];
+}
+
 /** Finished trips, most recent first, for the Past fold. */
 export function pastTrips(done: Card[]): Card[] {
   const t = (c: Card) => Date.parse(c.due ? (c.due.length <= 10 ? `${c.due}T12:00:00` : c.due) : '') || 0;

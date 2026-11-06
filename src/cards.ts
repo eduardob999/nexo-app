@@ -4,6 +4,8 @@ import { db } from './firebase';
 import { checklistLines } from './checklistlines';
 import type { DraftAttachment, Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
+import { onlyDone } from './shelf';
+import { mergeById } from './trips';
 import { sortChat, type ChatMsg } from './chatlogic';
 import { bedDate, isoLocal, nightKey, planDoc, wakeDate, type SleepPlan, type SleepRec } from './sleepmodel';
 
@@ -334,6 +336,30 @@ export function requestMailCheck(uid: string): Promise<void> {
 export function watchDoneCards(uid: string, onCards: (c: Card[]) => void, onError: (e: Error) => void): () => void {
   const q = query(collection(db, ...root(uid), 'cards'), where('status', '==', 'done'));
   return onSnapshot(q, (snap) => onCards(snap.docs.map((d) => ({ ...(d.data() as Omit<Card, 'id'>), id: d.id })).filter(shown)), onError);
+}
+
+/**
+ * Cards finished since `sinceIso`. The Shelf shows the newest forty anyway, so it asks for the last month instead
+ * of every card he has ever finished (hundreds of reads each time the listener has been closed for half an hour).
+ * One range on one field needs no composite index. A reopened card loses `doneAt`, and onlyDone covers the gap.
+ */
+export function watchRecentDoneCards(uid: string, sinceIso: string, onCards: (c: Card[]) => void, onError: (e: Error) => void): () => void {
+  const q = query(collection(db, ...root(uid), 'cards'), where('doneAt', '>=', sinceIso));
+  return onSnapshot(q, (snap) => onCards(onlyDone(snap.docs.map((d) => ({ ...(d.data() as Omit<Card, 'id'>), id: d.id })).filter(shown))), onError);
+}
+
+/**
+ * Finished trips only, for the Trips screen's Past fold. A trip is `type === 'TRIP'` or `trip === true`, so two
+ * equality queries (no composite index needed) merged by id, instead of every finished card filtered afterwards.
+ */
+export function watchDoneTrips(uid: string, onCards: (c: Card[]) => void, onError: (e: Error) => void): () => void {
+  const col = collection(db, ...root(uid), 'cards');
+  let a: Card[] = [];
+  let b: Card[] = [];
+  const take = (snap: { docs: { id: string; data: () => unknown }[] }) => snap.docs.map((d) => ({ ...(d.data() as Omit<Card, 'id'>), id: d.id })).filter(shown);
+  const stopA = onSnapshot(query(col, where('status', '==', 'done'), where('type', '==', 'TRIP')), (s) => { a = take(s); onCards(mergeById(a, b)); }, onError);
+  const stopB = onSnapshot(query(col, where('status', '==', 'done'), where('trip', '==', true)), (s) => { b = take(s); onCards(mergeById(a, b)); }, onError);
+  return () => { stopA(); stopB(); };
 }
 
 export function watchClosedRelays(uid: string, onRelays: (r: Relay[]) => void, onError: (e: Error) => void): () => void {

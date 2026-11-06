@@ -13,6 +13,8 @@ interface Props {
   onClearDone?: (ids: string[]) => void;
   /** Put a finished card back on his list. */
   onReopen?: (card: Card) => void;
+  /** Set while only the last 30 days are loaded; tapping it loads every finished card. */
+  onShowOlder?: (() => void) | undefined;
 }
 
 const KINDS = ['link', 'file', 'deck', 'paper', 'repo', 'doc'];
@@ -37,7 +39,7 @@ function ResourceRow({ r, onArchive }: { r: Resource; onArchive: Props['onArchiv
   );
 }
 
-export function Shelf({ done, closed, resources, onAdd, onArchive, onClearDone, onReopen }: Props) {
+export function Shelf({ done, closed, resources, onAdd, onArchive, onClearDone, onReopen, onShowOlder }: Props) {
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
   const [note, setNote] = useState('');
@@ -86,6 +88,7 @@ export function Shelf({ done, closed, resources, onAdd, onArchive, onClearDone, 
           ))}
         </ul>
         {finished.length > 40 && !more ? <button className="chip-btn" onClick={() => setMore(true)}>Show all {finished.length}</button> : null}
+        {onShowOlder ? <button className="chip-btn" onClick={onShowOlder}>Show older than 30 days</button> : null}
         {onClearDone && finished.length > 0 ? (
           <div className="selrow"><ConfirmButton label="Clear done" armedLabel={`Tap again to clear ${finished.length}`} className="chip-btn" onConfirm={() => onClearDone(finished.map((c) => c.id))} /></div>
         ) : null}
