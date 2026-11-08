@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupResources, isWebLink, recentDone } from './shelf';
+import { doneCutoff, groupResources, isWebLink, onlyDone, recentDone } from './shelf';
 import type { Card, Resource } from './types';
 
 const r = (id: string, kind: string, extra: Partial<Resource> = {}): Resource => ({ id, kind, title: id, ...extra });
@@ -27,5 +27,17 @@ describe('recentDone', () => {
   it('puts the most recently finished first', () => {
     const c = (id: string, doneAt: string): Card => ({ id, status: 'done', for: 'you', ...({ doneAt } as object) });
     expect(recentDone([c('a', '2026-10-01'), c('b', '2026-11-01')]).map((x) => x.id)).toEqual(['b', 'a']);
+  });
+});
+
+describe('the Shelf asks for a window, not everything', () => {
+  it('doneCutoff is exactly N days before now, as ISO text', () => {
+    expect(doneCutoff(new Date('2026-11-06T12:00:00.000Z'), 30)).toBe('2026-10-07T12:00:00.000Z');
+    expect(doneCutoff(new Date('2026-11-06T12:00:00.000Z'))).toBe('2026-10-07T12:00:00.000Z');
+  });
+
+  it('onlyDone drops a card that was reopened after the window query matched it', () => {
+    const cards = [{ id: 'a', status: 'done' }, { id: 'b', status: 'open' }] as never[];
+    expect(onlyDone(cards).map((c: { id: string }) => c.id)).toEqual(['a']);
   });
 });
