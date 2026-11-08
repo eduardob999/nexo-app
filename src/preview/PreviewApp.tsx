@@ -10,6 +10,8 @@ import { Upcoming } from '../Upcoming';
 import { WakeSuggestion } from '../WakeSuggestion';
 import { SleepScreen } from '../SleepScreen';
 import { SleepFeedback } from '../SleepFeedback';
+import { RestSheet } from '../RestSheet';
+import type { RestRec } from '../restmodel';
 import { bedDate, isoLocal, addDays, type SleepRec } from '../sleepmodel';
 import { Thread } from '../Thread';
 import { Chat } from '../Chat';
@@ -97,6 +99,24 @@ function fakeNights(): SleepRec[] {
 export function PreviewApp() {
   const which = window.location.hash.replace('#/preview', '').replace(/^\//, '');
   const card = { ...(FIXTURES[2] as Card), bring: [{ t: 'Signed lease form', got: true }, { t: 'Residence card' }, { t: 'Pen' }], items: [{ id: 'i1', text: 'Ask about the deposit', done: false }], ask: 'Should I send the signed form on Monday, or wait for their reply?', qreplies: ['Send it Monday', 'Wait for their reply', 'Call them first'] };
+  const fakeRest: RestRec[] = [
+    { date: '2026-10-25', kind: 'full', wellbeing: 5, performance: 4, activities: { sleptIn: true, outside: true } },
+    { date: '2026-11-01', kind: 'light', wellbeing: 3, performance: 3 },
+    { date: '2026-11-07', kind: 'light', wellbeing: 4, performance: null },
+    { date: '2026-11-08', kind: 'full', wellbeing: null, performance: null },
+  ];
+  if (which === 'rest') {
+    return (<><SleepScreen recs={fakeNights()} cards={[]} now={new Date('2026-11-09T20:10:00+09:00')} rest={fakeRest} restActions={{ onMark: () => {}, onUndo: () => {}, onRate: () => {} }} /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which === 'rest-checkin') {
+    return (<><Today cards={[]} now={new Date('2026-11-08T19:00:00+09:00')} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} rest={fakeRest} onRateRest={() => {}} /><TabBar current="today" draftCount={0} /></>);
+  }
+  if (which === 'rest-sheet') {
+    return (<><Today cards={[]} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><RestSheet rec={fakeRest[3] as RestRec} ask="wellbeing" onSave={() => {}} onClose={() => {}} /></>);
+  }
+  if (which === 'rest-sheet-next') {
+    return (<><Today cards={[]} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><RestSheet rec={fakeRest[2] as RestRec} ask="performance" onSave={() => {}} onClose={() => {}} /></>);
+  }
   if (which === 'sleep') {
     return (<><SleepScreen recs={fakeNights()} cards={[{ id: 'e', status: 'open', for: 'you', title: 'Lecture, room A', due: '2026-11-06T09:00:00+09:00', place: 'Yoshida campus' }]} now={new Date('2026-11-05T21:10:00+09:00')} /><TabBar current="browse" draftCount={0} /></>);
   }
