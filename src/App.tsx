@@ -6,8 +6,9 @@ import type { SleepRec } from './sleepmodel';
 import { SleepScreen } from './SleepScreen';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { doneCutoff } from './shelf';
+import type { RestRec } from './restmodel';
 import { isFirebaseConfigured } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
@@ -90,6 +91,7 @@ export function App() {
   const [info, setInfo] = useState<TodayInfo | null>(null);
   const [wake, setWake] = useState<WakeDoc | null>(null);
   const [sleep, setSleepRecs] = useState<SleepRec[]>([]);
+  const [rest, setRest] = useState<RestRec[]>([]);
   const [doneCards, setDoneCards] = useState<Card[]>([]);
   const [showOlderDone, setShowOlderDone] = useState(false);
   const [closedRelays, setClosedRelays] = useState<Relay[]>([]);
@@ -149,6 +151,11 @@ export function App() {
   useEffect(() => {
     if (!user) return undefined;
     return watchSleep(user.uid, setSleepRecs, (e) => console.warn('[sleep]', e));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    return watchRest(user.uid, setRest, (e) => console.warn('[rest]', e));
   }, [user]);
 
   useEffect(() => {
@@ -229,7 +236,12 @@ export function App() {
       ) : tab === 'notes' ? (
         <Notes memos={memos} onKeep={(t, g) => { void addMemo(user.uid, t, g); }} onDelete={(m) => { void deleteMemo(user.uid, m.id); flash('Note deleted'); }} />
       ) : tab === 'sleep' ? (
-        <SleepScreen recs={sleep} cards={cards} now={new Date()} wake={wake} />
+        <SleepScreen recs={sleep} cards={cards} now={new Date()} wake={wake} rest={rest}
+          restActions={{
+            onMark: (d, k) => { void markRestDay(user.uid, d, k); flash(k === 'full' ? 'Full rest day. Enjoy it.' : 'Light rest day noted'); },
+            onUndo: (d) => { void undoRestDay(user.uid, d); flash('Rest day removed'); },
+            onRate: (d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); },
+          }} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (
@@ -262,6 +274,7 @@ export function App() {
         <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info} wake={wake} sleep={sleep}
+          rest={rest} onRateRest={(d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); }}
           sleepActions={{
             onGoToBed: () => { void goToBed(user.uid, new Date()).then(() => flash('Good night')); },
             onUndoBed: (n) => { void undoBed(user.uid, n); flash('Bedtime removed'); },

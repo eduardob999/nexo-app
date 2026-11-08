@@ -5,6 +5,7 @@ import { checklistLines } from './checklistlines';
 import type { DraftAttachment, Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
 import { postpone, todayYmd } from './urgency';
 import { onlyDone } from './shelf';
+import type { RestRec } from './restmodel';
 import { mergeById } from './trips';
 import { sortChat, type ChatMsg } from './chatlogic';
 import { bedDate, isoLocal, nightKey, planDoc, wakeDate, type SleepPlan, type SleepRec } from './sleepmodel';
@@ -639,6 +640,37 @@ export function editSleep(uid: string, night: string, times: { bed?: [number, nu
   if (times.bed) data['bed'] = isoLocal(bedDate(night, times.bed[0], times.bed[1]));
   if (times.wake !== undefined) data['wake'] = times.wake === null ? null : isoLocal(wakeDate(night, times.wake[0], times.wake[1]));
   return setDoc(sleepDoc(uid, night), data, { merge: true });
+}
+
+// ---- Rest: users/{uid}/rest/{date}. Like sleep, written straight to Firestore with merge; only rest days exist, so the list stays short. ----
+
+const restDoc = (uid: string, date: string) => doc(db, ...root(uid), 'rest', date);
+
+/** The last 30 rest days, oldest first. */
+export function watchRest(uid: string, on: (recs: RestRec[]) => void, onError: (e: Error) => void = () => {}): () => void {
+  const q = query(collection(db, ...root(uid), 'rest'), orderBy('date'), limitToLast(30));
+  // A day marked but not yet rated has no rating fields at all, so they are filled in as null here; writing null on marking would wipe a rating.
+  return onSnapshot(q, (snap) => on(snap.docs.map((d) => ({ kind: 'full', wellbeing: null, performance: null, ...(d.data() as Partial<RestRec>) }) as RestRec)), onError);
+}
+
+/** Mark a day as a rest day. Marking it again keeps any rating already given. */
+export function markRestDay(uid: string, date: string, kind: 'full' | 'light'): Promise<void> {
+  return setDoc(restDoc(uid, date), { date, kind, source: 'nexo-app', updatedAt: serverTimestamp() }, { merge: true });
+}
+
+/** A rest day marked by mistake. */
+export function undoRestDay(uid: string, date: string): Promise<void> {
+  return deleteDoc(restDoc(uid, date));
+}
+
+/** Wellbeing is asked in the evening of the rest day, performance the evening after. Each answer is saved on its own. */
+export function rateRest(uid: string, date: string, patch: { wellbeing?: number | null; performance?: number | null; activities?: Record<string, boolean>; note?: string }): Promise<void> {
+  const data: Record<string, unknown> = { updatedAt: serverTimestamp() };
+  if (patch.wellbeing !== undefined) data['wellbeing'] = patch.wellbeing;
+  if (patch.performance !== undefined) data['performance'] = patch.performance;
+  if (patch.activities !== undefined) data['activities'] = patch.activities;
+  if (patch.note !== undefined) data['note'] = patch.note;
+  return setDoc(restDoc(uid, date), data, { merge: true });
 }
 
 /** What the sync reads to send the bedtime reminder. */
