@@ -83,7 +83,7 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    // Two pages: Nexo, and the Write module on its own (write.html). More modules add a line here.
-    rollupOptions: { input: { main: 'index.html', write: 'write.html' } },
+    // Two pages: Nexo, and the Fude module on its own (fude.html). More modules add a line here.
+    rollupOptions: { input: { main: 'index.html', fude: 'fude.html' } },
   },
 });

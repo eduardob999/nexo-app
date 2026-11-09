@@ -5,13 +5,13 @@ import { newSet, type HomeworkSet } from './model';
 import { Homework } from './Screen';
 import { confirmProposal, createSet, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
-export { writeManifest } from './manifest';
+export { fudeManifest } from './manifest';
 
-/** The Write module: homework sets today, whole-text documents next. It watches and saves by itself. */
-export function WriteModule({ uid, openId }: ModuleProps) {
+/** The Fude module: homework sets today, whole-text documents next. It watches and saves by itself. */
+export function FudeModule({ uid, openId }: ModuleProps) {
   const [sets, setSets] = useState<HomeworkSet[]>([]);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
-  useEffect(() => watchHomework(uid, setSets, (e) => console.warn('[write]', e)), [uid]);
+  useEffect(() => watchHomework(uid, setSets, (e) => console.warn('[fude]', e)), [uid]);
   useEffect(() => {
     if (!openId) { setThumbs({}); return undefined; }
     return watchThumbs(uid, openId, setThumbs);

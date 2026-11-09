@@ -15,7 +15,7 @@ import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
-import { WriteModule } from './modules/write';
+import { FudeModule } from './modules/fude';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
@@ -270,7 +270,7 @@ export function App() {
             onRate: (d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); },
           }} />
       ) : tab === 'homework' ? (
-        <WriteModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} />
+        <FudeModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (

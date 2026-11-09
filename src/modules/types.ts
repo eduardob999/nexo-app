@@ -4,8 +4,8 @@
  *    services it uses),
  *  - exports one component, `<Module uid openId?>`, that does its own watching and saving, so a host only mounts it,
  *  - depends on the platform files only: firebase.ts (db, auth), drive.ts (uploads), types.ts, and nothing else of Nexo.
- * Nexo mounts a module on a route; a standalone entry (for example write.html) mounts the same component on its own.
- * Planned modules: write (this one), kanji (kanji-app), gre (the GRE prep app).
+ * Nexo mounts a module on a route; a standalone entry (for example fude.html) mounts the same component on its own.
+ * Planned modules: fude (this one), kanji (kanji-app), gre (the GRE prep app).
  */
 export interface ModuleManifest {
   id: string;

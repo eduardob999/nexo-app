@@ -1,6 +1,6 @@
 /**
- * The Write module on its own: its own page (write.html), the same component Nexo mounts, no Nexo around it.
- * It brings only what the contract allows: a sign-in, the route from the URL hash, and <WriteModule>.
+ * Fude on its own: its own page (fude.html), the same component Nexo mounts, no Nexo around it.
+ * It brings only what the contract allows: a sign-in, the route from the URL hash, and <FudeModule>.
  */
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -8,7 +8,7 @@ import type { User } from 'firebase/auth';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from '../../auth';
 import { isFirebaseConfigured } from '../../firebase';
 import { parseHash } from '../../useHash';
-import { WriteModule } from './index';
+import { FudeModule } from './index';
 import '@fontsource/instrument-sans/latin-400.css';
 import '@fontsource/instrument-sans/latin-600.css';
 import '@fontsource/instrument-sans/latin-700.css';
@@ -27,7 +27,7 @@ function Standalone() {
   if (user === null) {
     return (
       <main className="screen center signin">
-        <h1>Write</h1>
+        <h1>Fude</h1>
         <p className="lede">Photograph a page, type your answers, get them checked.</p>
         <button className="send-wide" onClick={() => { signInWithGoogle().catch((e: unknown) => setError(describeAuthError(e))); }}>Continue with Google</button>
         {error ? <p className="notice">{error}</p> : null}
@@ -35,9 +35,9 @@ function Standalone() {
     );
   }
   const r = parseHash(hash);
-  return <WriteModule uid={user.uid} openId={r.name === 'homework' ? r.id : undefined} />;
+  return <FudeModule uid={user.uid} openId={r.name === 'homework' ? r.id : undefined} />;
 }
 
 const container = document.getElementById('root');
-if (!container) throw new Error('No #root element found in write.html.');
+if (!container) throw new Error('No #root element found in fude.html.');
 createRoot(container).render(<StrictMode><Standalone /></StrictMode>);
