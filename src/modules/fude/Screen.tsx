@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Autosaver, type SaveState } from './autosave';
+import { Camera } from './Camera';
 import { applyFix, sortDocs, type FudeDoc, type Note } from './documents';
 import { lintText, PROFILES, profileById } from './profiles';
 import { connectDrive, driveReady } from '../../drive';
@@ -95,12 +96,13 @@ function Answer({ set, item, onAnswer, onCheck }: { set: HomeworkSet; item: Home
 function Photos({ set, thumbs, onPhotos }: { set: HomeworkSet; thumbs: Record<string, string>; onPhotos: Props['onPhotos'] }) {
   const [drive, setDrive] = useState(driveReady());
   const [busy, setBusy] = useState('');
-  const pick = (list: FileList | null) => {
-    const files = Array.from(list ?? []);
+  const [cam, setCam] = useState(false);
+  const pickFiles = (files: File[]) => {
     if (files.length === 0 || !onPhotos) return;
     setBusy(`Uploading ${files.length} photo${files.length > 1 ? 's' : ''}`);
     onPhotos(set, files).then(() => setBusy('Added'), (e: unknown) => { setBusy(e instanceof Error ? e.message : 'Upload failed'); setDrive(driveReady()); });
   };
+  const pick = (list: FileList | null) => pickFiles(Array.from(list ?? []));
   return (
     <section className="panel hw-photos" aria-label="Book pages">
       <b>Book pages</b>
@@ -118,13 +120,14 @@ function Photos({ set, thumbs, onPhotos }: { set: HomeworkSet; thumbs: Record<st
       {onPhotos ? (
         drive ? (
           <div className="hw-photo-actions">
-            <label className="tool-chip">Take a photo<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pick(e.target.files); e.target.value = ''; }} /></label>
+            <button type="button" className="tool-chip" onClick={() => setCam(true)}>Take photos</button>
             <label className="tool-chip">Choose photos<input type="file" accept="image/*" multiple hidden onChange={(e) => { pick(e.target.files); e.target.value = ''; }} /></label>
           </div>
         ) : (
           <button type="button" className="tool-chip" onClick={() => { setBusy('Opening Google'); connectDrive().then(() => { setDrive(true); setBusy(''); }, (e: unknown) => setBusy(e instanceof Error ? e.message : 'Could not connect')); }}>Connect Google Drive</button>
         )
       ) : null}
+      {cam ? <Camera onCancel={() => setCam(false)} onDone={(files) => { setCam(false); pickFiles(files); }} /> : null}
       {busy ? <p className="mut" role="status">{busy}</p> : onPhotos && drive ? <p className="mut">Photos go to your Nexo folder in Drive, only you can open them.</p> : null}
     </section>
   );
