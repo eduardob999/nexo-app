@@ -566,3 +566,20 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .heat-chip.big { font-size: 17px; padding: 3px 12px; border-radius: 12px; }
 .row.heat-critical.approaching .deadline-kicker, .row.heat-overdue.approaching .deadline-kicker { color: var(--now); }
 .row.approaching { box-shadow: none; }
+
+/* Reply bar and chat controls: one pill language, smaller, in the same family as the strip and the cards. */
+.reply-bar { padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); gap: 8px; }
+.reply-actions { display: flex; gap: 6px; }
+.tool-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px; border: 1px solid var(--edge); border-radius: 16px; background: var(--surface); color: var(--muted); font: 600 13px var(--sans); }
+.tool-chip svg { flex: none; }
+.tool-chip:active, .tool-chip[aria-expanded='true'] { background: var(--chip); color: var(--ink); }
+.qchips { gap: 6px; }
+.qchip { height: 34px; padding: 0 13px; border-radius: 17px; border: 1px solid var(--edge); background: var(--accent-tint); color: var(--accent); font-size: 14px; font-weight: 600; }
+.qchip:active { background: var(--chip); }
+.reply-form { gap: 8px; align-items: center; }
+.reply-input { height: 40px; border-radius: 20px; padding: 0 16px; font-size: 16px; }
+.reply-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.send.small { width: 40px; height: 40px; }
+.send.small svg { width: 20px; height: 20px; }
+.send:disabled { opacity: 1; background: var(--chip); color: var(--muted); }
+.chat .qchips .qchip, .mk-chips .qchip { background: var(--surface); color: var(--ink); }

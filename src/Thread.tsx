@@ -190,8 +190,10 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
           </aside>
         ) : null}
         <div className="reply-actions">
-          {onAttach ? <button className="chip-btn" onClick={() => setAttaching((a) => !a)}>Attach</button> : null}
-          <button className="chip-btn" type="button" onClick={pasteButton}>Paste</button>
+          {onAttach ? <button className="tool-chip" type="button" aria-expanded={attaching} onClick={() => setAttaching((a) => !a)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m21 11.5-8.6 8.6a5 5 0 0 1-7.1-7.1l8.6-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9" /></svg>Attach</button> : null}
+          <button className="tool-chip" type="button" onClick={pasteButton}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1" /><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2" /></svg>Paste</button>
         </div>
         {attaching && onAttach ? (
           <section className="join-pane" aria-label="Attach a photo or file">
