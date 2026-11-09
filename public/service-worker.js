@@ -225,7 +225,7 @@ self.addEventListener('push', (event) => {
     body: d.body || '',
     tag: d.tag || undefined,
     icon: 'icons/icon-192.png',
-    badge: 'icons/icon-192.png',
+    badge: 'icons/badge-96.png',
     data: { url: d.url || '#/' },
     // Every kind of notification buzzes in its own rhythm, since Android gives a web app only one sound.
     vibrate: VIBRATIONS[d.pattern] || VIBRATIONS.gentle,
