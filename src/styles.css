@@ -665,3 +665,4 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .hw-exp-qa { display: grid; gap: 1px; margin: 8px 0; } .hw-exp-qa > span:last-child { margin-left: 12px; white-space: pre-wrap; } .hw-exp-qa span.mut { margin-left: 12px; }
 .hw-exp-ins { margin: 0; font-size: 13px; }
 .hw-exp-qa > span:last-child { border-left: 3px solid #4b2da8; padding-left: 8px; }
+.row-prep { font-size: 14px; color: var(--ink); line-height: 1.35; font-weight: 500; }

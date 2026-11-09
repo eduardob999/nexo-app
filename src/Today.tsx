@@ -88,6 +88,21 @@ function MailIcon() {
 type PickProps = { selecting: boolean; picked: boolean; onPick: (card: Card) => void };
 const NOPICK: PickProps = { selecting: false, picked: false, onPick: () => {} };
 
+/** One line of what the card carries inside: trip times and the bring list, so they show without opening it. */
+function prepLine(card: Card): string {
+  const parts: string[] = [];
+  const out = card.plan?.out;
+  if (out?.leave || out?.arrive) parts.push(`Leave ${out.leave ?? '--:--'} → arrive ${out.arrive ?? '--:--'}`);
+  const bring = card.bring ?? [];
+  if (bring.length > 0) {
+    const missing = bring.filter((b) => !b.got).map((b) => b.t);
+    parts.push(missing.length === 0 ? `Bring: all ${bring.length} packed` : `Bring: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? ` +${missing.length - 3}` : ''}`);
+  }
+  const items = (card as { items?: { done?: boolean }[] }).items ?? [];
+  if (items.length > 0) parts.push(`Checklist ${items.filter((i) => i.done).length}/${items.length}`);
+  return parts.join(' · ');
+}
+
 function Row({ onFude, card, now, onDone, onLater, hasDraft, closeable = false, pick = NOPICK }: { onFude?: ((card: Card) => void) | undefined; card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean; closeable?: boolean; pick?: PickProps }) {
   const [open, setOpen] = useState(false);
   const band = bandOf(card, now);
@@ -116,6 +131,7 @@ function Row({ onFude, card, now, onDone, onLater, hasDraft, closeable = false, 
           </span>
           {card.ask ? <span className="row-ask"><b>Nexo asks</b> {card.ask}</span> : null}
           {hol ? <span className="row-hol">{hol}</span> : null}
+          {prepLine(card) ? <span className="row-prep">{prepLine(card)}</span> : null}
           {card.last && !card.ask && (open || (card.entryCount ?? 0) >= 2) ? (
             <span className="row-last"><b>{card.last.by === 'eduardo' ? 'You' : 'Nexo'}</b> {card.last.text}</span>
           ) : null}
