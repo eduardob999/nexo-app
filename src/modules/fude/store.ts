@@ -6,7 +6,7 @@
 import { collection, deleteField, doc, FieldPath, onSnapshot, setDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { setAnswer, putItem, type HomeworkItem, type HomeworkSet } from './model';
-import type { FudeDoc } from './documents';
+import type { FudeDoc, Note } from './documents';
 import type { CardFile } from '../../types';
 
 const col = (uid: string) => collection(db, 'users', uid, 'homework');
@@ -104,4 +104,17 @@ export function createDocument(uid: string, d: FudeDoc): Promise<void> {
 /** His text, saved. One field only, so a title edit on another device is not overwritten. */
 export function saveDocText(uid: string, id: string, text: string, now: Date): Promise<void> {
   return updateDoc(dref(uid, id), { text, updatedAt: now.toISOString() });
+}
+
+/** Ask the reviewer to proofread the document. The profile travels with the request, so the app stays the one place that defines it. */
+export function requestReview(uid: string, id: string, profile: unknown, now: Date): Promise<void> {
+  return updateDoc(dref(uid, id), { review: { status: 'requested', profile, at: now.toISOString() } });
+}
+
+export function watchNotes(uid: string, id: string, on: (notes: Note[]) => void): () => void {
+  return onSnapshot(collection(dref(uid, id), 'notes'), (snap) => on(snap.docs.map((d) => ({ ...(d.data() as Omit<Note, 'id'>), id: d.id }))), () => on([]));
+}
+
+export function setNoteStatus(uid: string, docId: string, noteId: string, status: Note['status']): Promise<void> {
+  return updateDoc(doc(collection(dref(uid, docId), 'notes'), noteId), { status });
 }

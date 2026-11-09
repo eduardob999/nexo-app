@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { newDoc, sortDocs } from './documents';
+import { applyFix, newDoc, sortDocs } from './documents';
 
 const T = new Date('2026-11-09T10:00:00Z');
 describe('documents', () => {
@@ -13,5 +13,10 @@ describe('documents', () => {
     const b = newDoc('soon', 'free', T, '2026-11-10');
     const c = { ...newDoc('gone', 'free', T), deleted: true };
     expect(sortDocs([a, c, b]).map((d) => d.title)).toEqual(['soon', 'late']);
+  });
+  it('applies a fix to the first occurrence only, and refuses when it cannot', () => {
+    expect(applyFix('A step do not remove. A step do not remove.', 'do not remove', 'does not remove')).toBe('A step does not remove. A step do not remove.');
+    expect(applyFix('abc', 'x', 'y')).toBeNull();
+    expect(applyFix('abc', 'b', '')).toBeNull();
   });
 });

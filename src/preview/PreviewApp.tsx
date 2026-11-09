@@ -141,7 +141,7 @@ export function PreviewApp() {
   if (which === 'fude-doc' || which === 'fude-list') {
     const docs = [{ id: 'fdx', title: 'Yamashita report', profile: 'report-en', due: '2026-11-10T17:00:00+09:00', createdAt: '2026-11-09T01:00:00Z', updatedAt: '2026-11-09T02:00:00Z',
       text: 'Today I learned how a small liver-enzyme rise is judged. The rise was 7.9 percent — small, but I performed the check twice. A smaller step does not remove an observed concern, so the team investigates.' }] as never;
-    return (<><Homework sets={[]} docs={docs} {...(which === 'fude-doc' ? { openId: 'fdx' } : {})} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} onCreateDoc={() => {}} onSaveDoc={() => {}} /><TabBar current="browse" draftCount={0} /></>);
+    return (<><Homework sets={[]} docs={docs} {...(which === 'fude-doc' ? { openId: 'fdx' } : {})} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} onCreateDoc={() => {}} onSaveDoc={() => {}} onReviewDoc={() => {}} onNoteStatus={() => {}} notes={[{ id: 'n1', find: 'I performed the check', kind: 'rule', msg: 'A claim about what you did: only if you confirmed it.', fix: '', status: 'open' }, { id: 'n2', find: 'A smaller step does not', kind: 'grammar', msg: 'Sentence starts oddly.', fix: 'A smaller step will not', status: 'open' }]} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'rest') {
     return (<><SleepScreen recs={fakeNights()} cards={[]} now={new Date('2026-11-09T20:10:00+09:00')} rest={fakeRest} restActions={{ onMark: () => {}, onUndo: () => {}, onRate: () => {} }} /><TabBar current="browse" draftCount={0} /></>);

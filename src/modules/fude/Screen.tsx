@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Autosaver, type SaveState } from './autosave';
-import { sortDocs, type FudeDoc } from './documents';
+import { applyFix, sortDocs, type FudeDoc, type Note } from './documents';
 import { lintText, PROFILES, profileById } from './profiles';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './model';
@@ -26,6 +26,9 @@ interface Props {
   docs?: FudeDoc[];
   onCreateDoc?: (title: string, profile: string, due?: string) => void;
   onSaveDoc?: (doc: FudeDoc, text: string) => void;
+  notes?: Note[];
+  onReviewDoc?: (doc: FudeDoc, profile: unknown) => void;
+  onNoteStatus?: (doc: FudeDoc, note: Note, status: Note['status']) => void;
 }
 
 const dueLabel = (due?: string) => (due ? new Date(due).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No deadline');
@@ -160,7 +163,7 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
 }
 
 /** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
-function DocView({ doc, onSave }: { doc: FudeDoc; onSave: (doc: FudeDoc, text: string) => void }) {
+function DocView({ doc, notes, onSave, onReview, onNote }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onReview?: ((doc: FudeDoc, profile: unknown) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -187,6 +190,33 @@ function DocView({ doc, onSave }: { doc: FudeDoc; onSave: (doc: FudeDoc, text: s
         <span className={lint.over ? 'bad' : lint.under ? 'warn' : ''}>{unit} {b?.unit ?? 'words'}{b ? ` of ${b.min ?? 0}–${b.max ?? '∞'}` : ''}</span>
         <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
       </div>
+      {onReview ? (
+        <div className="fude-review">
+          {doc.review?.status === 'requested' || doc.review?.status === 'working'
+            ? <span className="mut" role="status">Checking your writing…</span>
+            : <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => onReview(doc, { name: profile.name, lang: profile.lang, ...(lint.budget ? { budget: lint.budget } : {}), rules: profile.rules.map((r) => ({ msg: r.msg })) })}>Check my writing</button>}
+          {doc.review?.status === 'error' ? <span className="hw-note" role="alert">{doc.review.message}</span> : null}
+          {doc.review?.status === 'ready' && notes.filter((n) => n.status === 'open').length === 0 ? <span className="mut">{doc.review.message ?? 'No problems found.'}</span> : null}
+        </div>
+      ) : null}
+      {notes.filter((n) => n.status === 'open').length ? (
+        <ul className="panel fude-notes" aria-label="Reviewer notes">
+          {notes.filter((n) => n.status === 'open').map((n) => (
+            <li key={n.id}>
+              <p><b>{n.kind}</b> “{n.find}”</p>
+              <p>{n.msg}</p>
+              {n.fix ? <p className="fude-fix">→ {n.fix}</p> : null}
+              <div className="hw-photo-actions">
+                {n.fix && onNote ? <button type="button" className="tool-chip" onClick={() => {
+                  const next = applyFix(text, n.find, n.fix);
+                  if (next !== null) { setText(next); saver.current?.change(next); saver.current?.blur(); onNote(doc, n, 'accepted'); }
+                }}>Use this fix</button> : null}
+                {onNote ? <button type="button" className="tool-chip" onClick={() => onNote(doc, n, 'dismissed')}>{n.fix ? 'Keep mine' : 'Got it'}</button> : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {lint.hits.length ? (
         <ul className="panel fude-hits" aria-label="Rule notes">
           {lint.hits.map((h) => <li key={`${h.rule}-${h.index}`} className={`sev-${h.sev}`}><b>{h.match}</b> {h.msg}</li>)}
@@ -216,11 +246,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, docs = [], onCreateDoc, onSaveDoc }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} onSave={onSaveDoc} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onReview={onReviewDoc} onNote={onNoteStatus} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;

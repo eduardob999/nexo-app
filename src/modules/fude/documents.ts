@@ -11,6 +11,8 @@ export interface FudeDoc {
   /** Overrides the profile's budget for this document (each lecture report has its own). */
   budget?: Budget;
   photos?: CardFile[];
+  /** The reviewer's progress: `requested` by the app, then `working`, then `ready` or `error`. */
+  review?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; count?: number; at?: string };
   createdAt: string;
   updatedAt: string;
   deleted?: boolean;
@@ -30,4 +32,14 @@ export function sortDocs(docs: FudeDoc[]): FudeDoc[] {
     const db = b.due ?? '9999';
     return da === db ? (a.updatedAt < b.updatedAt ? 1 : -1) : da < db ? -1 : 1;
   });
+}
+
+/** A proposal from the reviewer. `fix` is empty when it is not sure of an exact replacement. */
+export interface Note { id: string; find: string; kind: string; msg: string; fix: string; status: 'open' | 'accepted' | 'dismissed' }
+
+/** Put a note's fix in place of the first occurrence of its words. Null when the words are gone or there is no fix. */
+export function applyFix(text: string, find: string, fix: string): string | null {
+  if (!fix || !find) return null;
+  const i = text.indexOf(find);
+  return i < 0 ? null : text.slice(0, i) + fix + text.slice(i + find.length);
 }
