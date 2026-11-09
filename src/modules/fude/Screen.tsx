@@ -189,7 +189,7 @@ function Photos({ set, thumbs, onPhotos }: { set: HomeworkSet; thumbs: Record<st
 
 /** The reader's proposal: editable rows, and nothing becomes a question until he says so. */
 function Proposal({ set, onConfirm, onDiscard }: { set: HomeworkSet; onConfirm: NonNullable<Props['onConfirm']>; onDiscard: NonNullable<Props['onDiscard']> }) {
-  const [rows, setRows] = useState<Question[]>(() => (set.proposed ?? []).map((q) => ({ ...q })));
+  const [rows, setRows] = useState<Question[]>(() => (set.proposed ?? []).filter((q) => !set.items[q.n]).map((q) => ({ ...q })));
   const edit = (i: number, k: 'n' | 'prompt', v: string) => setRows((r) => r.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
   const ok = cleanProposal(rows);
   return (
@@ -352,12 +352,15 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs =
         <header className="thread-top"><Back /><span className="kicker">{dueLabel(open.due)} · {p.answered} of {p.total} answered</span></header>
         <h1 className="thread-title">{open.title}</h1>
         <Photos set={open} thumbs={thumbs} onPhotos={onPhotos} />
-        {onRead && onConfirm && onDiscard && open.photos.length > 0 && orderedItems(open).length === 0 ? (
-          open.transcribe?.status === 'ready' && (open.proposed ?? []).length > 0 ? <Proposal key={open.transcribe.at} set={open} onConfirm={onConfirm} onDiscard={onDiscard} /> : (
+        {onRead && onConfirm && onDiscard && open.photos.length > 0 ? (
+          open.transcribe?.status === 'ready' && (open.proposed ?? []).some((q) => !open.items[q.n]) ? <Proposal key={open.transcribe.at} set={open} onConfirm={onConfirm} onDiscard={onDiscard} /> : (
             <section className="panel hw-read">
               {open.transcribe?.status === 'requested' || open.transcribe?.status === 'working'
                 ? <p className="mut" role="status">Reading the pages. This takes about half a minute.</p>
-                : <button type="button" className="send-wide" onClick={() => onRead(open)}>Read the questions</button>}
+                : orderedItems(open).length === 0
+                  ? <button type="button" className="send-wide" onClick={() => onRead(open)}>Read the questions</button>
+                  : <button type="button" className="tool-chip" onClick={() => onRead(open)}>Read the photos again for missing questions</button>}
+              {open.transcribe?.status === 'ready' && (open.proposed ?? []).length > 0 && !(open.proposed ?? []).some((q) => !open.items[q.n]) ? <p className="mut">Nothing new: every question on the photos is already in the set.</p> : null}
               {open.transcribe?.status === 'error' ? <p className="hw-note" role="alert">{open.transcribe.message ?? 'The reader could not run.'} You can also add the questions by hand below.</p> : null}
             </section>
           )
