@@ -126,11 +126,12 @@ export function PreviewApp() {
   }
   if (which === 'homework' || which === 'homework-open') {
     const mk = (id: string, title: string, due: string, answers: [string, string, string][]) => ({
-      id, title, due, photos: [{ id: 'p1', name: 'L21 p121.jpg', viewUrl: 'https://drive.google.com/file/d/x/view' }], createdAt: '2026-11-09T01:00:00Z', updatedAt: '2026-11-09T02:00:00Z',
+      id, title, due, photos: [{ id: 'p1', name: 'L21 p121.jpg', viewUrl: 'https://drive.google.com/file/d/x/view' }, { id: 'p2', name: 'L21 p122.jpg', viewUrl: 'https://drive.google.com/file/d/y/view' }], createdAt: '2026-11-09T01:00:00Z', updatedAt: '2026-11-09T02:00:00Z',
       items: Object.fromEntries(answers.map(([n, prompt, answer], i) => [n, { n, order: i, prompt, answer, status: answer ? 'answered' : 'open', ...(n === '2' ? { status: 'hint', hint: 'Look at the particle after 学校.' } : {}) }])),
     }) as never;
+    const page = (c: string) => `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='96' height='128'><rect width='96' height='128' fill='${c}'/><g stroke='#888' stroke-width='3'><line x1='10' y1='24' x2='86' y2='24'/><line x1='10' y1='44' x2='70' y2='44'/><line x1='10' y1='64' x2='80' y2='64'/><line x1='10' y1='84' x2='60' y2='84'/></g></svg>`)}`;
     const sets = [mk('a', 'L21 文型・練習', '2026-11-09T23:59:00+09:00', [['1', '私は＿＿＿が好きです。', '音楽'], ['2', '＿＿＿に行きます。', '学校'], ['3', '昨日は＿＿＿。', '']]), mk('b', '中級II quiz prep', '2026-11-12T13:15:00+09:00', [])];
-    return (<><Homework sets={sets} {...(which === 'homework-open' ? { openId: 'a' } : {})} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} /><TabBar current="browse" draftCount={0} /></>);
+    return (<><Homework sets={sets} {...(which === 'homework-open' ? { openId: 'a' } : {})} thumbs={{ p1: page('#e9e5fb'), p2: page('#fdf1d6') }} onPhotos={async () => {}} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'rest') {
     return (<><SleepScreen recs={fakeNights()} cards={[]} now={new Date('2026-11-09T20:10:00+09:00')} rest={fakeRest} restActions={{ onMark: () => {}, onUndo: () => {}, onRate: () => {} }} /><TabBar current="browse" draftCount={0} /></>);

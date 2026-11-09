@@ -3,7 +3,7 @@
  * ownership wildcard under users/{uid}), so no rule change is needed. The app and the checker service both
  * read and write here; the sync and state.json know nothing about it.
  */
-import { collection, deleteField, doc, FieldPath, onSnapshot, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, deleteField, doc, FieldPath, onSnapshot, setDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { setAnswer, putItem, type HomeworkItem, type HomeworkSet } from './homework';
 import type { CardFile } from './types';
@@ -23,9 +23,24 @@ export function createSet(uid: string, set: HomeworkSet): Promise<void> {
   return setDoc(ref(uid, set.id), set);
 }
 
-/** A photo added to the set. arrayUnion keeps both devices' photos when they add at the same time. */
-export function savePhoto(uid: string, setId: string, file: CardFile, now: Date): Promise<void> {
-  return updateDoc(ref(uid, setId), { photos: arrayUnion(file), updatedAt: now.toISOString() });
+/**
+ * A photo added to the set: the Drive record on the set (arrayUnion keeps both devices' photos when they add at the
+ * same time) and the small picture in `files/{id}`, the same split the cards use so the set document stays small.
+ */
+export function savePhoto(uid: string, setId: string, file: CardFile, thumb: string | undefined, now: Date): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(ref(uid, setId), { photos: arrayUnion(file), updatedAt: now.toISOString() });
+  if (thumb) batch.set(doc(ref(uid, setId), 'files', file.id), { thumb });
+  return batch.commit();
+}
+
+/** The small pictures of a set's photos, by file id. */
+export function watchThumbs(uid: string, setId: string, on: (thumbs: Record<string, string>) => void): () => void {
+  return onSnapshot(collection(ref(uid, setId), 'files'), (snap) => {
+    const out: Record<string, string> = {};
+    for (const d of snap.docs) { const t = (d.data() as { thumb?: string }).thumb; if (t) out[d.id] = t; }
+    on(out);
+  }, () => on({}));
 }
 
 /** The confirmed questions, written one field path per question so nothing else in the set is touched. */

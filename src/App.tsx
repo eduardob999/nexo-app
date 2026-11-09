@@ -16,7 +16,7 @@ import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
 import { Homework } from './Homework';
-import { createSet, saveAnswer, saveItems, watchHomework } from './homeworkStore';
+import { createSet, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './homeworkStore';
 import { newSet, type HomeworkSet } from './homework';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
@@ -217,6 +217,12 @@ export function App() {
     if (!user || !onHomework) return undefined;
     return watchHomework(user.uid, setHwSets, (e) => console.warn('[homework]', e));
   }, [user, onHomework]);
+  const hwOpenId = route.name === 'homework' ? route.id : undefined;
+  const [hwThumbs, setHwThumbs] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!user || !hwOpenId) { setHwThumbs({}); return undefined; }
+    return watchThumbs(user.uid, hwOpenId, setHwThumbs);
+  }, [user, hwOpenId]);
   const onShelf = route.name === 'shelf';
   const onTrips = route.name === 'trips';
   useEffect(() => {
@@ -281,7 +287,9 @@ export function App() {
         <Homework sets={hwSets} openId={route.name === 'homework' ? route.id : undefined}
           onCreate={(title, due) => { const s = newSet(title, new Date(), due); void createSet(user.uid, s).then(() => { window.location.hash = `#/homework/${s.id}`; }); }}
           onAddItem={(set, n, prompt) => { void saveItems(user.uid, set, [{ n, prompt }], new Date()); }}
-          onAnswer={(set, item, text) => { void saveAnswer(user.uid, set.id, item, text, new Date()); }} />
+          onAnswer={(set, item, text) => { void saveAnswer(user.uid, set.id, item, text, new Date()); }}
+          thumbs={hwThumbs}
+          onPhotos={async (set, files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await savePhoto(user.uid, set.id, up, thumb, new Date()); } }} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (

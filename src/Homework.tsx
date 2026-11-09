@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { connectDrive, driveReady } from './drive';
 import { orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './homework';
 
 interface Props {
@@ -9,6 +10,10 @@ interface Props {
   onAddItem: (set: HomeworkSet, n: string, prompt: string) => void;
   /** Called with his finished text for one question. The screen only calls it on blur, never mid-composition. */
   onAnswer: (set: HomeworkSet, item: HomeworkItem, text: string) => void;
+  /** Small pictures of the open set's photos, by file id. */
+  thumbs?: Record<string, string>;
+  /** Upload the chosen or taken photos to Drive and attach them to the set. Rejects with a readable message. */
+  onPhotos?: (set: HomeworkSet, files: File[]) => Promise<void>;
 }
 
 const dueLabel = (due?: string) => (due ? new Date(due).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No deadline');
@@ -34,6 +39,45 @@ function Answer({ set, item, onAnswer }: { set: HomeworkSet; item: HomeworkItem;
       {item.hint ? <p className="hw-note"><b>Hint</b> {item.hint}</p> : null}
       {item.explain ? <p className="hw-note"><b>Why</b> {item.explain}</p> : null}
     </li>
+  );
+}
+
+/** The book pages: thumbnails that open the full picture in Drive, and the two ways to add more. */
+function Photos({ set, thumbs, onPhotos }: { set: HomeworkSet; thumbs: Record<string, string>; onPhotos: Props['onPhotos'] }) {
+  const [drive, setDrive] = useState(driveReady());
+  const [busy, setBusy] = useState('');
+  const pick = (list: FileList | null) => {
+    const files = Array.from(list ?? []);
+    if (files.length === 0 || !onPhotos) return;
+    setBusy(`Uploading ${files.length} photo${files.length > 1 ? 's' : ''}`);
+    onPhotos(set, files).then(() => setBusy('Added'), (e: unknown) => { setBusy(e instanceof Error ? e.message : 'Upload failed'); setDrive(driveReady()); });
+  };
+  return (
+    <section className="panel hw-photos" aria-label="Book pages">
+      <b>Book pages</b>
+      {set.photos.length === 0 ? <span className="mut">No photos yet.</span> : (
+        <ul className="hw-thumbs">
+          {set.photos.map((f) => (
+            <li key={f.id}>
+              <a href={f.viewUrl ?? '#'} target="_blank" rel="noopener noreferrer" aria-label={`Open ${f.name ?? 'photo'}`}>
+                {thumbs[f.id] ? <img src={thumbs[f.id]} alt={f.name ?? 'Book page'} /> : <span className="hw-nothumb">{f.name ?? f.id}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      {onPhotos ? (
+        drive ? (
+          <div className="hw-photo-actions">
+            <label className="tool-chip">Take a photo<input type="file" accept="image/*" capture="environment" hidden onChange={(e) => { pick(e.target.files); e.target.value = ''; }} /></label>
+            <label className="tool-chip">Choose photos<input type="file" accept="image/*" multiple hidden onChange={(e) => { pick(e.target.files); e.target.value = ''; }} /></label>
+          </div>
+        ) : (
+          <button type="button" className="tool-chip" onClick={() => { setBusy('Opening Google'); connectDrive().then(() => { setDrive(true); setBusy(''); }, (e: unknown) => setBusy(e instanceof Error ? e.message : 'Could not connect')); }}>Connect Google Drive</button>
+        )
+      ) : null}
+      {busy ? <p className="mut" role="status">{busy}</p> : onPhotos && drive ? <p className="mut">Photos go to your Nexo folder in Drive, only you can open them.</p> : null}
+    </section>
   );
 }
 
@@ -63,7 +107,7 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos }: Props) {
   const list = sortSets(sets);
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open) {
@@ -75,12 +119,7 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer }: Props)
       <main className="screen hw">
         <header className="thread-top"><Back /><span className="kicker">{dueLabel(open.due)} · {p.answered} of {p.total} answered</span></header>
         <h1 className="thread-title">{open.title}</h1>
-        <section className="panel hw-photos" aria-label="Book pages">
-          <b>Book pages</b>
-          {open.photos.length === 0 ? <span className="mut">No photos yet.</span> : (
-            <ul>{open.photos.map((f) => <li key={f.id}>{(f as { viewUrl?: string }).viewUrl ? <a href={(f as { viewUrl?: string }).viewUrl} target="_blank" rel="noopener noreferrer">{f.name ?? f.id}</a> : (f.name ?? f.id)}</li>)}</ul>
-          )}
-        </section>
+        <Photos set={open} thumbs={thumbs} onPhotos={onPhotos} />
         <ul className="panel hw-items">
           {orderedItems(open).map((it) => <Answer key={it.n} set={open} item={it} onAnswer={onAnswer} />)}
           {orderedItems(open).length === 0 ? <li className="hw-empty mut">No questions yet. Add them below.</li> : null}
