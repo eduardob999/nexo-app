@@ -68,6 +68,8 @@ const ORDER: Record<Band, number> = { incoming: 0, assignment: 1, qa: 2, urgent:
 export function isQA(card: Card): boolean {
   if (card.status === 'done') return false;
   const t = (card.type ?? '').toUpperCase();
+  // A question he has already replied to is Nexo's move, so it leaves his pinned list until Nexo answers.
+  if ((t === 'QUESTION' || (!t && !!card.ask)) && card.last?.by === 'eduardo') return false;
   return t === 'QUESTION' || t === 'ANSWER' || (!t && !!card.ask);
 }
 

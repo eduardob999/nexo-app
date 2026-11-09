@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bandOf, countdownText, isEasyToMiss, isIncoming, meetingLink, minutesToStart, onTodayBoard, postpone, sortQueue } from './urgency';
+import { bandOf, isQA, countdownText, isEasyToMiss, isIncoming, meetingLink, minutesToStart, onTodayBoard, postpone, sortQueue } from './urgency';
 import type { Card } from './types';
 
 const now = new Date('2026-11-02T12:00:00+09:00');
@@ -160,5 +160,18 @@ describe('incoming', () => {
     expect(meetingLink(c('x', { place: 'Room 3', last: { by: 'nexo', text: 'Join: https://us02web.zoom.us/j/99?pwd=a), ok', ts: '' } }))).toBe('https://us02web.zoom.us/j/99?pwd=a');
     expect(meetingLink(c('x', { place: 'Uji' }))).toBeNull();
     expect([countdownText(12), countdownText(0), countdownText(-3)]).toEqual(['in 12 min', 'starting now', 'started 3 min ago']);
+  });
+});
+
+describe('isQA after he replies', () => {
+  const base = { id: 'q', status: 'open', for: 'nexo', type: 'QUESTION', ask: 'Which day?' } as unknown as Card;
+  it('pins a question he has not answered', () => {
+    expect(isQA({ ...base, last: { by: 'nexo', text: 'Which day?', ts: '2026-11-09T00:00:00Z' } } as Card)).toBe(true);
+  });
+  it('drops a question once his reply is the newest entry', () => {
+    expect(isQA({ ...base, last: { by: 'eduardo', text: 'Friday', ts: '2026-11-09T01:00:00Z' } } as Card)).toBe(false);
+  });
+  it('keeps an ANSWER card pinned, since Nexo owes him the facts', () => {
+    expect(isQA({ ...base, type: 'ANSWER', last: { by: 'eduardo', text: 'what time?', ts: '2026-11-09T01:00:00Z' } } as Card)).toBe(true);
   });
 });
