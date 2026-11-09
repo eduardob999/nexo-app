@@ -4,9 +4,9 @@
  * read and write here; the sync and state.json know nothing about it.
  */
 import { collection, deleteField, doc, FieldPath, onSnapshot, setDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
-import { db } from './firebase';
-import { setAnswer, putItem, type HomeworkItem, type HomeworkSet } from './homework';
-import type { CardFile } from './types';
+import { db } from '../../firebase';
+import { setAnswer, putItem, type HomeworkItem, type HomeworkSet } from './model';
+import type { CardFile } from '../../types';
 
 const col = (uid: string) => collection(db, 'users', uid, 'homework');
 const ref = (uid: string, id: string) => doc(db, 'users', uid, 'homework', id);

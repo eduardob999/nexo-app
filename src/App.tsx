@@ -15,9 +15,7 @@ import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
-import { Homework } from './Homework';
-import { confirmProposal, createSet, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './homeworkStore';
-import { newSet, type HomeworkSet } from './homework';
+import { WriteModule } from './modules/write';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
@@ -211,18 +209,6 @@ export function App() {
     return watchMemos(user.uid, setMemos, (e) => console.warn('[notes]', e));
   }, [user, onNotes]);
 
-  const onHomework = route.name === 'homework';
-  const [hwSets, setHwSets] = useState<HomeworkSet[]>([]);
-  useEffect(() => {
-    if (!user || !onHomework) return undefined;
-    return watchHomework(user.uid, setHwSets, (e) => console.warn('[homework]', e));
-  }, [user, onHomework]);
-  const hwOpenId = route.name === 'homework' ? route.id : undefined;
-  const [hwThumbs, setHwThumbs] = useState<Record<string, string>>({});
-  useEffect(() => {
-    if (!user || !hwOpenId) { setHwThumbs({}); return undefined; }
-    return watchThumbs(user.uid, hwOpenId, setHwThumbs);
-  }, [user, hwOpenId]);
   const onShelf = route.name === 'shelf';
   const onTrips = route.name === 'trips';
   useEffect(() => {
@@ -284,15 +270,7 @@ export function App() {
             onRate: (d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); },
           }} />
       ) : tab === 'homework' ? (
-        <Homework sets={hwSets} openId={route.name === 'homework' ? route.id : undefined}
-          onCreate={(title, due) => { const s = newSet(title, new Date(), due); void createSet(user.uid, s).then(() => { window.location.hash = `#/homework/${s.id}`; }); }}
-          onAddItem={(set, n, prompt) => { void saveItems(user.uid, set, [{ n, prompt }], new Date()); }}
-          onAnswer={(set, item, text) => { void saveAnswer(user.uid, set.id, item, text, new Date()); }}
-          thumbs={hwThumbs}
-          onPhotos={async (set, files) => { for (const f of files) { let thumb = await makeThumb(f, 1600); if (thumb && thumb.length > 900_000) thumb = await makeThumb(f, 1200); const up = await uploadToDrive(f); await savePhoto(user.uid, set.id, up, thumb, new Date()); } }}
-          onRead={(set) => { void requestTranscription(user.uid, set.id, new Date()); }}
-          onConfirm={(set, questions) => { void confirmProposal(user.uid, set, questions, new Date()); }}
-          onDiscard={(set) => { void dismissProposal(user.uid, set.id); }} />
+        <WriteModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (

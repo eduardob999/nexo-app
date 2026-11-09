@@ -5,7 +5,7 @@
  * Items are a map keyed by question number, not an array, so the phone and the laptop can edit two different
  * questions at the same moment and neither overwrites the other: Firestore updates one field path at a time.
  */
-import type { CardFile } from './types';
+import type { CardFile } from '../../types';
 
 export type ItemStatus = 'open' | 'answered' | 'checking' | 'ok' | 'wrong' | 'hint';
 

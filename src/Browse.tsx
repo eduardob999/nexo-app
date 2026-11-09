@@ -2,6 +2,7 @@ import { useInstall } from './install';
 import { sleepOptions, untilLabel } from './sleep';
 import type { Settings } from './settings';
 import { Notifications } from './Notifications';
+import { MODULES } from './modules/registry';
 
 interface Props { uid?: string; nexoCount: number; draftCount: number; settings: Settings; onSettings: (s: Settings) => void; onSleep?: (until: Date) => void }
 
@@ -11,7 +12,6 @@ const ITEMS = [
   { id: 'notes', label: 'Notes', hint: 'Things worth keeping', href: '#/notes' },
   { id: 'money', label: 'Money', hint: 'The set-aside list for the month', href: '#/money' },
   { id: 'sleep', label: 'Sleep', hint: 'Nights, averages and tonight\'s plan', href: '#/sleep' },
-  { id: 'homework', label: 'Homework', hint: 'Book pages and your answers', href: '#/homework' },
   { id: 'trips', label: 'Trips', hint: 'Tickets for the trips ahead', href: '#/trips' },
   { id: 'shelf', label: 'Shelf', hint: 'Resources, done cards and closed threads', href: '#/shelf' },
 ] as const;
@@ -23,7 +23,7 @@ export function Browse({ uid, nexoCount, draftCount, settings, onSettings, onSle
     <main className="screen">
       <header className="top"><div><span className="kicker">EVERYTHING ELSE</span><h1>Browse</h1></div></header>
       <ul className="browse panel">
-        {ITEMS.map((i) => (
+        {[...ITEMS, ...MODULES.map((m) => ({ id: m.id, label: m.name, hint: m.hint, href: `#/${m.route}` }))].map((i) => (
           <li key={i.id}>
             <a className="browse-row" href={i.href}><span><b>{i.label}</b><small>{i.hint}</small></span>{i.id === 'nexo' && nexoCount > 0 ? <i className="badge flat">{nexoCount}</i> : null}</a>
           </li>

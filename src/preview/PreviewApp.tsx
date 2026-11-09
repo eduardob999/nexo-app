@@ -14,7 +14,7 @@ import { RestSheet } from '../RestSheet';
 import type { RestRec } from '../restmodel';
 import { bedDate, isoLocal, addDays, type SleepRec } from '../sleepmodel';
 import { Thread } from '../Thread';
-import { Homework } from '../Homework';
+import { Homework } from '../modules/write/Screen';
 import { Chat } from '../Chat';
 import type { ChatMsg } from '../chatlogic';
 import { Today } from '../Today';

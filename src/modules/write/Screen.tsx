@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { connectDrive, driveReady } from './drive';
-import { cleanProposal, orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './homework';
+import { connectDrive, driveReady } from '../../drive';
+import { cleanProposal, orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './model';
 
 interface Props {
   sets: HomeworkSet[];

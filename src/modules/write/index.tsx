@@ -1,0 +1,36 @@
+import { useEffect, useState } from 'react';
+import { makeThumb, uploadToDrive } from '../../drive';
+import type { ModuleProps } from '../types';
+import { newSet, type HomeworkSet } from './model';
+import { Homework } from './Screen';
+import { confirmProposal, createSet, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+
+export { writeManifest } from './manifest';
+
+/** The Write module: homework sets today, whole-text documents next. It watches and saves by itself. */
+export function WriteModule({ uid, openId }: ModuleProps) {
+  const [sets, setSets] = useState<HomeworkSet[]>([]);
+  const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  useEffect(() => watchHomework(uid, setSets, (e) => console.warn('[write]', e)), [uid]);
+  useEffect(() => {
+    if (!openId) { setThumbs({}); return undefined; }
+    return watchThumbs(uid, openId, setThumbs);
+  }, [uid, openId]);
+  return (
+    <Homework sets={sets} openId={openId} thumbs={thumbs}
+      onCreate={(title, due) => { const s = newSet(title, new Date(), due); void createSet(uid, s).then(() => { window.location.hash = `#/homework/${s.id}`; }); }}
+      onAddItem={(set, n, prompt) => { void saveItems(uid, set, [{ n, prompt }], new Date()); }}
+      onAnswer={(set, item, text) => { void saveAnswer(uid, set.id, item, text, new Date()); }}
+      onPhotos={async (set, files) => {
+        for (const f of files) {
+          let thumb = await makeThumb(f, 1600);
+          if (thumb && thumb.length > 900_000) thumb = await makeThumb(f, 1200);
+          const up = await uploadToDrive(f);
+          await savePhoto(uid, set.id, up, thumb, new Date());
+        }
+      }}
+      onRead={(set) => { void requestTranscription(uid, set.id, new Date()); }}
+      onConfirm={(set, questions) => { void confirmProposal(uid, set, questions, new Date()); }}
+      onDiscard={(set) => { void dismissProposal(uid, set.id); }} />
+  );
+}

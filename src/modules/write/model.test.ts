@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addPhoto, applyCheck, cleanProposal, ITEM_KEY, mergeSets, newSet, orderedItems, progress, putItem, setAnswer, sortSets } from './homework';
+import { addPhoto, applyCheck, cleanProposal, ITEM_KEY, mergeSets, newSet, orderedItems, progress, putItem, setAnswer, sortSets } from './model';
 
 const T0 = new Date('2026-11-09T10:00:00Z');
 const T1 = new Date('2026-11-09T10:05:00Z');
