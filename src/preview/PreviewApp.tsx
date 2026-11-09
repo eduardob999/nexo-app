@@ -14,6 +14,7 @@ import { RestSheet } from '../RestSheet';
 import type { RestRec } from '../restmodel';
 import { bedDate, isoLocal, addDays, type SleepRec } from '../sleepmodel';
 import { Thread } from '../Thread';
+import { Homework } from '../Homework';
 import { Chat } from '../Chat';
 import type { ChatMsg } from '../chatlogic';
 import { Today } from '../Today';
@@ -122,6 +123,14 @@ export function PreviewApp() {
       { id: 'y', status: 'open', for: 'you', type: 'ASSIGNMENT', title: 'Yamashita report in KULMS', due: '2026-11-10T17:00:00+09:00', prio: 'high' },
     ] as Card[];
     return (<><Today cards={cs} now={n9} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} info={info as never} /><TabBar current="today" draftCount={0} /></>);
+  }
+  if (which === 'homework' || which === 'homework-open') {
+    const mk = (id: string, title: string, due: string, answers: [string, string, string][]) => ({
+      id, title, due, photos: [{ id: 'p1', name: 'L21 p121.jpg', viewUrl: 'https://drive.google.com/file/d/x/view' }], createdAt: '2026-11-09T01:00:00Z', updatedAt: '2026-11-09T02:00:00Z',
+      items: Object.fromEntries(answers.map(([n, prompt, answer], i) => [n, { n, order: i, prompt, answer, status: answer ? 'answered' : 'open', ...(n === '2' ? { status: 'hint', hint: 'Look at the particle after 学校.' } : {}) }])),
+    }) as never;
+    const sets = [mk('a', 'L21 文型・練習', '2026-11-09T23:59:00+09:00', [['1', '私は＿＿＿が好きです。', '音楽'], ['2', '＿＿＿に行きます。', '学校'], ['3', '昨日は＿＿＿。', '']]), mk('b', '中級II quiz prep', '2026-11-12T13:15:00+09:00', [])];
+    return (<><Homework sets={sets} {...(which === 'homework-open' ? { openId: 'a' } : {})} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'rest') {
     return (<><SleepScreen recs={fakeNights()} cards={[]} now={new Date('2026-11-09T20:10:00+09:00')} rest={fakeRest} restActions={{ onMark: () => {}, onUndo: () => {}, onRate: () => {} }} /><TabBar current="browse" draftCount={0} /></>);

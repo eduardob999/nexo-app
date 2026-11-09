@@ -15,6 +15,9 @@ import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
+import { Homework } from './Homework';
+import { createSet, saveAnswer, saveItems, watchHomework } from './homeworkStore';
+import { newSet, type HomeworkSet } from './homework';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
@@ -208,6 +211,12 @@ export function App() {
     return watchMemos(user.uid, setMemos, (e) => console.warn('[notes]', e));
   }, [user, onNotes]);
 
+  const onHomework = route.name === 'homework';
+  const [hwSets, setHwSets] = useState<HomeworkSet[]>([]);
+  useEffect(() => {
+    if (!user || !onHomework) return undefined;
+    return watchHomework(user.uid, setHwSets, (e) => console.warn('[homework]', e));
+  }, [user, onHomework]);
   const onShelf = route.name === 'shelf';
   const onTrips = route.name === 'trips';
   useEffect(() => {
@@ -268,6 +277,11 @@ export function App() {
             onUndo: (d) => { void undoRestDay(user.uid, d); flash('Rest day removed'); },
             onRate: (d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); },
           }} />
+      ) : tab === 'homework' ? (
+        <Homework sets={hwSets} openId={route.name === 'homework' ? route.id : undefined}
+          onCreate={(title, due) => { const s = newSet(title, new Date(), due); void createSet(user.uid, s).then(() => { window.location.hash = `#/homework/${s.id}`; }); }}
+          onAddItem={(set, n, prompt) => { void saveItems(user.uid, set, [{ n, prompt }], new Date()); }}
+          onAnswer={(set, item, text) => { void saveAnswer(user.uid, set.id, item, text, new Date()); }} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (
@@ -319,7 +333,7 @@ export function App() {
         </button>
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
-        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' || tab === 'homework' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files, lines) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id, lines).then(() => uploadNewCardFiles(user.uid, id, files)); }} /> : null}
     </>
   );
