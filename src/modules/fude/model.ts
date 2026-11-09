@@ -40,6 +40,10 @@ export interface HomeworkSet {
   confirmed?: boolean;
   /** Questions the reader proposed from the photos. They become real items only when he confirms them. */
   proposed?: { n: string; prompt: string }[];
+  /** Grammar notes of the lesson, typed by him, given to the checker as context. */
+  context?: string;
+  /** One check at a time: `requested` by the app, then `working`, then `done`, `stale` (he kept typing) or `error`. */
+  checkRequest?: { status: 'requested' | 'working' | 'done' | 'stale' | 'error'; n?: string; mode?: 'hint' | 'explain'; forAnswer?: string; message?: string };
   /** The reader's progress on this set: `requested` by the app, then `working`, then `ready` or `error`. */
   transcribe?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; notes?: string; at?: string };
   createdAt: string;

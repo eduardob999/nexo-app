@@ -118,3 +118,12 @@ export function watchNotes(uid: string, id: string, on: (notes: Note[]) => void)
 export function setNoteStatus(uid: string, docId: string, noteId: string, status: Note['status']): Promise<void> {
   return updateDoc(doc(collection(dref(uid, docId), 'notes'), noteId), { status });
 }
+
+/** Ask the checker for a hint or an explanation of one answer. The answer travels with the request, so a later edit makes the result stale instead of wrong. */
+export function requestCheck(uid: string, setId: string, item: HomeworkItem, mode: 'hint' | 'explain'): Promise<void> {
+  return updateDoc(ref(uid, setId), { checkRequest: { status: 'requested', n: item.n, mode, forAnswer: item.answer } });
+}
+
+export function saveContext(uid: string, setId: string, text: string): Promise<void> {
+  return updateDoc(ref(uid, setId), { context: text });
+}

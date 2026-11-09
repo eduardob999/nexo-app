@@ -4,7 +4,7 @@ import type { ModuleProps } from '../types';
 import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type HomeworkSet } from './model';
 import { Homework } from './Screen';
-import { confirmProposal, createDocument, createSet, requestReview, saveDocText, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestReview, saveContext, saveDocText, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 
@@ -45,6 +45,8 @@ export function FudeModule({ uid, openId }: ModuleProps) {
       }}
       onRead={(set) => { void requestTranscription(uid, set.id, new Date()); }}
       onConfirm={(set, questions) => { void confirmProposal(uid, set, questions, new Date()); }}
-      onDiscard={(set) => { void dismissProposal(uid, set.id); }} />
+      onDiscard={(set) => { void dismissProposal(uid, set.id); }}
+      onCheck={(set, item, mode) => { void requestCheck(uid, set.id, item, mode); }}
+      onContext={(set, text) => { void saveContext(uid, set.id, text); }} />
   );
 }

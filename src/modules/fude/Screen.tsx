@@ -22,6 +22,9 @@ interface Props {
   /** He confirmed the proposal (possibly edited). */
   onConfirm?: (set: HomeworkSet, questions: { n: string; prompt: string }[]) => void;
   onDiscard?: (set: HomeworkSet) => void;
+  /** Ask for a hint or an explanation of one answer. */
+  onCheck?: (set: HomeworkSet, item: HomeworkItem, mode: 'hint' | 'explain') => void;
+  onContext?: (set: HomeworkSet, text: string) => void;
   /** Whole-text documents (reports, emails). */
   docs?: FudeDoc[];
   onCreateDoc?: (title: string, profile: string, due?: string) => void;
@@ -42,7 +45,10 @@ function Back() {
 }
 
 /** One question: the prompt, then his field. Saving waits for any open kana conversion to finish (see autosave.ts). */
-function Answer({ set, item, onAnswer }: { set: HomeworkSet; item: HomeworkItem; onAnswer: Props['onAnswer'] }) {
+function Answer({ set, item, onAnswer, onCheck }: { set: HomeworkSet; item: HomeworkItem; onAnswer: Props['onAnswer']; onCheck?: Props['onCheck'] }) {
+  const req = set.checkRequest;
+  const waiting = !!req && (req.status === 'requested' || req.status === 'working');
+  const mine = waiting && req?.n === item.n;
   const [text, setText] = useState(item.answer);
   const [state, setState] = useState<SaveState>('idle');
   const latest = useRef({ set, item, onAnswer });
@@ -64,6 +70,19 @@ function Answer({ set, item, onAnswer }: { set: HomeworkSet; item: HomeworkItem;
         onCompositionEnd={(e) => saver.current?.compositionEnd(e.currentTarget.value)}
         onBlur={() => saver.current?.blur()} />
       <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
+      {onCheck ? (
+        <div className="hw-check">
+          {mine ? <span className="mut" role="status">Checking…</span> : (
+            <>
+              {item.status === 'ok' ? <span className="hw-right">✓ Looks right</span> : null}
+              {!item.hint ? <button type="button" className="tool-chip" disabled={waiting || state === 'dirty'} onClick={() => onCheck(set, item, 'hint')}>Hint</button> : null}
+              {item.hint && !item.explain ? <button type="button" className="tool-chip" disabled={waiting || state === 'dirty'} onClick={() => onCheck(set, item, 'explain')}>Explain</button> : null}
+            </>
+          )}
+          {req?.status === 'error' && req.n === item.n ? <span className="mut">{req.message}</span> : null}
+          {req?.status === 'stale' && req.n === item.n ? <span className="mut">You changed the answer, ask again.</span> : null}
+        </div>
+      ) : null}
       {item.hint ? <p className="hw-note"><b>Hint</b> {item.hint}</p> : null}
       {item.explain ? <p className="hw-note"><b>Why</b> {item.explain}</p> : null}
     </li>
@@ -246,7 +265,7 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
@@ -273,10 +292,16 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs =
           )
         ) : null}
         <ul className="panel hw-items">
-          {orderedItems(open).map((it) => <Answer key={it.n} set={open} item={it} onAnswer={onAnswer} />)}
+          {orderedItems(open).map((it) => <Answer key={it.n} set={open} item={it} onAnswer={onAnswer} onCheck={onCheck} />)}
           {orderedItems(open).length === 0 ? <li className="hw-empty mut">No questions yet. Add them below.</li> : null}
         </ul>
         <AddQuestion onAdd={(n, prompt) => onAddItem(open, n, prompt)} />
+        {onContext ? (
+          <details className="panel hw-context">
+            <summary>Lesson notes for the checker (optional)</summary>
+            <textarea className="hw-answer" lang="ja" rows={3} defaultValue={open.context ?? ''} placeholder="For example: が marks the object of 好き; て-form for requests" onBlur={(e) => { if (e.target.value !== (open.context ?? '')) onContext(open, e.target.value); }} />
+          </details>
+        ) : null}
       </main>
     );
   }

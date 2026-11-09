@@ -136,7 +136,7 @@ export function PreviewApp() {
     if (which === 'homework-read' || which === 'homework-proposal') {
       return (<><Homework sets={[which === 'homework-read' ? fresh : withProposal]} openId="c" thumbs={{ p1: page('#e9e5fb'), p2: page('#fdf1d6') }} onPhotos={async () => {}} onRead={() => {}} onConfirm={() => {}} onDiscard={() => {}} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} /><TabBar current="browse" draftCount={0} /></>);
     }
-    return (<><Homework sets={sets} {...(which === 'homework-open' ? { openId: 'a' } : {})} thumbs={{ p1: page('#e9e5fb'), p2: page('#fdf1d6') }} onPhotos={async () => {}} onCreate={() => {}} onAddItem={() => {}} onAnswer={(_s, i, t) => { ((window as unknown as { __saves?: [string, string][] }).__saves ??= []).push([i.n, t]); }} /><TabBar current="browse" draftCount={0} /></>);
+    return (<><Homework sets={sets} {...(which === 'homework-open' ? { openId: 'a' } : {})} thumbs={{ p1: page('#e9e5fb'), p2: page('#fdf1d6') }} onPhotos={async () => {}} onCreate={() => {}} onAddItem={() => {}} onAnswer={(_s, i, t) => { ((window as unknown as { __saves?: [string, string][] }).__saves ??= []).push([i.n, t]); }} onCheck={() => {}} onContext={() => {}} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'fude-doc' || which === 'fude-list') {
     const docs = [{ id: 'fdx', title: 'Yamashita report', profile: 'report-en', due: '2026-11-10T17:00:00+09:00', createdAt: '2026-11-09T01:00:00Z', updatedAt: '2026-11-09T02:00:00Z',
