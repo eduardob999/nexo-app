@@ -114,7 +114,7 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 
 /* thread */
 .thread { padding-bottom: calc(150px + env(safe-area-inset-bottom)); }
-.thread-top { display: flex; align-items: center; gap: 8px; }
+.thread-top { display: flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 30; background: var(--bg); margin: -28px -12px 0; padding: calc(8px + env(safe-area-inset-top)) 12px 8px; }
 .icon-btn { width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; display: grid; place-items: center; }
 .thread-title { font-size: 26px; line-height: 1.15; margin: 6px 8px 0; }
 .bubbles { list-style: none; margin: 20px 8px 0; padding: 0; display: grid; gap: 16px; }
