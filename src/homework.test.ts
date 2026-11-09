@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addPhoto, applyCheck, ITEM_KEY, mergeSets, newSet, orderedItems, progress, putItem, setAnswer, sortSets } from './homework';
+import { addPhoto, applyCheck, cleanProposal, ITEM_KEY, mergeSets, newSet, orderedItems, progress, putItem, setAnswer, sortSets } from './homework';
 
 const T0 = new Date('2026-11-09T10:00:00Z');
 const T1 = new Date('2026-11-09T10:05:00Z');
@@ -59,5 +59,9 @@ describe('homework model', () => {
     expect(m.photos.map((p) => p.id)).toEqual(['p1', 'p2']);
     const clash = mergeSets(setAnswer(s, '1', 'early', T1), setAnswer(s, '1', 'later', T2));
     expect(clash.items['1']?.answer).toBe('later');
+  });
+  it('cleans an edited proposal', () => {
+    expect(cleanProposal([{ n: '1.', prompt: ' a ' }, { n: '1', prompt: 'dup' }, { n: '2 b', prompt: 'b' }, { n: 'x/y', prompt: 'c' }, { n: '3', prompt: '  ' }]))
+      .toEqual([{ n: '1', prompt: 'a' }, { n: '2b', prompt: 'b' }]);
   });
 });

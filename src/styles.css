@@ -606,3 +606,9 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .hw-nothumb { display: grid; place-items: center; height: 100%; padding: 6px; font-size: 12px; color: var(--muted); text-align: center; overflow-wrap: anywhere; }
 .hw-photo-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .hw-photos .tool-chip { justify-self: start; } .hw-thumbs { margin-left: 0; }
+
+.hw-read, .hw-proposal { margin-top: 12px; padding: 14px 16px; display: grid; gap: 10px; } .hw-proposal p { margin: 0; }
+.hw-proposal ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.hw-proposal li { display: flex; gap: 6px; align-items: center; } .hw-proposal li .reply-input { min-width: 0; }
+.hw-confirm { height: 44px; font-size: 15px; }
+.hw-x { flex: none; width: 32px; padding: 0; justify-content: center; font-size: 18px; } .hw-proposal .hw-add-n { width: 52px; padding: 0 10px; text-align: center; }

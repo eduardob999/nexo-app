@@ -16,7 +16,7 @@ import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
 import { Homework } from './Homework';
-import { createSet, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './homeworkStore';
+import { confirmProposal, createSet, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './homeworkStore';
 import { newSet, type HomeworkSet } from './homework';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
@@ -289,7 +289,10 @@ export function App() {
           onAddItem={(set, n, prompt) => { void saveItems(user.uid, set, [{ n, prompt }], new Date()); }}
           onAnswer={(set, item, text) => { void saveAnswer(user.uid, set.id, item, text, new Date()); }}
           thumbs={hwThumbs}
-          onPhotos={async (set, files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await savePhoto(user.uid, set.id, up, thumb, new Date()); } }} />
+          onPhotos={async (set, files) => { for (const f of files) { let thumb = await makeThumb(f, 1600); if (thumb && thumb.length > 900_000) thumb = await makeThumb(f, 1200); const up = await uploadToDrive(f); await savePhoto(user.uid, set.id, up, thumb, new Date()); } }}
+          onRead={(set) => { void requestTranscription(user.uid, set.id, new Date()); }}
+          onConfirm={(set, questions) => { void confirmProposal(user.uid, set, questions, new Date()); }}
+          onDiscard={(set) => { void dismissProposal(user.uid, set.id); }} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (

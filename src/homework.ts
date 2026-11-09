@@ -38,6 +38,10 @@ export interface HomeworkSet {
   items: Record<string, HomeworkItem>;
   /** True once he confirmed the transcribed questions. */
   confirmed?: boolean;
+  /** Questions the reader proposed from the photos. They become real items only when he confirms them. */
+  proposed?: { n: string; prompt: string }[];
+  /** The reader's progress on this set: `requested` by the app, then `working`, then `ready` or `error`. */
+  transcribe?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; notes?: string; at?: string };
   createdAt: string;
   updatedAt: string;
   deleted?: boolean;
@@ -125,4 +129,18 @@ export function mergeSets(a: HomeworkSet, b: HomeworkSet): HomeworkSet {
   for (const p of b.photos) if (!photos.some((q) => q.id === p.id)) photos.push(p);
   const base = a.updatedAt >= b.updatedAt ? a : b;
   return { ...base, photos, items };
+}
+
+/** Tidy a proposal he edited: usable numbers only, no duplicates, no empty text. */
+export function cleanProposal(list: { n: string; prompt: string }[]): { n: string; prompt: string }[] {
+  const seen = new Set<string>();
+  const out: { n: string; prompt: string }[] = [];
+  for (const q of list) {
+    const n = q.n.trim().replace(/\.$/, '').replace(/\s+/g, '');
+    const prompt = q.prompt.trim();
+    if (!ITEM_KEY.test(n) || !prompt || seen.has(n)) continue;
+    seen.add(n);
+    out.push({ n, prompt });
+  }
+  return out;
 }

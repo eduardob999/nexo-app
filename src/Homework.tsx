@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { connectDrive, driveReady } from './drive';
-import { orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './homework';
+import { cleanProposal, orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './homework';
 
 interface Props {
   sets: HomeworkSet[];
@@ -14,6 +14,11 @@ interface Props {
   thumbs?: Record<string, string>;
   /** Upload the chosen or taken photos to Drive and attach them to the set. Rejects with a readable message. */
   onPhotos?: (set: HomeworkSet, files: File[]) => Promise<void>;
+  /** Ask the reader to propose the questions from the photos. */
+  onRead?: (set: HomeworkSet) => void;
+  /** He confirmed the proposal (possibly edited). */
+  onConfirm?: (set: HomeworkSet, questions: { n: string; prompt: string }[]) => void;
+  onDiscard?: (set: HomeworkSet) => void;
 }
 
 const dueLabel = (due?: string) => (due ? new Date(due).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No deadline');
@@ -81,6 +86,33 @@ function Photos({ set, thumbs, onPhotos }: { set: HomeworkSet; thumbs: Record<st
   );
 }
 
+/** The reader's proposal: editable rows, and nothing becomes a question until he says so. */
+function Proposal({ set, onConfirm, onDiscard }: { set: HomeworkSet; onConfirm: NonNullable<Props['onConfirm']>; onDiscard: NonNullable<Props['onDiscard']> }) {
+  const [rows, setRows] = useState(() => (set.proposed ?? []).map((q) => ({ ...q })));
+  const edit = (i: number, k: 'n' | 'prompt', v: string) => setRows((r) => r.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+  const ok = cleanProposal(rows);
+  return (
+    <section className="panel hw-proposal" aria-label="Questions read from the photos">
+      <b>Check the questions</b>
+      <p className="mut">Read from your photos. Fix any mistake, then confirm. Nothing is answered for you.</p>
+      {set.transcribe?.notes ? <p className="mut">{set.transcribe.notes}</p> : null}
+      <ul>
+        {rows.map((q, i) => (
+          <li key={i}>
+            <input className="reply-input hw-add-n" aria-label={`Number ${i + 1}`} value={q.n} onChange={(e) => edit(i, 'n', e.target.value)} />
+            <input className="reply-input" lang="ja" aria-label={`Question ${q.n}`} value={q.prompt} onChange={(e) => edit(i, 'prompt', e.target.value)} />
+            <button type="button" className="tool-chip hw-x" aria-label={`Remove ${q.n}`} onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>×</button>
+          </li>
+        ))}
+      </ul>
+      <div className="hw-photo-actions">
+        <button type="button" className="send-wide hw-confirm" disabled={ok.length === 0} onClick={() => onConfirm(set, ok)}>Use these {ok.length} questions</button>
+        <button type="button" className="tool-chip" onClick={() => onDiscard(set)}>Discard</button>
+      </div>
+    </section>
+  );
+}
+
 function NewSet({ onCreate }: { onCreate: Props['onCreate'] }) {
   const [title, setTitle] = useState('');
   const [due, setDue] = useState('');
@@ -107,7 +139,7 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard }: Props) {
   const list = sortSets(sets);
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open) {
@@ -120,6 +152,16 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs =
         <header className="thread-top"><Back /><span className="kicker">{dueLabel(open.due)} · {p.answered} of {p.total} answered</span></header>
         <h1 className="thread-title">{open.title}</h1>
         <Photos set={open} thumbs={thumbs} onPhotos={onPhotos} />
+        {onRead && onConfirm && onDiscard && open.photos.length > 0 && orderedItems(open).length === 0 ? (
+          open.transcribe?.status === 'ready' && (open.proposed ?? []).length > 0 ? <Proposal key={open.transcribe.at} set={open} onConfirm={onConfirm} onDiscard={onDiscard} /> : (
+            <section className="panel hw-read">
+              {open.transcribe?.status === 'requested' || open.transcribe?.status === 'working'
+                ? <p className="mut" role="status">Reading the pages. This takes about half a minute.</p>
+                : <button type="button" className="send-wide" onClick={() => onRead(open)}>Read the questions</button>}
+              {open.transcribe?.status === 'error' ? <p className="hw-note" role="alert">{open.transcribe.message ?? 'The reader could not run.'} You can also add the questions by hand below.</p> : null}
+            </section>
+          )
+        ) : null}
         <ul className="panel hw-items">
           {orderedItems(open).map((it) => <Answer key={it.n} set={open} item={it} onAnswer={onAnswer} />)}
           {orderedItems(open).length === 0 ? <li className="hw-empty mut">No questions yet. Add them below.</li> : null}

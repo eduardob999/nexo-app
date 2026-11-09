@@ -71,3 +71,19 @@ export function saveAnswer(uid: string, setId: string, item: HomeworkItem, text:
   const [a, b, ...rest] = pairs as [FieldPath, unknown, ...unknown[]];
   return updateDoc(ref(uid, setId), a, b, ...rest);
 }
+
+/** Ask the reader on the loop's machine to propose the questions from the photos. */
+export function requestTranscription(uid: string, setId: string, now: Date): Promise<void> {
+  return updateDoc(ref(uid, setId), { transcribe: { status: 'requested', at: now.toISOString() }, proposed: deleteField() });
+}
+
+/** He confirmed (possibly edited) the proposal: the questions become items and the proposal goes away. */
+export async function confirmProposal(uid: string, set: HomeworkSet, questions: { n: string; prompt: string }[], now: Date): Promise<void> {
+  if (questions.length === 0) return;
+  await saveItems(uid, set, questions, now);
+  await updateDoc(ref(uid, set.id), { proposed: deleteField(), transcribe: deleteField() });
+}
+
+export function dismissProposal(uid: string, setId: string): Promise<void> {
+  return updateDoc(ref(uid, setId), { proposed: deleteField(), transcribe: deleteField() });
+}
