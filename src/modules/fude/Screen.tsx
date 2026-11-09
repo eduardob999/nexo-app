@@ -4,7 +4,7 @@ import { Camera } from './Camera';
 import { applyFix, sortDocs, type FudeDoc, type Note } from './documents';
 import { lintText, PROFILES, profileById } from './profiles';
 import { connectDrive, driveReady } from '../../drive';
-import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
+import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
 
 interface Props {
   sets: HomeworkSet[];
@@ -25,6 +25,9 @@ interface Props {
   onDiscard?: (set: HomeworkSet) => void;
   /** Ask for a hint or an explanation of one answer. */
   onCheck?: (set: HomeworkSet, item: HomeworkItem, mode: 'hint' | 'explain') => void;
+  /** The set's exports (newest first) and how to ask for one or revise one. */
+  exports?: ExportRec[];
+  onExport?: (set: HomeworkSet, format: 'pdf' | 'docx' | 'md', instructions: string, exportId?: string) => void;
   /** The set's chat (every message, with `n` set when it is about one question) and how to send one. */
   chat?: ChatMsg[];
   onChat?: (set: HomeworkSet, text: string, n: string | undefined, deep: boolean) => void;
@@ -47,6 +50,59 @@ function Back() {
     <a className="icon-btn" aria-label="Back" href="#/homework">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7" /></svg>
     </a>
+  );
+}
+
+/** Turn the answers into a document: say how it should look, read the preview, revise it, then download. */
+function downloadExport(x: ExportRec) {
+  const bin = atob(x.data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([bytes], { type: x.mime }));
+  const a = document.createElement('a');
+  a.href = url; a.download = x.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+function ExportPanel({ set, exports, onExport }: { set: HomeworkSet; exports: ExportRec[]; onExport: NonNullable<Props['onExport']> }) {
+  const latest = exports.find((x) => x.id === set.exportRequest?.exportId) ?? exports[0];
+  const [fmt, setFmt] = useState<'pdf' | 'docx' | 'md'>(latest?.format ?? 'pdf');
+  const [text, setText] = useState('');
+  const req = set.exportRequest;
+  const working = req?.status === 'requested' || req?.status === 'working';
+  return (
+    <details className="panel hw-context hw-export" open={!!latest || undefined}>
+      <summary>Export the answers as a document</summary>
+      <div className="hw-export-body">
+        <div className="seg" role="group" aria-label="Format">
+          {([['pdf', 'PDF'], ['docx', 'Word'], ['md', 'Markdown']] as const).map(([k, l]) => <button key={k} type="button" aria-pressed={fmt === k} onClick={() => setFmt(k)}>{l}</button>)}
+        </div>
+        <label className="sr" htmlFor="exp-ins">Instructions for the layout</label>
+        <textarea id="exp-ins" className="hw-answer" rows={3} lang="ja" placeholder={latest ? 'What to change, for example: put the question numbers in bold, add my name at the top, one page' : 'How it should look, for example: my name and the date at the top, each question with my answer, English headings, one page'}
+          value={text} onChange={(e) => setText(e.target.value)} />
+        <div className="hw-photo-actions">
+          <button type="button" className="send-wide hw-confirm" disabled={working} onClick={() => { onExport(set, fmt, text, latest?.id); setText(''); }}>{working ? 'Preparing…' : latest ? 'Revise' : 'Prepare the document'}</button>
+          {latest && !working ? <button type="button" className="tool-chip" onClick={() => { onExport(set, fmt, text, undefined); setText(''); }}>Start over</button> : null}
+        </div>
+        {working ? <p className="mut" role="status">Laying it out. This takes about 15 seconds.</p> : null}
+        {req?.status === 'error' ? <p className="hw-note" role="alert">{req.message}</p> : null}
+        {latest ? (
+          <div className="hw-exp-latest">
+            <div className="hw-exp-head"><b>{latest.name}</b><span className="mut">version {latest.version} · {latest.format.toUpperCase()} · {Math.max(1, Math.round(latest.size / 1024))} KB</span></div>
+            <div className="hw-exp-preview" lang="ja" aria-label="Preview">
+              <h3>{latest.spec.title}</h3>
+              {latest.spec.subtitle ? <p className="mut">{latest.spec.subtitle}</p> : null}
+              {latest.spec.blocks.map((b, i) => b.type === 'heading' ? <h4 key={i}>{b.text}</h4>
+                : b.type === 'qa' ? <div key={i} className="hw-exp-qa"><b>{b.n}. {b.question}</b>{(b.options ?? []).map((o) => <span key={o} className="mut">{o}</span>)}<span>{b.answer?.trim() ? b.answer : <i className="mut">(no answer)</i>}</span></div>
+                  : <p key={i} className={b.type === 'note' ? 'mut' : ''}>{b.text}</p>)}
+            </div>
+            {latest.instructions.length ? <p className="mut hw-exp-ins">Instructions so far: {latest.instructions.map((t, i) => `${i + 1}. ${t}`).join('  ')}</p> : null}
+            <button type="button" className="send-wide" onClick={() => downloadExport(latest)}>Download {latest.format === 'docx' ? 'Word file' : latest.format === 'md' ? 'Markdown' : 'PDF'}</button>
+          </div>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
@@ -336,7 +392,7 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus, onSendBackDraft }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus, onSendBackDraft }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
@@ -370,6 +426,7 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs =
           {orderedItems(open).length === 0 ? <li className="hw-empty mut">No questions yet. Add them below.</li> : null}
         </ul>
         <AddQuestion onAdd={(n, prompt) => onAddItem(open, n, prompt)} />
+        {onExport && p.answered > 0 ? <ExportPanel set={open} exports={exports} onExport={onExport} /> : null}
         {onChat ? (
           <details className="panel hw-context hw-setchat">
             <summary>Chat about this set</summary>

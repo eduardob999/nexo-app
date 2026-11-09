@@ -14,6 +14,10 @@ export interface Question { n: string; prompt: string; type?: ItemKind | undefin
 
 export interface ChatMsg { id: string; by: 'you' | 'tutor'; text: string; ts: string; n?: string; deep?: boolean }
 
+export interface ExportBlock { type: 'heading' | 'para' | 'note' | 'qa'; text?: string; n?: string; question?: string; answer?: string; options?: string[] }
+export interface ExportSpec { title: string; subtitle?: string; blocks: ExportBlock[] }
+export interface ExportRec { id: string; format: 'pdf' | 'docx' | 'md'; name: string; mime: string; size: number; version: number; instructions: string[]; spec: ExportSpec; data: string; at: string }
+
 export interface HomeworkItem {
   /** Question number as printed, for example "1" or "3b". Letters, digits, `-` and `_` only. */
   n: string;
@@ -52,6 +56,8 @@ export interface HomeworkSet {
   cardId?: string;
   /** Grammar notes of the lesson, typed by him, given to the checker as context. */
   context?: string;
+  /** One export at a time: `requested` by the app, then `working`, then `done` (with `exportId`) or `error`. */
+  exportRequest?: { status: 'requested' | 'working' | 'done' | 'error'; exportId?: string; message?: string };
   /** One chat reply at a time: `requested` by the app when he sends a message, then `working`, then `done` or `error`. */
   chatRequest?: { status: 'requested' | 'working' | 'done' | 'error'; message?: string };
   /** One check at a time: `requested` by the app, then `working`, then `done`, `stale` (he kept typing) or `error`. */

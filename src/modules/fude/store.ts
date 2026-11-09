@@ -3,9 +3,9 @@
  * ownership wildcard under users/{uid}), so no rule change is needed. The app and the checker service both
  * read and write here; the sync and state.json know nothing about it.
  */
-import { collection, deleteField, doc, FieldPath, onSnapshot, query, setDoc, updateDoc, arrayUnion, where, writeBatch } from 'firebase/firestore';
+import { collection, deleteField, doc, FieldPath, limit, onSnapshot, orderBy, query, setDoc, updateDoc, arrayUnion, where, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { setAnswer, putItem, type ChatMsg, type HomeworkItem, type HomeworkSet, type Question } from './model';
+import { setAnswer, putItem, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type Question } from './model';
 import type { FudeDoc, Note } from './documents';
 import type { CardFile } from '../../types';
 
@@ -153,4 +153,15 @@ export function sendChat(uid: string, setId: string, text: string, n: string | u
   batch.set(doc(collection(ref(uid, setId), 'chat'), String(now.getTime())), msg);
   batch.update(ref(uid, setId), { chatRequest: { status: 'requested' } });
   return batch.commit();
+}
+
+// ---- exports: users/{uid}/homework/{set}/exports/{id} ------------------------------------------------------------
+export function watchExports(uid: string, setId: string, on: (x: ExportRec[]) => void): () => void {
+  return onSnapshot(query(collection(ref(uid, setId), 'exports'), orderBy('at', 'desc'), limit(3)),
+    (snap) => on(snap.docs.map((d) => ({ ...(d.data() as Omit<ExportRec, 'id'>), id: d.id }))), () => on([]));
+}
+
+/** Ask the helper to lay the answers out as a document. `exportId` makes it a revision of that export. */
+export function requestExport(uid: string, setId: string, format: 'pdf' | 'docx' | 'md', instructions: string, exportId?: string): Promise<void> {
+  return updateDoc(ref(uid, setId), { exportRequest: { status: 'requested', mode: exportId ? 'revise' : 'create', format, instructions: instructions.trim(), ...(exportId ? { exportId } : {}) } });
 }
