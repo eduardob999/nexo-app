@@ -5,7 +5,7 @@
  */
 import { collection, deleteField, doc, FieldPath, onSnapshot, query, setDoc, updateDoc, arrayUnion, where, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { setAnswer, putItem, type HomeworkItem, type HomeworkSet } from './model';
+import { setAnswer, putItem, type ChatMsg, type HomeworkItem, type HomeworkSet, type Question } from './model';
 import type { FudeDoc, Note } from './documents';
 import type { CardFile } from '../../types';
 
@@ -45,9 +45,9 @@ export function watchThumbs(uid: string, setId: string, on: (thumbs: Record<stri
 }
 
 /** The confirmed questions, written one field path per question so nothing else in the set is touched. */
-export function saveItems(uid: string, set: HomeworkSet, questions: { n: string; prompt: string }[], now: Date): Promise<void> {
+export function saveItems(uid: string, set: HomeworkSet, questions: Question[], now: Date): Promise<void> {
   let next = set;
-  for (const q of questions) next = putItem(next, q.n, q.prompt, now);
+  for (const q of questions) next = putItem(next, q.n, q.prompt, now, { type: q.type, options: q.options });
   const args: unknown[] = [];
   for (const q of questions) {
     const it = next.items[q.n.trim()];
@@ -79,7 +79,7 @@ export function requestTranscription(uid: string, setId: string, now: Date): Pro
 }
 
 /** He confirmed (possibly edited) the proposal: the questions become items and the proposal goes away. */
-export async function confirmProposal(uid: string, set: HomeworkSet, questions: { n: string; prompt: string }[], now: Date): Promise<void> {
+export async function confirmProposal(uid: string, set: HomeworkSet, questions: Question[], now: Date): Promise<void> {
   if (questions.length === 0) return;
   await saveItems(uid, set, questions, now);
   await updateDoc(ref(uid, set.id), { proposed: deleteField(), transcribe: deleteField() });
@@ -137,4 +137,20 @@ export function watchLinked(uid: string, cardId: string, on: (found: { sets: Hom
   const a = onSnapshot(query(col(uid), where('cardId', '==', cardId)), (snap) => { sets = snap.docs.map((d) => ({ ...(d.data() as Omit<HomeworkSet, 'id'>), id: d.id })); push(); }, () => {});
   const b = onSnapshot(query(dcol(uid), where('cardId', '==', cardId)), (snap) => { docs = snap.docs.map((d) => ({ ...(d.data() as Omit<FudeDoc, 'id'>), id: d.id })); push(); }, () => {});
   return () => { a(); b(); };
+}
+
+// ---- the chat: users/{uid}/homework/{set}/chat/{id} -------------------------------------------------------------
+export function watchChat(uid: string, setId: string, on: (msgs: ChatMsg[]) => void): () => void {
+  return onSnapshot(collection(ref(uid, setId), 'chat'), (snap) => {
+    on(snap.docs.map((d) => ({ ...(d.data() as Omit<ChatMsg, 'id'>), id: d.id })).sort((a, b) => (a.ts < b.ts ? -1 : a.ts > b.ts ? 1 : 0)));
+  }, () => on([]));
+}
+
+/** His message, and the request the helper answers. One batch, so the helper never sees a request without the message. */
+export function sendChat(uid: string, setId: string, text: string, n: string | undefined, deep: boolean, now: Date): Promise<void> {
+  const batch = writeBatch(db);
+  const msg: Omit<ChatMsg, 'id'> = { by: 'you', text: text.trim(), ts: now.toISOString(), ...(n ? { n } : {}), ...(deep ? { deep: true } : {}) };
+  batch.set(doc(collection(ref(uid, setId), 'chat'), String(now.getTime())), msg);
+  batch.update(ref(uid, setId), { chatRequest: { status: 'requested' } });
+  return batch.commit();
 }

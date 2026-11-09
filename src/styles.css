@@ -643,3 +643,16 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .cam-thumb { flex: none; width: 44px; height: 58px; padding: 0; border: 2px solid #fff; border-radius: 8px; overflow: hidden; background: #222; } .cam-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cam-shutter { width: 72px; height: 72px; border-radius: 50%; border: 4px solid #fff; background: #fff; box-shadow: inset 0 0 0 4px #000; } .cam-shutter:active { transform: scale(.94); } .cam-shutter:disabled { opacity: .4; }
 .cam-btn { height: 40px; padding: 0 16px; border: 1px solid #666; border-radius: 20px; background: transparent; color: #fff; font: 600 15px var(--sans); } .cam-done { justify-self: end; background: #fff; color: #000; border-color: #fff; } .cam-done:disabled { opacity: .35; }
+
+/* question kinds and the chat */
+.hw-options { display: grid; gap: 8px; } .hw-option { text-align: left; padding: 12px 14px; border: 1px solid var(--edge); border-radius: 14px; background: var(--surface); color: var(--ink); font: 17px/1.4 var(--sans); } .hw-option.on { border-color: var(--accent); background: var(--accent-tint); font-weight: 600; box-shadow: inset 0 0 0 1px var(--accent); }
+.hw-bank { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; } .hw-bank span { padding: 4px 10px; border-radius: 10px; background: var(--chip); font-size: 16px; }
+.hw-prop-main { flex: 1; min-width: 0; display: grid; gap: 6px; } .hw-type { height: 36px; font-size: 14px; }
+.hw-ask { display: grid; gap: 8px; } .hw-chat { display: grid; gap: 8px; } .hw-chat.compact { padding: 8px 0 0; }
+.hw-msgs { display: grid; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.hw-msg { margin: 0; max-width: 90%; padding: 8px 12px; border-radius: 14px; font-size: 15px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.hw-msg.you { justify-self: end; background: var(--assign-tint); } .hw-msg.tutor { justify-self: start; background: var(--surface); border: 1px solid var(--edge); }
+.hw-chat-hint { margin: 0; font-size: 14px; } .hw-deep { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.hw-setchat .hw-chat { margin-top: 10px; }
+
+.hw-ask > .tool-chip { justify-self: start; }

@@ -64,4 +64,11 @@ describe('homework model', () => {
     expect(cleanProposal([{ n: '1.', prompt: ' a ' }, { n: '1', prompt: 'dup' }, { n: '2 b', prompt: 'b' }, { n: 'x/y', prompt: 'c' }, { n: '3', prompt: '  ' }]))
       .toEqual([{ n: '1', prompt: 'a' }, { n: '2b', prompt: 'b' }]);
   });
+  it('keeps question kinds and options, and turns a choice without options into a written answer', () => {
+    expect(cleanProposal([{ n: '1', prompt: 'a', type: 'choice', options: [' ①は ', '②が', ''] }, { n: '2', prompt: 'b', type: 'choice', options: ['only'] }, { n: '3', prompt: 'c', type: 'reorder', options: ['私は', '行く'] }]))
+      .toEqual([{ n: '1', prompt: 'a', type: 'choice', options: ['①は', '②が'] }, { n: '2', prompt: 'b' }, { n: '3', prompt: 'c', type: 'reorder', options: ['私は', '行く'] }]);
+    const s = putItem(newSet('x', T0), '1', 'q', T0, { type: 'choice', options: ['a', 'b'] });
+    expect(s.items['1']).toMatchObject({ type: 'choice', options: ['a', 'b'], answer: '' });
+    expect(putItem(newSet('x', T0), '1', 'q', T0, { type: 'text' }).items['1']).not.toHaveProperty('type');
+  });
 });

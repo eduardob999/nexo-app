@@ -9,6 +9,11 @@ import type { CardFile } from '../../types';
 
 export type ItemStatus = 'open' | 'answered' | 'checking' | 'ok' | 'wrong' | 'hint';
 
+export type ItemKind = 'text' | 'choice' | 'reorder';
+export interface Question { n: string; prompt: string; type?: ItemKind | undefined; options?: string[] | undefined }
+
+export interface ChatMsg { id: string; by: 'you' | 'tutor'; text: string; ts: string; n?: string; deep?: boolean }
+
 export interface HomeworkItem {
   /** Question number as printed, for example "1" or "3b". Letters, digits, `-` and `_` only. */
   n: string;
@@ -16,6 +21,9 @@ export interface HomeworkItem {
   order: number;
   /** The question as transcribed from the photo and confirmed by him. */
   prompt: string;
+  /** `text` (he writes it), `choice` (he picks one of `options`) or `reorder` (`options` are the pieces to put in order, he writes the sentence). */
+  type?: ItemKind;
+  options?: string[];
   /** His answer, exactly as typed. Never written by the checker. */
   answer: string;
   status: ItemStatus;
@@ -39,11 +47,13 @@ export interface HomeworkSet {
   /** True once he confirmed the transcribed questions. */
   confirmed?: boolean;
   /** Questions the reader proposed from the photos. They become real items only when he confirms them. */
-  proposed?: { n: string; prompt: string }[];
+  proposed?: Question[];
   /** The Nexo card this set was started from. */
   cardId?: string;
   /** Grammar notes of the lesson, typed by him, given to the checker as context. */
   context?: string;
+  /** One chat reply at a time: `requested` by the app when he sends a message, then `working`, then `done` or `error`. */
+  chatRequest?: { status: 'requested' | 'working' | 'done' | 'error'; message?: string };
   /** One check at a time: `requested` by the app, then `working`, then `done`, `stale` (he kept typing) or `error`. */
   checkRequest?: { status: 'requested' | 'working' | 'done' | 'stale' | 'error'; n?: string; mode?: 'hint' | 'explain'; forAnswer?: string; message?: string };
   /** The reader's progress on this set: `requested` by the app, then `working`, then `ready` or `error`. */
@@ -65,12 +75,15 @@ export function newSet(title: string, now: Date, due?: string): HomeworkSet {
 }
 
 /** Add or replace a question. Returns the new set, or the same set when the key is not usable. */
-export function putItem(set: HomeworkSet, n: string, prompt: string, now: Date): HomeworkSet {
+export function putItem(set: HomeworkSet, n: string, prompt: string, now: Date, extra: { type?: ItemKind | undefined; options?: string[] | undefined } = {}): HomeworkSet {
   const key = n.trim();
   if (!ITEM_KEY.test(key)) return set;
   const old = set.items[key];
   const order = old?.order ?? Object.keys(set.items).length;
   const item: HomeworkItem = { ...(old ?? { answer: '', status: 'open' as ItemStatus }), n: key, order, prompt: prompt.trim(), updatedAt: now.toISOString() };
+  if (extra.type && extra.type !== 'text') item.type = extra.type;
+  const opts = (extra.options ?? []).map((o) => o.trim()).filter(Boolean);
+  if (opts.length) item.options = opts;
   return { ...set, items: { ...set.items, [key]: item }, updatedAt: item.updatedAt as string };
 }
 
@@ -137,16 +150,18 @@ export function mergeSets(a: HomeworkSet, b: HomeworkSet): HomeworkSet {
   return { ...base, photos, items };
 }
 
-/** Tidy a proposal he edited: usable numbers only, no duplicates, no empty text. */
-export function cleanProposal(list: { n: string; prompt: string }[]): { n: string; prompt: string }[] {
+/** Tidy a proposal he edited: usable numbers only, no duplicates, no empty text, a choice keeps at least two options. */
+export function cleanProposal(list: Question[]): Question[] {
   const seen = new Set<string>();
-  const out: { n: string; prompt: string }[] = [];
+  const out: Question[] = [];
   for (const q of list) {
     const n = q.n.trim().replace(/\.$/, '').replace(/\s+/g, '');
     const prompt = q.prompt.trim();
     if (!ITEM_KEY.test(n) || !prompt || seen.has(n)) continue;
     seen.add(n);
-    out.push({ n, prompt });
+    const options = (q.options ?? []).map((o) => o.trim()).filter(Boolean);
+    const type: ItemKind = q.type === 'choice' && options.length < 2 ? 'text' : (q.type ?? 'text');
+    out.push({ n, prompt, ...(type !== 'text' ? { type } : {}), ...(type !== 'text' && options.length ? { options } : {}) });
   }
   return out;
 }

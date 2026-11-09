@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { makeThumb, uploadToDrive } from '../../drive';
 import type { ModuleProps } from '../types';
 import { newDoc, type FudeDoc, type Note } from './documents';
-import { newSet, type HomeworkSet } from './model';
+import { newSet, type ChatMsg, type HomeworkSet } from './model';
 import { Homework } from './Screen';
-import { confirmProposal, createDocument, createSet, requestCheck, requestReview, saveContext, saveDocText, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestReview, sendChat, watchChat, saveContext, saveDocText, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -15,6 +15,12 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
   const [sets, setSets] = useState<HomeworkSet[]>([]);
   const [docs, setDocs] = useState<FudeDoc[]>([]);
   useEffect(() => watchDocuments(uid, setDocs, (e) => console.warn('[fude docs]', e)), [uid]);
+  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const openSet = openId?.startsWith('hw') ? openId : undefined;
+  useEffect(() => {
+    if (!openSet) { setChat([]); return undefined; }
+    return watchChat(uid, openSet, setChat);
+  }, [uid, openSet]);
   const [notes, setNotes] = useState<Note[]>([]);
   const openDoc = openId?.startsWith('fd') ? openId : undefined;
   useEffect(() => {
@@ -31,6 +37,8 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
     <Homework sets={sets} openId={openId} thumbs={thumbs} docs={docs}
       onCreateDoc={(title, profile, due) => { const d = newDoc(title, profile, new Date(), due); void createDocument(uid, d).then(() => { window.location.hash = `#/homework/${d.id}`; }); }}
       onSaveDoc={(d, text) => { void saveDocText(uid, d.id, text, new Date()); }}
+      chat={chat}
+      onChat={(set, text, n, deep) => { void sendChat(uid, set.id, text, n, deep, new Date()); }}
       notes={notes}
       {...(host?.sendBackDraft ? { onSendBackDraft: host.sendBackDraft } : {})}
       onReviewDoc={(d, profile) => { void requestReview(uid, d.id, profile, new Date()); }}

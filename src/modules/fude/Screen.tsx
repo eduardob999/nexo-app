@@ -4,7 +4,7 @@ import { Camera } from './Camera';
 import { applyFix, sortDocs, type FudeDoc, type Note } from './documents';
 import { lintText, PROFILES, profileById } from './profiles';
 import { connectDrive, driveReady } from '../../drive';
-import { cleanProposal, orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './model';
+import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
 
 interface Props {
   sets: HomeworkSet[];
@@ -21,10 +21,13 @@ interface Props {
   /** Ask the reader to propose the questions from the photos. */
   onRead?: (set: HomeworkSet) => void;
   /** He confirmed the proposal (possibly edited). */
-  onConfirm?: (set: HomeworkSet, questions: { n: string; prompt: string }[]) => void;
+  onConfirm?: (set: HomeworkSet, questions: Question[]) => void;
   onDiscard?: (set: HomeworkSet) => void;
   /** Ask for a hint or an explanation of one answer. */
   onCheck?: (set: HomeworkSet, item: HomeworkItem, mode: 'hint' | 'explain') => void;
+  /** The set's chat (every message, with `n` set when it is about one question) and how to send one. */
+  chat?: ChatMsg[];
+  onChat?: (set: HomeworkSet, text: string, n: string | undefined, deep: boolean) => void;
   onContext?: (set: HomeworkSet, text: string) => void;
   /** Whole-text documents (reports, emails). */
   docs?: FudeDoc[];
@@ -47,8 +50,41 @@ function Back() {
   );
 }
 
+/** A small conversation with the tutor: bubbles, a box, and a switch for the slower, stronger model. */
+function ChatThread({ set, msgs, n, onChat, compact }: { set: HomeworkSet; msgs: ChatMsg[]; n?: string; onChat: NonNullable<Props['onChat']>; compact?: boolean }) {
+  const [text, setText] = useState('');
+  const [deep, setDeep] = useState(false);
+  const mine = msgs.filter((m) => (n ? m.n === n : !m.n));
+  const req = set.chatRequest;
+  const waiting = req?.status === 'requested' || req?.status === 'working';
+  const endRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { endRef.current?.scrollIntoView?.({ block: 'nearest' }); }, [mine.length, waiting]);
+  const send = () => { const t = text.trim(); if (!t || waiting) return; onChat(set, t, n, deep); setText(''); };
+  return (
+    <div className={`hw-chat${compact ? ' compact' : ''}`}>
+      {mine.length ? (
+        <div className="hw-msgs" role="log" aria-live="polite">
+          {(compact ? mine.slice(-6) : mine).map((m) => <p key={m.id} className={`hw-msg ${m.by}`}>{m.text}</p>)}
+          {waiting ? <p className="hw-msg tutor mut" role="status">Thinking…</p> : null}
+          <div ref={endRef} />
+        </div>
+      ) : waiting ? <p className="hw-msg tutor mut" role="status">Thinking…</p> : <p className="mut hw-chat-hint">{n ? `Ask anything about question ${n}.` : 'Ask anything about this set or the lesson.'} I explain and guide; you write the answers.</p>}
+      {req?.status === 'error' ? <p className="hw-note" role="alert">{req.message ?? 'The tutor could not answer.'}</p> : null}
+      <form className="reply-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
+        <label className="sr" htmlFor={`chat-${n ?? 'set'}`}>Message the tutor</label>
+        <input id={`chat-${n ?? 'set'}`} className="reply-input" lang="ja" placeholder={n ? `About question ${n}` : 'Message'} value={text} onChange={(e) => setText(e.target.value)} />
+        <button type="submit" className="send small" aria-label="Send" disabled={!text.trim() || waiting}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </button>
+      </form>
+      <label className="hw-deep"><input type="checkbox" checked={deep} onChange={(e) => setDeep(e.target.checked)} /> Think harder (slower)</label>
+    </div>
+  );
+}
+
 /** One question: the prompt, then his field. Saving waits for any open kana conversion to finish (see autosave.ts). */
-function Answer({ set, item, onAnswer, onCheck }: { set: HomeworkSet; item: HomeworkItem; onAnswer: Props['onAnswer']; onCheck?: Props['onCheck'] }) {
+function Answer({ set, item, onAnswer, onCheck, chat, onChat }: { set: HomeworkSet; item: HomeworkItem; onAnswer: Props['onAnswer']; onCheck?: Props['onCheck']; chat?: ChatMsg[]; onChat?: Props['onChat'] }) {
+  const [asking, setAsking] = useState(false);
   const req = set.checkRequest;
   const waiting = !!req && (req.status === 'requested' || req.status === 'working');
   const mine = waiting && req?.n === item.n;
@@ -66,12 +102,24 @@ function Answer({ set, item, onAnswer, onCheck }: { set: HomeworkSet; item: Home
   return (
     <li className={`hw-item hw-${item.status}`}>
       <label htmlFor={`hw-${item.n}`}><span className="hw-n">{item.n}</span><span className="hw-prompt" lang="ja">{item.prompt || 'No text for this question'}</span></label>
-      <textarea id={`hw-${item.n}`} className="hw-answer" lang="ja" rows={2} inputMode="text" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+      {item.type === 'choice' && item.options ? (
+        <div className="hw-options" role="radiogroup" aria-label={`Question ${item.n}`}>
+          {item.options.map((o) => (
+            <button key={o} type="button" role="radio" aria-checked={text === o} className={`hw-option${text === o ? ' on' : ''}`}
+              onClick={() => { setText(o); saver.current?.adopt(o); setState('saved'); onAnswer(set, item, o); }}>{o}</button>
+          ))}
+        </div>
+      ) : (
+        <>
+          {item.type === 'reorder' && item.options ? <p className="hw-bank" lang="ja" aria-label="Pieces to put in order">{item.options.map((o) => <span key={o}>{o}</span>)}</p> : null}
+          <textarea id={`hw-${item.n}`} className="hw-answer" lang="ja" rows={2} inputMode="text" autoCapitalize="off" autoCorrect="off" spellCheck={false}
         placeholder="Your answer" value={text}
         onChange={(e) => { setText(e.target.value); saver.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); }}
         onCompositionStart={() => saver.current?.compositionStart()}
         onCompositionEnd={(e) => saver.current?.compositionEnd(e.currentTarget.value)}
         onBlur={() => saver.current?.blur()} />
+        </>
+      )}
       <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
       {onCheck ? (
         <div className="hw-check">
@@ -88,6 +136,12 @@ function Answer({ set, item, onAnswer, onCheck }: { set: HomeworkSet; item: Home
       ) : null}
       {item.hint ? <p className="hw-note"><b>Hint</b> {item.hint}</p> : null}
       {item.explain ? <p className="hw-note"><b>Why</b> {item.explain}</p> : null}
+      {onChat ? (
+        <div className="hw-ask">
+          <button type="button" className="tool-chip" aria-expanded={asking} onClick={() => setAsking((a) => !a)}>{asking ? 'Close chat' : (chat ?? []).some((m) => m.n === item.n) ? 'Chat (open)' : 'Ask'}</button>
+          {asking ? <ChatThread set={set} msgs={chat ?? []} n={item.n} onChat={onChat} compact /> : null}
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -135,7 +189,7 @@ function Photos({ set, thumbs, onPhotos }: { set: HomeworkSet; thumbs: Record<st
 
 /** The reader's proposal: editable rows, and nothing becomes a question until he says so. */
 function Proposal({ set, onConfirm, onDiscard }: { set: HomeworkSet; onConfirm: NonNullable<Props['onConfirm']>; onDiscard: NonNullable<Props['onDiscard']> }) {
-  const [rows, setRows] = useState(() => (set.proposed ?? []).map((q) => ({ ...q })));
+  const [rows, setRows] = useState<Question[]>(() => (set.proposed ?? []).map((q) => ({ ...q })));
   const edit = (i: number, k: 'n' | 'prompt', v: string) => setRows((r) => r.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
   const ok = cleanProposal(rows);
   return (
@@ -147,7 +201,13 @@ function Proposal({ set, onConfirm, onDiscard }: { set: HomeworkSet; onConfirm: 
         {rows.map((q, i) => (
           <li key={i}>
             <input className="reply-input hw-add-n" aria-label={`Number ${i + 1}`} value={q.n} onChange={(e) => edit(i, 'n', e.target.value)} />
-            <input className="reply-input" lang="ja" aria-label={`Question ${q.n}`} value={q.prompt} onChange={(e) => edit(i, 'prompt', e.target.value)} />
+            <div className="hw-prop-main">
+              <input className="reply-input" lang="ja" aria-label={`Question ${q.n}`} value={q.prompt} onChange={(e) => edit(i, 'prompt', e.target.value)} />
+              <select className="reply-input hw-type" aria-label={`Kind of question ${q.n}`} value={q.type ?? 'text'} onChange={(e) => setRows((r) => r.map((x, j) => (j === i ? { ...x, type: e.target.value as ItemKind } : x)))}>
+                <option value="text">Write</option><option value="choice">Choose</option><option value="reorder">Reorder</option>
+              </select>
+              {(q.type ?? 'text') !== 'text' ? <input className="reply-input" lang="ja" aria-label={`Options of ${q.n}`} placeholder="Options, separated by |" value={(q.options ?? []).join(' | ')} onChange={(e) => setRows((r) => r.map((x, j) => (j === i ? { ...x, options: e.target.value.split('|') } : x)))} /> : null}
+            </div>
             <button type="button" className="tool-chip hw-x" aria-label={`Remove ${q.n}`} onClick={() => setRows((r) => r.filter((_, j) => j !== i))}>×</button>
           </li>
         ))}
@@ -276,7 +336,7 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus, onSendBackDraft }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus, onSendBackDraft }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
@@ -303,10 +363,16 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs =
           )
         ) : null}
         <ul className="panel hw-items">
-          {orderedItems(open).map((it) => <Answer key={it.n} set={open} item={it} onAnswer={onAnswer} onCheck={onCheck} />)}
+          {orderedItems(open).map((it) => <Answer key={it.n} set={open} item={it} onAnswer={onAnswer} onCheck={onCheck} chat={chat} onChat={onChat} />)}
           {orderedItems(open).length === 0 ? <li className="hw-empty mut">No questions yet. Add them below.</li> : null}
         </ul>
         <AddQuestion onAdd={(n, prompt) => onAddItem(open, n, prompt)} />
+        {onChat ? (
+          <details className="panel hw-context hw-setchat">
+            <summary>Chat about this set</summary>
+            <ChatThread set={open} msgs={chat} onChat={onChat} />
+          </details>
+        ) : null}
         {onContext ? (
           <details className="panel hw-context">
             <summary>Lesson notes for the checker (optional)</summary>
