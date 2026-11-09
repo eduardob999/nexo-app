@@ -4,7 +4,8 @@
  * nothing, because each source fails on its own.
  */
 export interface Free { start: string; end?: string; name: string; kind?: string; lab?: string; note?: string }
-export interface DayWeather { date: string; text?: string; min?: number; max?: number; rain?: number; sunrise?: string; sunset?: string }
+export interface DayWeather { date: string; text?: string; min?: number; max?: number; rain?: number; sunrise?: string; sunset?: string; h?: { feels?: number[]; pop?: number[]; wind?: number[]; uv?: number[] } }
+export interface StripAlert { kind?: string; level?: string; text: string }
 export interface TodayInfo {
   updated?: string;
   weather?: { place?: string; now?: { temp?: number; text?: string }; days?: DayWeather[] };
@@ -14,17 +15,24 @@ export interface TodayInfo {
   nextFree?: Free | null;
   birthdays?: { name: string; date: string }[];
   events?: { title: string; date?: string; url?: string; place?: string }[];
+  alerts?: StripAlert[];
 }
 
 export interface Strip {
   banner: Free | null;
   head: string[];
   weather: { now: string; today: string; tomorrow: string; sunset: string; place: string } | null;
+  /** Things that need attention now, worst first: warnings, a quake, rain about to start, disrupted lines. */
+  alerts: { level: 'high' | 'mid'; text: string }[];
+  /** What to take, for the rest of today and for tomorrow. */
+  gear: { today: GearItem[]; tomorrow: GearItem[]; known: boolean };
   trains: { normal: boolean; bad: { line: string; status: string }[] } | null;
   days: { kind: 'next-free' | 'holiday' | 'birthday'; text: string; when: string; now: boolean }[];
   events: { title: string; when: string; url: string | null; place: string }[];
   updated: { label: string; stale: boolean } | null;
 }
+
+import { gearFor, rainSoon, type GearCtx, type GearItem } from './gear';
 
 const DAY = 86_400_000;
 
@@ -59,12 +67,12 @@ export function freeToday(t: TodayInfo, td: string): Free | null {
   return hit[0] ?? null;
 }
 
-export function buildStrip(t: TodayInfo | null | undefined, now: Date): Strip | null {
+export function buildStrip(t: TodayInfo | null | undefined, now: Date, ctx: GearCtx = {}): Strip | null {
   if (!t || typeof t !== 'object') return null;
   const td = jstDay(now);
   const tom = new Date(Date.parse(`${td}T00:00:00Z`) + DAY).toISOString().slice(0, 10);
   const head: string[] = [];
-  const s: Strip = { banner: freeToday(t, td), head, weather: null, trains: null, days: [], events: [], updated: null };
+  const s: Strip = { banner: freeToday(t, td), head, weather: null, trains: null, days: [], events: [], updated: null, alerts: [], gear: { today: [], tomorrow: [], known: false } };
 
   const w = t.weather;
   if (w && (w.now || (w.days ?? []).length)) {
@@ -73,6 +81,12 @@ export function buildStrip(t: TodayInfo | null | undefined, now: Date): Strip | 
       x ? `${x.text ?? ''} ${x.min ?? ''}–${x.max ?? ''}°${x.rain != null ? ` · ${x.rain}% rain` : ''}`.trim() : '';
     const now0 = w.now && w.now.temp != null ? `${w.now.temp}° ${w.now.text ?? ''}`.trim() : '';
     if (now0) head.push(now0);
+    const hour = Number(now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Tokyo', hour: '2-digit', hour12: false }).slice(0, 2));
+    const todayW = dayOf(td);
+    const tomW = dayOf(tom);
+    s.gear = { today: gearFor(todayW, hour, ctx), tomorrow: gearFor(tomW, 7, ctx), known: !!(todayW || tomW) };
+    const soon = rainSoon(todayW, hour);
+    if (soon != null) s.alerts.push({ level: 'mid', text: `Rain likely from ${String(soon).padStart(2, '0')}:00` });
     s.weather = { now: now0, today: fmt(dayOf(td)), tomorrow: fmt(dayOf(tom)), sunset: dayOf(td)?.sunset ?? '', place: w.place ?? '' };
   }
 
@@ -80,7 +94,15 @@ export function buildStrip(t: TodayInfo | null | undefined, now: Date): Strip | 
     const bad = t.transit.filter((x) => x && x.ok === false).map((x) => ({ line: x.line, status: x.status ?? 'disrupted' }));
     s.trains = { normal: bad.length === 0, bad };
     if (bad.length) head.push(`${bad.length} ${bad.length > 1 ? 'lines' : 'line'} disrupted`);
+    for (const b of bad) s.alerts.push({ level: 'mid', text: `${b.line}: ${b.status}` });
   }
+
+  for (const a of t.alerts ?? []) {
+    if (!a || !a.text) continue;
+    s.alerts.push({ level: a.level === 'special' || a.level === 'warning' ? 'high' : 'mid', text: a.text });
+  }
+  s.alerts.sort((a, b) => (a.level === b.level ? 0 : a.level === 'high' ? -1 : 1));
+  if (s.alerts.length) head.unshift(`${s.alerts.length} ${s.alerts.length > 1 ? 'alerts' : 'alert'}`);
 
   const next = t.nextFree && t.nextFree.start > td ? t.nextFree : null;
   if (next) {
@@ -110,9 +132,9 @@ export function buildStrip(t: TodayInfo | null | undefined, now: Date): Strip | 
     if (!Number.isNaN(u.getTime())) {
       let label = u.toLocaleTimeString('en-GB', { timeZone: 'Asia/Tokyo', hour: '2-digit', minute: '2-digit' });
       if (jstDay(u) !== td) label = `${shortDay(jstDay(u))} ${label}`;
-      s.updated = { label, stale: now.getTime() - u.getTime() > 6 * 3_600_000 };
+      s.updated = { label, stale: now.getTime() - u.getTime() > 2 * 3_600_000 };
     }
   }
-  const hasRows = s.weather || s.trains || s.days.length || s.events.length;
+  const hasRows = s.weather || s.trains || s.days.length || s.events.length || s.alerts.length;
   return hasRows || s.banner ? s : null;
 }

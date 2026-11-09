@@ -105,6 +105,24 @@ export function PreviewApp() {
     { date: '2026-11-07', kind: 'light', wellbeing: 4, performance: null },
     { date: '2026-11-08', kind: 'full', wellbeing: null, performance: null },
   ];
+  if (which === 'deadline') {
+    const n9 = new Date('2026-11-09T14:00:00+09:00');
+    const arr = (f: (h: number) => number) => Array.from({ length: 24 }, (_, h) => f(h));
+    const info = {
+      updated: '2026-11-09T13:44:04+09:00',
+      weather: { place: 'Uji', now: { temp: 14, text: 'cloudy' }, days: [
+        { date: '2026-11-09', text: 'drizzle', min: 10, max: 14, rain: 80, sunrise: '06:24', sunset: '16:56', h: { feels: arr((h) => (h < 12 ? 9 : 13)), pop: arr((h) => (h >= 16 && h <= 18 ? 80 : 10)), wind: arr(() => 8), uv: arr(() => 1) } },
+        { date: '2026-11-10', text: 'cloudy', min: 8, max: 15, rain: 20, sunrise: '06:25', sunset: '16:55', h: { feels: arr(() => 9), pop: arr(() => 10), wind: arr(() => 6), uv: arr(() => 2) } }] },
+      alerts: [{ kind: 'jma', level: 'advisory', text: '大雨注意報' }],
+      transit: [{ line: '京阪宇治線', status: '遅延', ok: false }],
+    };
+    const cs = [
+      { id: 'q', status: 'open', for: 'you', type: 'ASSIGNMENT', title: 'Quiz exercise sheet, KULMS', due: '2026-11-09T15:30:00+09:00', prio: 'high' },
+      { id: 'l', status: 'open', for: 'you', type: 'ASSIGNMENT', title: 'Submit L21 文型・練習 in KULMS', due: '2026-11-09T23:59:00+09:00', prio: 'high' },
+      { id: 'y', status: 'open', for: 'you', type: 'ASSIGNMENT', title: 'Yamashita report in KULMS', due: '2026-11-10T17:00:00+09:00', prio: 'high' },
+    ] as Card[];
+    return (<><Today cards={cs} now={n9} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} info={info as never} /><TabBar current="today" draftCount={0} /></>);
+  }
   if (which === 'rest') {
     return (<><SleepScreen recs={fakeNights()} cards={[]} now={new Date('2026-11-09T20:10:00+09:00')} rest={fakeRest} restActions={{ onMark: () => {}, onUndo: () => {}, onRate: () => {} }} /><TabBar current="browse" draftCount={0} /></>);
   }

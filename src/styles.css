@@ -548,3 +548,21 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .factor-list li:first-child { border-top: 0; }
 .factor-list .hurts { color: var(--urgent); font-weight: 600; } .factor-list .helps { color: var(--later); font-weight: 600; } .factor-list .none { color: var(--muted); }
 .face-line { display: inline-flex; align-items: center; gap: 6px; }
+
+.strip-alerts { margin: 12px 8px 0; display: grid; gap: 6px; }
+.strip-alert { margin: 0; padding: 8px 14px; border-radius: 12px; font-weight: 600; font-size: 15px; background: var(--today-tint); color: var(--today); }
+.strip-alert.high { background: var(--now); color: var(--bg); }
+
+.deadline-banner { margin: 12px 8px 0; display: grid; gap: 8px; }
+.deadline { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: baseline; padding: 12px 14px; border-radius: 14px; text-decoration: none; color: var(--ink); background: var(--assign-tint); border: 2px solid var(--assign); font-size: 15px; line-height: 1.3; }
+.deadline b { grid-column: 1 / -1; font: 700 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--assign); }
+.deadline-left { font: 700 15px var(--mono); white-space: nowrap; }
+.deadline.heat-critical, .deadline.heat-overdue { background: var(--now); color: var(--bg); border-color: var(--now); }
+.deadline.heat-critical b, .deadline.heat-overdue b { color: var(--bg); }
+.heat-chip { font: 600 12px var(--mono); padding: 2px 8px; border-radius: 10px; background: var(--assign-tint); color: var(--assign); }
+.heat-chip.heat-soon { background: var(--today-tint); color: var(--today); }
+.heat-chip.heat-critical, .heat-chip.heat-overdue { background: var(--now); color: var(--bg); }
+.row.heat-watch { box-shadow: inset 4px 0 0 var(--today-ring); }
+.row.heat-soon { --tint: var(--today-tint); --ring: var(--today-ring); box-shadow: inset 6px 0 0 var(--today-ring); }
+.row.heat-critical, .row.heat-overdue { --tint: var(--now-tint); --ring: var(--now); box-shadow: inset 8px 0 0 var(--now); }
+.row.heat-critical .row-title, .row.heat-overdue .row-title { font-weight: 700; }

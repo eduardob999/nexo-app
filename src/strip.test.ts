@@ -61,3 +61,32 @@ describe('freeToday', () => {
     expect(freeToday({ nextFree: { start: '2026-11-20', name: 'x' } }, '2026-11-04')).toBeNull();
   });
 });
+
+describe('strip alerts and gear', () => {
+  const pop = Array.from({ length: 24 }, (_, i) => (i === 10 ? 70 : 0));
+  const flat = (v: number) => Array.from({ length: 24 }, () => v);
+  const WX: TodayInfo = {
+    updated: '2026-11-04T07:02:22+09:00',
+    weather: { days: [{ date: '2026-11-04', min: 9, max: 15, sunset: '17:00', h: { feels: flat(11), pop, wind: flat(5), uv: flat(1) } }] },
+    alerts: [{ kind: 'jma', level: 'advisory', text: '大雨注意報' }, { kind: 'jma', level: 'warning', text: '暴風警報' }],
+    transit: [{ line: '京阪本線', status: '遅延', ok: false }],
+  };
+  it('lists warnings worst first, with disrupted lines and a count in the header', () => {
+    const s = buildStrip(WX, NOW);
+    expect(s?.alerts[0]).toEqual({ level: 'high', text: '暴風警報' });
+    expect(s?.alerts.map((a) => a.text)).toContain('京阪本線: 遅延');
+    expect(s?.head[0]).toBe('4 alerts'); // two JMA, one line, rain at 10h
+  });
+  it('warns that rain is about to start', () => {
+    const s = buildStrip(WX, new Date('2026-11-04T08:00:00+09:00'));
+    expect(s?.alerts.some((a) => a.text === 'Rain likely from 10:00')).toBe(true);
+  });
+  it('builds gear for today from the hours still ahead', () => {
+    const s = buildStrip(WX, NOW);
+    expect(s?.gear.known).toBe(true);
+    expect(s?.gear.today.map((g) => g.item)).toEqual(expect.arrayContaining(['Umbrella', 'Light jacket']));
+  });
+  it('shows alerts even with no other row', () => {
+    expect(buildStrip({ alerts: [{ level: 'warning', text: 'x' }] }, NOW)?.alerts).toHaveLength(1);
+  });
+});

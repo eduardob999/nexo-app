@@ -11,6 +11,8 @@ export interface Card {
   /** Who has to act: `you` is the decision queue, `nexo` is the assistant's lane. */
   for: string;
   title?: string;
+  /** Hours the work needs, for assignments: sets how early the card starts to shout. */
+  workHours?: number;
   type?: string;
   /** ISO date or date-time. */
   due?: string | null;
