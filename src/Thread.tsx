@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { usePersisted } from './persist';
 import { markSeen } from './seen';
 import type { Card, CardFile, Draft, Entry } from './types';
@@ -19,6 +19,8 @@ interface Props {
   drafts: Draft[];
   now: Date;
   onBack: () => void;
+  /** A module's own piece for this card (Fude on an assignment), placed under the title. */
+  widget?: ReactNode;
   onReply: (text: string) => void;
   onPriority?: () => void;
   /** Easy-to-miss flag: true, false, or null for Auto. */
@@ -53,7 +55,7 @@ function incomingState(card: Card): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply, onPriority = () => {}, onIncoming = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onReopen, onAttach }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, widget, onReply, onPriority = () => {}, onIncoming = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onReopen, onAttach }: Props) {
   const [attaching, setAttaching] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
@@ -121,6 +123,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, onReply,
       </header>
       <h1 className="thread-title">{card.title ?? card.id}</h1>
       {holidayLine(card, now) ? <p className="row-hol thread-hol">{holidayLine(card, now)}</p> : null}
+      {widget}
       {card.status === 'done' ? (
         <div className="done-note"><span>Done{card.doneAt ? ` ${stamp(card.doneAt)}` : ''}.</span>{onReopen ? <button className="chip-btn small" onClick={onReopen}>Reopen</button> : null}</div>
       ) : null}

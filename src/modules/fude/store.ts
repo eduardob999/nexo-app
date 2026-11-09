@@ -3,7 +3,7 @@
  * ownership wildcard under users/{uid}), so no rule change is needed. The app and the checker service both
  * read and write here; the sync and state.json know nothing about it.
  */
-import { collection, deleteField, doc, FieldPath, onSnapshot, setDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
+import { collection, deleteField, doc, FieldPath, onSnapshot, query, setDoc, updateDoc, arrayUnion, where, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { setAnswer, putItem, type HomeworkItem, type HomeworkSet } from './model';
 import type { FudeDoc, Note } from './documents';
@@ -126,4 +126,15 @@ export function requestCheck(uid: string, setId: string, item: HomeworkItem, mod
 
 export function saveContext(uid: string, setId: string, text: string): Promise<void> {
   return updateDoc(ref(uid, setId), { context: text });
+}
+
+// ---- links to Nexo cards and drafts ------------------------------------------------------------------------
+/** The set and document started from this card, live. Both lists are usually empty or one long. */
+export function watchLinked(uid: string, cardId: string, on: (found: { sets: HomeworkSet[]; docs: FudeDoc[] }) => void): () => void {
+  let sets: HomeworkSet[] = [];
+  let docs: FudeDoc[] = [];
+  const push = () => on({ sets, docs });
+  const a = onSnapshot(query(col(uid), where('cardId', '==', cardId)), (snap) => { sets = snap.docs.map((d) => ({ ...(d.data() as Omit<HomeworkSet, 'id'>), id: d.id })); push(); }, () => {});
+  const b = onSnapshot(query(dcol(uid), where('cardId', '==', cardId)), (snap) => { docs = snap.docs.map((d) => ({ ...(d.data() as Omit<FudeDoc, 'id'>), id: d.id })); push(); }, () => {});
+  return () => { a(); b(); };
 }

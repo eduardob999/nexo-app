@@ -7,6 +7,8 @@ import type { Card, CardFile, Draft, DraftAttachment, NexoStatus } from './types
 
 interface Props {
   drafts: Draft[];
+  /** Open this draft's text in Fude for a proofreading pass. */
+  onFude?: ((draft: Draft) => void) | undefined;
   onCopied: (id: string) => void;
   onSent: (id: string) => void;
   onDiscard: (id: string) => void;
@@ -65,7 +67,7 @@ function dayHm(iso?: string): string {
   return today ? hhmm(iso) : `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} ${hhmm(iso)}`;
 }
 
-function SentLine({ draft }: { draft: Draft }) {
+function SentLine({ draft }: { onFude?: ((draft: Draft) => void) | undefined; draft: Draft }) {
   const to = (draft.to ?? []).join(', ');
   const names = (draft.attachments ?? []).map((f) => f.name).join(', ');
   return (
@@ -141,7 +143,7 @@ function Attachments({ draft, card, watchPics, onAttachExisting, onDetach, onUpl
   );
 }
 
-function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, cards, watchPics, onAttachExisting, onDetach, onUpload }: { draft: Draft } & Omit<Props, 'drafts'>) {
+function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, cards, watchPics, onAttachExisting, onDetach, onUpload }: { draft: Draft } & Omit<Props, 'drafts'>) {
   const card = cards?.find((c) => c.id === draft.linkedNote);
   const attachProps = { draft, card, watchPics, onAttachExisting, onDetach, onUpload };
   const nAtt = (draft.attachments ?? []).length;
@@ -243,6 +245,7 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
           </div>
           <div className="draft-more">
             {revising ? null : <button className="chip-btn small" onClick={() => open('edit')}>Edit</button>}
+            {revising || !onFude || !draft.text ? null : <button className="chip-btn small" onClick={() => onFude(draft)}>Edit in Fude</button>}
             {revising ? null : <button className="chip-btn small" onClick={() => open('revise')}>Ask Nexo to revise</button>}
             {draft.subject ? <CopyChip label="Copy subject" text={draft.subject} /> : null}
             {to ? <CopyChip label="Copy address" text={to} /> : null}
@@ -255,7 +258,7 @@ function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevis
   );
 }
 
-export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo, cards, watchPics, onAttachExisting, onDetach, onUpload }: Props) {
+export function Drafts({ onFude, drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo, cards, watchPics, onAttachExisting, onDetach, onUpload }: Props) {
   const [asked, setAsked] = useState(0);
   const pending = Boolean(nexo?.mailCheckSince) || Date.now() - asked < 60_000;
   const waiting = drafts.filter((d) => d.status !== 'sent');
@@ -280,7 +283,7 @@ export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, on
       ) : null}
       {waiting.length === 0 ? <p className="empty">No drafts waiting.</p> : null}
       <ul className="drafts">
-        {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} cards={cards} watchPics={watchPics} onAttachExisting={onAttachExisting} onDetach={onDetach} onUpload={onUpload} />)}
+        {waiting.map((d) => <DraftCard key={d.id} onFude={onFude} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} cards={cards} watchPics={watchPics} onAttachExisting={onAttachExisting} onDetach={onDetach} onUpload={onUpload} />)}
         {sent.map((d) => <SentLine key={d.id} draft={d} />)}
       </ul>
       {earlier.length > 0 ? (

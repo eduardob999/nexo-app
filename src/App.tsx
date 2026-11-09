@@ -15,7 +15,7 @@ import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
-import { FudeModule } from './modules/fude';
+import { FudeModule, FudeCardWidget, openForDraft } from './modules/fude';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
@@ -61,6 +61,7 @@ function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Dr
   useEffect(() => watchFiles(uid, card.id, setPics, (e) => console.warn('[files]', e)), [uid, card.id]);
   return (
     <Thread card={card} entries={entries} pics={pics} drafts={drafts} now={new Date()}
+      widget={(card.type ?? '').toUpperCase() === 'ASSIGNMENT' ? <FudeCardWidget uid={uid} card={card} /> : null}
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }}
       onPriority={() => { void cyclePriority(uid, card); }} onIncoming={(v) => { void setIncoming(uid, card, v); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} onRemoveItem={(id) => { void removeItem(uid, card, id); }}
@@ -270,7 +271,7 @@ export function App() {
             onRate: (d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); },
           }} />
       ) : tab === 'homework' ? (
-        <FudeModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} />
+        <FudeModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} host={{ sendBackDraft: (draftId, text) => { const d = drafts.find((x) => x.id === draftId); if (d) { void editDraft(user.uid, d, text); flash('Text sent back to the draft'); window.location.hash = '#/drafts'; } } }} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (
@@ -286,7 +287,7 @@ export function App() {
         <Browse uid={user.uid} nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.filter((d) => d.status !== 'sent').length} settings={settings} onSettings={changeSettings}
           onSleep={(until) => { void setSleep(user.uid, until); }} />
       ) : tab === 'drafts' ? (
-        <Drafts drafts={drafts} cards={cards}
+        <Drafts drafts={drafts} cards={cards} onFude={(d) => { void openForDraft(user.uid, d); }}
           watchPics={(id, on) => watchFiles(user.uid, id, on, (e) => console.warn('[files]', e))}
           onAttachExisting={(d, f) => { if (f.driveId) void attachToDraft(user.uid, d, { id: f.id, name: f.name ?? 'file', ...(f.type ? { type: f.type } : {}), driveId: f.driveId, ...(f.viewUrl ? { viewUrl: f.viewUrl } : {}) }); }}
           onDetach={(d, id) => { void detachFromDraft(user.uid, d, id); }}

@@ -15,6 +15,7 @@ import type { RestRec } from '../restmodel';
 import { bedDate, isoLocal, addDays, type SleepRec } from '../sleepmodel';
 import { Thread } from '../Thread';
 import { Homework } from '../modules/fude/Screen';
+import { FudeCardWidget } from '../modules/fude/CardWidget';
 import { Chat } from '../Chat';
 import type { ChatMsg } from '../chatlogic';
 import { Today } from '../Today';
@@ -142,6 +143,10 @@ export function PreviewApp() {
     const docs = [{ id: 'fdx', title: 'Yamashita report', profile: 'report-en', due: '2026-11-10T17:00:00+09:00', createdAt: '2026-11-09T01:00:00Z', updatedAt: '2026-11-09T02:00:00Z',
       text: 'Today I learned how a small liver-enzyme rise is judged. The rise was 7.9 percent — small, but I performed the check twice. A smaller step does not remove an observed concern, so the team investigates.' }] as never;
     return (<><Homework sets={[]} docs={docs} {...(which === 'fude-doc' ? { openId: 'fdx' } : {})} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} onCreateDoc={() => {}} onSaveDoc={() => {}} onReviewDoc={() => {}} onNoteStatus={() => {}} notes={[{ id: 'n1', find: 'I performed the check', kind: 'rule', msg: 'A claim about what you did: only if you confirmed it.', fix: '', status: 'open' }, { id: 'n2', find: 'A smaller step does not', kind: 'grammar', msg: 'Sentence starts oddly.', fix: 'A smaller step will not', status: 'open' }]} /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which === 'fude-widget') {
+    const card = { ...(FIXTURES[2] as Card), type: 'ASSIGNMENT', title: 'Submit the Yamashita report in KULMS', due: '2026-11-10T17:00:00+09:00', ask: undefined } as unknown as Card;
+    return <Thread card={card} entries={ENTRIES} drafts={[]} now={NOW} onBack={() => {}} onReply={() => {}} onDelete={() => {}} widget={<FudeCardWidget uid="preview" card={card} />} />;
   }
   if (which === 'rest') {
     return (<><SleepScreen recs={fakeNights()} cards={[]} now={new Date('2026-11-09T20:10:00+09:00')} rest={fakeRest} restActions={{ onMark: () => {}, onUndo: () => {}, onRate: () => {} }} /><TabBar current="browse" draftCount={0} /></>);

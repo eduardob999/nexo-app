@@ -7,9 +7,11 @@ import { Homework } from './Screen';
 import { confirmProposal, createDocument, createSet, requestCheck, requestReview, saveContext, saveDocText, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
+export { openForCard, openForDraft } from './api';
+export { FudeCardWidget } from './CardWidget';
 
 /** The Fude module: homework sets today, whole-text documents next. It watches and saves by itself. */
-export function FudeModule({ uid, openId }: ModuleProps) {
+export function FudeModule({ uid, openId, host }: ModuleProps) {
   const [sets, setSets] = useState<HomeworkSet[]>([]);
   const [docs, setDocs] = useState<FudeDoc[]>([]);
   useEffect(() => watchDocuments(uid, setDocs, (e) => console.warn('[fude docs]', e)), [uid]);
@@ -30,6 +32,7 @@ export function FudeModule({ uid, openId }: ModuleProps) {
       onCreateDoc={(title, profile, due) => { const d = newDoc(title, profile, new Date(), due); void createDocument(uid, d).then(() => { window.location.hash = `#/homework/${d.id}`; }); }}
       onSaveDoc={(d, text) => { void saveDocText(uid, d.id, text, new Date()); }}
       notes={notes}
+      {...(host?.sendBackDraft ? { onSendBackDraft: host.sendBackDraft } : {})}
       onReviewDoc={(d, profile) => { void requestReview(uid, d.id, profile, new Date()); }}
       onNoteStatus={(d, n, status) => { void setNoteStatus(uid, d.id, n.id, status); }}
       onCreate={(title, due) => { const s = newSet(title, new Date(), due); void createSet(uid, s).then(() => { window.location.hash = `#/homework/${s.id}`; }); }}

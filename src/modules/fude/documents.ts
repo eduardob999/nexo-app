@@ -11,6 +11,9 @@ export interface FudeDoc {
   /** Overrides the profile's budget for this document (each lecture report has its own). */
   budget?: Budget;
   photos?: CardFile[];
+  /** The Nexo card this document was started from ("Work on it"), or the draft it edits. */
+  cardId?: string;
+  draftId?: string;
   /** The reviewer's progress: `requested` by the app, then `working`, then `ready` or `error`. */
   review?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; count?: number; at?: string };
   createdAt: string;

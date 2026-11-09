@@ -40,6 +40,8 @@ export interface HomeworkSet {
   confirmed?: boolean;
   /** Questions the reader proposed from the photos. They become real items only when he confirms them. */
   proposed?: { n: string; prompt: string }[];
+  /** The Nexo card this set was started from. */
+  cardId?: string;
   /** Grammar notes of the lesson, typed by him, given to the checker as context. */
   context?: string;
   /** One check at a time: `requested` by the app, then `working`, then `done`, `stale` (he kept typing) or `error`. */

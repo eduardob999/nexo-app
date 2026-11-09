@@ -30,6 +30,8 @@ interface Props {
   onCreateDoc?: (title: string, profile: string, due?: string) => void;
   onSaveDoc?: (doc: FudeDoc, text: string) => void;
   notes?: Note[];
+  /** The host's way to put a document's text back into the draft it came from. */
+  onSendBackDraft?: (draftId: string, text: string) => void;
   onReviewDoc?: (doc: FudeDoc, profile: unknown) => void;
   onNoteStatus?: (doc: FudeDoc, note: Note, status: Note['status']) => void;
 }
@@ -182,7 +184,7 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
 }
 
 /** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
-function DocView({ doc, notes, onSave, onReview, onNote }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onReview?: ((doc: FudeDoc, profile: unknown) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined }) {
+function DocView({ doc, notes, onSave, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onReview?: ((doc: FudeDoc, profile: unknown) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -205,6 +207,12 @@ function DocView({ doc, notes, onSave, onReview, onNote }: { doc: FudeDoc; notes
         onCompositionStart={() => saver.current?.compositionStart()}
         onCompositionEnd={(e) => saver.current?.compositionEnd(e.currentTarget.value)}
         onBlur={() => saver.current?.blur()} />
+      {doc.cardId || (doc.draftId && onSendBack) ? (
+        <div className="fude-review">
+          {doc.cardId ? <a className="tool-chip" href={`#/card/${encodeURIComponent(doc.cardId)}`}>Back to the card</a> : null}
+          {doc.draftId && onSendBack ? <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => { saver.current?.change(text); saver.current?.blur(); onSendBack(doc.draftId as string, text.trim()); }}>Send text back to the draft</button> : null}
+        </div>
+      ) : null}
       <div className="fude-counts">
         <span className={lint.over ? 'bad' : lint.under ? 'warn' : ''}>{unit} {b?.unit ?? 'words'}{b ? ` of ${b.min ?? 0}–${b.max ?? '∞'}` : ''}</span>
         <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
@@ -265,11 +273,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus, onSendBackDraft }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onReview={onReviewDoc} onNote={onNoteStatus} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onReview={onReviewDoc} onNote={onNoteStatus} onSendBack={onSendBackDraft} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;
