@@ -5,7 +5,7 @@ import { NexoPanel } from './NexoPanel';
 import { isNewCard } from './seen';
 import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
-import { assignmentHeat, pressing } from './assignment';
+import { assignmentHeat } from './assignment';
 import { WakeSuggestion } from './WakeSuggestion';
 import type { SleepPlan, SleepRec } from './sleepmodel';
 import type { WakeDoc, WakeFeedback, WakePrefs, WakeRecord } from './alarm';
@@ -86,21 +86,6 @@ function MailIcon() {
 type PickProps = { selecting: boolean; picked: boolean; onPick: (card: Card) => void };
 const NOPICK: PickProps = { selecting: false, picked: false, onPick: () => {} };
 
-/** The tightest assignments, pinned above everything else on Today so a deadline cannot slip past. */
-function DeadlineBanner({ items }: { items: ReturnType<typeof pressing> }) {
-  if (!items.length) return null;
-  return (
-    <div className="deadline-banner" role="alert">
-      {items.slice(0, 3).map(({ card, heat }) => (
-        <a key={card.id} href={`#/card/${card.id}`} className={`deadline heat-${heat.level}`}>
-          <b>{heat.level === 'overdue' ? 'Overdue' : 'Due soon'}</b> {card.title ?? card.id}
-          <span className="deadline-left">{heat.label}</span>
-        </a>
-      ))}
-    </div>
-  );
-}
-
 function Row({ card, now, onDone, onLater, hasDraft, closeable = false, pick = NOPICK }: { card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean; closeable?: boolean; pick?: PickProps }) {
   const [open, setOpen] = useState(false);
   const band = bandOf(card, now);
@@ -109,18 +94,20 @@ function Row({ card, now, onDone, onLater, hasDraft, closeable = false, pick = N
   const link = band === 'incoming' ? meetingLink(card) : null;
   const hol = holidayLine(card, now);
   const heat = band === 'assignment' ? assignmentHeat(card, now) : null;
+  const approaching = !!heat && (heat.level === 'soon' || heat.level === 'critical' || heat.level === 'overdue');
   return (
-    <li className={`row band-${band}${heat ? ` heat-${heat.level}` : ''}${isNewCard(card) ? ' is-new' : ''}${pick.picked ? ' picked' : ''}`}>
+    <li className={`row band-${band}${heat ? ` heat-${heat.level}` : ''}${approaching ? ' approaching' : ''}${isNewCard(card) ? ' is-new' : ''}${pick.picked ? ' picked' : ''}`}>
       {pick.selecting
         ? <input type="checkbox" className="pickbox" checked={pick.picked} aria-label={`Select: ${title}`} onChange={() => pick.onPick(card)} />
         : <button className="ring" aria-label={`Mark done: ${title}`} onClick={() => onDone(card)} />}
       <div className="row-body">
         <button className="row-main" aria-expanded={open} onClick={() => (pick.selecting ? pick.onPick(card) : setOpen(!open))}>
+          {approaching ? <span className="deadline-kicker">{heat?.level === 'overdue' ? 'Overdue' : 'Due soon'}</span> : null}
           <span className="row-title">{isNewCard(card) ? <i className="new-dot" aria-label="New message from Nexo" /> : null}{title}</span>
           <span className="row-meta">
             {cardTags(card).map((t) => <span key={t} className="tagchip">{t}</span>)}
             {mins !== null ? <span className="countdown">{countdownText(mins)}</span> : null}
-            {heat ? <span className={`heat-chip heat-${heat.level}`}>{heat.label}</span> : null}
+            {heat ? <span className={`heat-chip heat-${heat.level}${approaching ? ' big' : ''}`}>{heat.label}</span> : null}
             <CalendarIcon />{dueText(card, now)}
             {card.for === 'nexo' ? <span className="draft-flag">With Nexo</span> : null}
             {hasDraft ? <span className="draft-flag"><MailIcon />Draft</span> : null}
@@ -214,9 +201,6 @@ export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNe
       ) : null}
       <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
       {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : <Relays mode="answered" relays={answeredRelays} onAnswer={onAnswerRelay} onClose={onCloseRelay} />}
-      {lane === 'you' ? (
-        <DeadlineBanner items={pressing(cards, now)} />
-      ) : null}
       {lane === 'you' ? <TodayStrip info={info} now={now} cards={cards} /> : null}
       {lane === 'you' ? <WakeSuggestion cards={cards} now={now} wake={wake} onRecord={onRecordWake} onAnswer={onAnswerWake} sleep={sleep} onGoToBed={sleepActions?.onGoToBed} onUndoBed={sleepActions?.onUndoBed} onImUp={sleepActions?.onImUp} onRate={sleepActions?.onRate} onEditTimes={sleepActions?.onEditTimes} onPlan={sleepActions?.onPlan} /> : null}
       {lane === 'you' && rest && onRateRest ? <RestCheckin recs={rest} now={now} onRate={onRateRest} /> : null}
