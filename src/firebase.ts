@@ -1,6 +1,8 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import {
+  disableNetwork,
+  enableNetwork,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
@@ -74,5 +76,11 @@ function createFirestore(): Firestore {
 }
 
 export const db: Firestore = createFirestore();
+
+/** Drop and reopen the network connection. A listener that resumed from the background can sit on the cached copy for minutes. */
+export async function reconnect(): Promise<void> {
+  await disableNetwork(db);
+  await enableNetwork(db);
+}
 
 export const persistenceStatus: PersistenceStatus = resolvedPersistence;

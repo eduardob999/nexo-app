@@ -9,7 +9,7 @@ import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthS
 import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { doneCutoff } from './shelf';
 import type { RestRec } from './restmodel';
-import { isFirebaseConfigured } from './firebase';
+import { isFirebaseConfigured, reconnect } from './firebase';
 import { Money } from './Money';
 import { nexoSection } from './nexo';
 import { Notes } from './Notes';
@@ -101,6 +101,8 @@ export function App() {
   const [market, setMarket] = useState<Market | null>(null);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [syncAt, setSyncAt] = useState<number | null | undefined>(undefined);
+  /** True while the heartbeat shown is the copy saved on the phone; `since` is when the app started waiting. */
+  const [syncCache, setSyncCache] = useState<{ cache: boolean; since: number }>({ cache: true, since: Date.now() });
   const [clock, setClock] = useState(() => Date.now());
   const route = useRoute();
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
@@ -160,10 +162,30 @@ export function App() {
 
   useEffect(() => {
     if (!user) return undefined;
-    const stop = watchSync(user.uid, setSyncAt);
+    const cacheRef = { cache: true, since: Date.now() };
+    const stop = watchSync(user.uid, (ms, cache) => {
+      setSyncAt(ms);
+      if (cache !== cacheRef.cache) cacheRef.since = Date.now();
+      cacheRef.cache = cache;
+      setSyncCache({ cache, since: cacheRef.since });
+    });
     const stopNexo = watchNexo(user.uid, setNexo);
-    const tick = window.setInterval(() => setClock(Date.now()), 30_000);
-    return () => { stop(); stopNexo(); window.clearInterval(tick); };
+    const tick = window.setInterval(() => setClock(Date.now()), 5_000);
+    // Coming back to the app, or the network returning, can leave the live listener on the saved copy.
+    // If the server has not answered within a few seconds, reopen the connection instead of waiting for a reload.
+    let kick: number | undefined;
+    const wake = () => {
+      if (document.visibilityState === 'hidden') return;
+      cacheRef.cache = true;
+      cacheRef.since = Date.now();
+      setSyncCache({ cache: true, since: cacheRef.since });
+      window.clearTimeout(kick);
+      kick = window.setTimeout(() => { if (cacheRef.cache) void reconnect().catch(() => {}); }, 6_000);
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('online', wake);
+    wake();
+    return () => { stop(); stopNexo(); window.clearInterval(tick); window.clearTimeout(kick); document.removeEventListener('visibilitychange', wake); window.removeEventListener('online', wake); };
   }, [user]);
 
   const onChat = route.name === 'chat';
@@ -220,7 +242,11 @@ export function App() {
   const tab = route.name;
   // The sync service writes a heartbeat every minute. Five minutes without one means changes made here
   // are saved but not reaching Nexo, and the screen should say so rather than look healthy.
-  const syncLate = syncAt !== undefined && (syncAt === null || clock - syncAt > 5 * 60_000);
+  // A heartbeat that is only the saved copy is not evidence the sync stopped: give the server 20 seconds to answer
+  // before saying anything, and then say so, since a phone that cannot reach the server really is behind.
+  const syncLate = syncAt !== undefined && (syncCache.cache
+    ? clock - syncCache.since > 20_000
+    : syncAt === null || clock - syncAt > 5 * 60_000);
   return (
     <>
       <ToastHost />

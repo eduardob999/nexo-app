@@ -257,12 +257,16 @@ export function requestSend(uid: string, draft: Draft): Promise<void> {
   return batch.commit();
 }
 
-/** When the sync service last completed a cycle, or null if it never has. */
-export function watchSync(uid: string, onTime: (ms: number | null) => void): () => void {
-  return onSnapshot(doc(db, ...root(uid), 'meta', 'sync'), (snap) => {
+/**
+ * When the sync service last completed a cycle, or null if it never has. `fromCache` is true while the
+ * value is the one saved on the phone and the server has not answered yet, so the screen can tell
+ * "still connecting" from "the heartbeat really stopped".
+ */
+export function watchSync(uid: string, onTime: (ms: number | null, fromCache: boolean) => void): () => void {
+  return onSnapshot(doc(db, ...root(uid), 'meta', 'sync'), { includeMetadataChanges: true }, (snap) => {
     const t = snap.exists() ? Date.parse(String((snap.data() as { lastCycleAt?: string }).lastCycleAt ?? '')) : NaN;
-    onTime(Number.isNaN(t) ? null : t);
-  }, () => onTime(null));
+    onTime(Number.isNaN(t) ? null : t, snap.metadata.fromCache);
+  }, () => onTime(null, false));
 }
 
 /** What Nexo is doing right now: idle, called and waiting, or working through cards. */
