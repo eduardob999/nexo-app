@@ -138,6 +138,11 @@ export function PreviewApp() {
     }
     return (<><Homework sets={sets} {...(which === 'homework-open' ? { openId: 'a' } : {})} thumbs={{ p1: page('#e9e5fb'), p2: page('#fdf1d6') }} onPhotos={async () => {}} onCreate={() => {}} onAddItem={() => {}} onAnswer={(_s, i, t) => { ((window as unknown as { __saves?: [string, string][] }).__saves ??= []).push([i.n, t]); }} /><TabBar current="browse" draftCount={0} /></>);
   }
+  if (which === 'fude-doc' || which === 'fude-list') {
+    const docs = [{ id: 'fdx', title: 'Yamashita report', profile: 'report-en', due: '2026-11-10T17:00:00+09:00', createdAt: '2026-11-09T01:00:00Z', updatedAt: '2026-11-09T02:00:00Z',
+      text: 'Today I learned how a small liver-enzyme rise is judged. The rise was 7.9 percent — small, but I performed the check twice. A smaller step does not remove an observed concern, so the team investigates.' }] as never;
+    return (<><Homework sets={[]} docs={docs} {...(which === 'fude-doc' ? { openId: 'fdx' } : {})} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} onCreateDoc={() => {}} onSaveDoc={() => {}} /><TabBar current="browse" draftCount={0} /></>);
+  }
   if (which === 'rest') {
     return (<><SleepScreen recs={fakeNights()} cards={[]} now={new Date('2026-11-09T20:10:00+09:00')} rest={fakeRest} restActions={{ onMark: () => {}, onUndo: () => {}, onRate: () => {} }} /><TabBar current="browse" draftCount={0} /></>);
   }

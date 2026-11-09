@@ -6,6 +6,7 @@
 import { collection, deleteField, doc, FieldPath, onSnapshot, setDoc, updateDoc, arrayUnion, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { setAnswer, putItem, type HomeworkItem, type HomeworkSet } from './model';
+import type { FudeDoc } from './documents';
 import type { CardFile } from '../../types';
 
 const col = (uid: string) => collection(db, 'users', uid, 'homework');
@@ -86,4 +87,21 @@ export async function confirmProposal(uid: string, set: HomeworkSet, questions: 
 
 export function dismissProposal(uid: string, setId: string): Promise<void> {
   return updateDoc(ref(uid, setId), { proposed: deleteField(), transcribe: deleteField() });
+}
+
+// ---- whole-text documents: users/{uid}/documents/{id} --------------------------------------------------------
+const dcol = (uid: string) => collection(db, 'users', uid, 'documents');
+const dref = (uid: string, id: string) => doc(db, 'users', uid, 'documents', id);
+
+export function watchDocuments(uid: string, on: (docs: FudeDoc[]) => void, onError: (e: Error) => void): () => void {
+  return onSnapshot(dcol(uid), (snap) => on(snap.docs.map((d) => ({ ...(d.data() as Omit<FudeDoc, 'id'>), id: d.id }))), onError);
+}
+
+export function createDocument(uid: string, d: FudeDoc): Promise<void> {
+  return setDoc(dref(uid, d.id), d);
+}
+
+/** His text, saved. One field only, so a title edit on another device is not overwritten. */
+export function saveDocText(uid: string, id: string, text: string, now: Date): Promise<void> {
+  return updateDoc(dref(uid, id), { text, updatedAt: now.toISOString() });
 }

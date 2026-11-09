@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Autosaver, type SaveState } from './autosave';
+import { sortDocs, type FudeDoc } from './documents';
+import { lintText, PROFILES, profileById } from './profiles';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './model';
 
@@ -20,6 +22,10 @@ interface Props {
   /** He confirmed the proposal (possibly edited). */
   onConfirm?: (set: HomeworkSet, questions: { n: string; prompt: string }[]) => void;
   onDiscard?: (set: HomeworkSet) => void;
+  /** Whole-text documents (reports, emails). */
+  docs?: FudeDoc[];
+  onCreateDoc?: (title: string, profile: string, due?: string) => void;
+  onSaveDoc?: (doc: FudeDoc, text: string) => void;
 }
 
 const dueLabel = (due?: string) => (due ? new Date(due).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No deadline');
@@ -153,10 +159,70 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard }: Props) {
+/** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
+function DocView({ doc, onSave }: { doc: FudeDoc; onSave: (doc: FudeDoc, text: string) => void }) {
+  const profile = profileById(doc.profile);
+  const [text, setText] = useState(doc.text);
+  const [state, setState] = useState<SaveState>('idle');
+  const latest = useRef({ doc, onSave });
+  latest.current = { doc, onSave };
+  const saver = useRef<Autosaver | null>(null);
+  if (saver.current === null) saver.current = new Autosaver(doc.text, (t) => latest.current.onSave(latest.current.doc, t), setState, 900);
+  useEffect(() => () => saver.current?.dispose(), []);
+  useEffect(() => { if (document.activeElement?.id !== 'fude-text') { setText(doc.text); saver.current?.adopt(doc.text); } }, [doc.text]);
+  const lint = lintText(text, profile, doc.budget ?? profile.budget);
+  const unit = (doc.budget ?? profile.budget)?.unit === 'chars' ? lint.chars : lint.words;
+  const b = lint.budget;
+  return (
+    <main className="screen hw">
+      <header className="thread-top"><Back /><span className="kicker">{profile.name} · {dueLabel(doc.due)}</span></header>
+      <h1 className="thread-title">{doc.title}</h1>
+      <textarea id="fude-text" className="hw-answer fude-text" lang={profile.lang === 'ja' ? 'ja' : undefined} rows={12} autoCorrect="off" spellCheck={profile.lang === 'en'}
+        placeholder="Write here" value={text}
+        onChange={(e) => { setText(e.target.value); saver.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); }}
+        onCompositionStart={() => saver.current?.compositionStart()}
+        onCompositionEnd={(e) => saver.current?.compositionEnd(e.currentTarget.value)}
+        onBlur={() => saver.current?.blur()} />
+      <div className="fude-counts">
+        <span className={lint.over ? 'bad' : lint.under ? 'warn' : ''}>{unit} {b?.unit ?? 'words'}{b ? ` of ${b.min ?? 0}–${b.max ?? '∞'}` : ''}</span>
+        <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
+      </div>
+      {lint.hits.length ? (
+        <ul className="panel fude-hits" aria-label="Rule notes">
+          {lint.hits.map((h) => <li key={`${h.rule}-${h.index}`} className={`sev-${h.sev}`}><b>{h.match}</b> {h.msg}</li>)}
+        </ul>
+      ) : null}
+    </main>
+  );
+}
+
+function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?: string) => void }) {
+  const [title, setTitle] = useState('');
+  const [profile, setProfile] = useState(PROFILES[0]?.id ?? 'free');
+  const [due, setDue] = useState('');
+  return (
+    <form className="panel hw-new" onSubmit={(e) => { e.preventDefault(); onCreate(title, profile, due ? new Date(due).toISOString() : undefined); setTitle(''); setDue(''); }}>
+      <label className="sr" htmlFor="fd-title">Title</label>
+      <input id="fd-title" className="reply-input" placeholder="New document, for example the Yamashita report" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <label className="mut" htmlFor="fd-profile">Kind of writing</label>
+      <select id="fd-profile" className="reply-input" value={profile} onChange={(e) => setProfile(e.target.value)}>
+        {PROFILES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+      <p className="mut">{profileById(profile).hint}</p>
+      <label className="mut" htmlFor="fd-due">Deadline (optional)</label>
+      <input id="fd-due" className="reply-input" type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
+      <button type="submit" className="send-wide" disabled={!title.trim()}>Create document</button>
+    </form>
+  );
+}
+
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, docs = [], onCreateDoc, onSaveDoc }: Props) {
   const list = sortSets(sets);
+  const docList = sortDocs(docs);
+  const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} onSave={onSaveDoc} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
-  if (openId && !open) {
+  if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;
   }
   if (open) {
@@ -187,7 +253,22 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs =
   return (
     <main className="screen">
       <header className="top"><div><span className="kicker">STUDY</span><h1>Homework</h1></div></header>
-      {list.length === 0 ? <p className="empty">No homework sets yet.</p> : (
+      {docList.length > 0 ? (
+        <>
+          <h2 className="group-title">Documents</h2>
+          <ul className="browse panel">
+            {docList.map((d) => (
+              <li key={d.id}>
+                <a className="browse-row" href={`#/homework/${encodeURIComponent(d.id)}`}>
+                  <span><b>{d.title}</b><small>{profileById(d.profile).name} · {dueLabel(d.due)}</small></span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      <h2 className="group-title">Exercise sets</h2>
+      {list.length === 0 ? <p className="empty">No exercise sets yet.</p> : (
         <ul className="browse panel">
           {list.map((s) => {
             const p = progress(s);
@@ -201,8 +282,9 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs =
           })}
         </ul>
       )}
-      <h2 className="group-title">New set</h2>
+      <h2 className="group-title">New exercise set</h2>
       <NewSet onCreate={onCreate} />
+      {onCreateDoc ? (<><h2 className="group-title">New document</h2><NewDoc onCreate={onCreateDoc} /></>) : null}
     </main>
   );
 }
