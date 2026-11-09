@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Autosaver, type SaveState } from './autosave';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type HomeworkItem, type HomeworkSet } from './model';
 
@@ -8,7 +9,7 @@ interface Props {
   openId?: string | undefined;
   onCreate: (title: string, due?: string) => void;
   onAddItem: (set: HomeworkSet, n: string, prompt: string) => void;
-  /** Called with his finished text for one question. The screen only calls it on blur, never mid-composition. */
+  /** Called with his text for one question, after a quiet time or on blur, never while a kana conversion is open. */
   onAnswer: (set: HomeworkSet, item: HomeworkItem, text: string) => void;
   /** Small pictures of the open set's photos, by file id. */
   thumbs?: Record<string, string>;
@@ -31,16 +32,29 @@ function Back() {
   );
 }
 
-/** One question: the prompt, then his field. The field keeps its own text and reports on blur. */
+/** One question: the prompt, then his field. Saving waits for any open kana conversion to finish (see autosave.ts). */
 function Answer({ set, item, onAnswer }: { set: HomeworkSet; item: HomeworkItem; onAnswer: Props['onAnswer'] }) {
   const [text, setText] = useState(item.answer);
+  const [state, setState] = useState<SaveState>('idle');
+  const latest = useRef({ set, item, onAnswer });
+  latest.current = { set, item, onAnswer };
+  const saver = useRef<Autosaver | null>(null);
+  if (saver.current === null) saver.current = new Autosaver(item.answer, (t) => latest.current.onAnswer(latest.current.set, latest.current.item, t), setState);
+  useEffect(() => () => saver.current?.dispose(), []);
   // Another device changed this answer: follow it, unless he is typing here right now.
-  useEffect(() => { if (document.activeElement?.id !== `hw-${item.n}`) setText(item.answer); }, [item.answer, item.n]);
+  useEffect(() => {
+    if (document.activeElement?.id !== `hw-${item.n}`) { setText(item.answer); saver.current?.adopt(item.answer); }
+  }, [item.answer, item.n]);
   return (
     <li className={`hw-item hw-${item.status}`}>
       <label htmlFor={`hw-${item.n}`}><span className="hw-n">{item.n}</span><span className="hw-prompt" lang="ja">{item.prompt || 'No text for this question'}</span></label>
       <textarea id={`hw-${item.n}`} className="hw-answer" lang="ja" rows={2} inputMode="text" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-        placeholder="Your answer" value={text} onChange={(e) => setText(e.target.value)} onBlur={() => { if (text !== item.answer) onAnswer(set, item, text); }} />
+        placeholder="Your answer" value={text}
+        onChange={(e) => { setText(e.target.value); saver.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); }}
+        onCompositionStart={() => saver.current?.compositionStart()}
+        onCompositionEnd={(e) => saver.current?.compositionEnd(e.currentTarget.value)}
+        onBlur={() => saver.current?.blur()} />
+      <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
       {item.hint ? <p className="hw-note"><b>Hint</b> {item.hint}</p> : null}
       {item.explain ? <p className="hw-note"><b>Why</b> {item.explain}</p> : null}
     </li>

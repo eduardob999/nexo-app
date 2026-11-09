@@ -136,7 +136,7 @@ export function PreviewApp() {
     if (which === 'homework-read' || which === 'homework-proposal') {
       return (<><Homework sets={[which === 'homework-read' ? fresh : withProposal]} openId="c" thumbs={{ p1: page('#e9e5fb'), p2: page('#fdf1d6') }} onPhotos={async () => {}} onRead={() => {}} onConfirm={() => {}} onDiscard={() => {}} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} /><TabBar current="browse" draftCount={0} /></>);
     }
-    return (<><Homework sets={sets} {...(which === 'homework-open' ? { openId: 'a' } : {})} thumbs={{ p1: page('#e9e5fb'), p2: page('#fdf1d6') }} onPhotos={async () => {}} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} /><TabBar current="browse" draftCount={0} /></>);
+    return (<><Homework sets={sets} {...(which === 'homework-open' ? { openId: 'a' } : {})} thumbs={{ p1: page('#e9e5fb'), p2: page('#fdf1d6') }} onPhotos={async () => {}} onCreate={() => {}} onAddItem={() => {}} onAnswer={(_s, i, t) => { ((window as unknown as { __saves?: [string, string][] }).__saves ??= []).push([i.n, t]); }} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'rest') {
     return (<><SleepScreen recs={fakeNights()} cards={[]} now={new Date('2026-11-09T20:10:00+09:00')} rest={fakeRest} restActions={{ onMark: () => {}, onUndo: () => {}, onRate: () => {} }} /><TabBar current="browse" draftCount={0} /></>);

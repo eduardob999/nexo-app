@@ -612,3 +612,5 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .hw-proposal li { display: flex; gap: 6px; align-items: center; } .hw-proposal li .reply-input { min-width: 0; }
 .hw-confirm { height: 44px; font-size: 15px; }
 .hw-x { flex: none; width: 32px; padding: 0; justify-content: center; font-size: 18px; } .hw-proposal .hw-add-n { width: 52px; padding: 0 10px; text-align: center; }
+
+.hw-save { justify-self: end; margin-top: -4px; min-height: 14px; font: 500 11px var(--mono); letter-spacing: .04em; color: var(--muted); } .hw-save.saved { color: var(--later); }
