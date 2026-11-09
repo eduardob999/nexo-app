@@ -315,7 +315,8 @@ export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs =
   }
   return (
     <main className="screen">
-      <header className="top"><div><span className="kicker">STUDY</span><h1>Homework</h1></div></header>
+      <header className="top"><div><span className="kicker">NEXO SUITE</span><h1>Fude</h1></div></header>
+      <p className="mut hw-how">Photograph a book page, read the questions from it, type your answers. Ask for a hint, then an explanation if you need one. Reports and emails get a word count, rule notes and a proofread. Nothing is answered or changed for you.</p>
       {docList.length > 0 ? (
         <>
           <h2 className="group-title">Documents</h2>

@@ -6,7 +6,7 @@ import type { SleepRec } from './sleepmodel';
 import { SleepScreen } from './SleepScreen';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, cardContext, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { doneCutoff } from './shelf';
 import type { RestRec } from './restmodel';
 import { isFirebaseConfigured, reconnect } from './firebase';
@@ -15,7 +15,7 @@ import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
-import { FudeModule, FudeCardWidget, openForDraft } from './modules/fude';
+import { FudeModule, FudeCardWidget, openForCard, openForDraft } from './modules/fude';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
@@ -61,7 +61,7 @@ function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Dr
   useEffect(() => watchFiles(uid, card.id, setPics, (e) => console.warn('[files]', e)), [uid, card.id]);
   return (
     <Thread card={card} entries={entries} pics={pics} drafts={drafts} now={new Date()}
-      widget={(card.type ?? '').toUpperCase() === 'ASSIGNMENT' ? <FudeCardWidget uid={uid} card={card} /> : null}
+      widget={(card.type ?? '').toUpperCase() === 'ASSIGNMENT' ? <FudeCardWidget uid={uid} card={{ ...card, entries, files: pics.length ? pics : card.files }} /> : null}
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }}
       onPriority={() => { void cyclePriority(uid, card); }} onIncoming={(v) => { void setIncoming(uid, card, v); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} onRemoveItem={(id) => { void removeItem(uid, card, id); }}
@@ -301,7 +301,7 @@ export function App() {
           onRevise={(d, t) => { void reviseDraft(user.uid, d, t); }}
           onAnswer={(d, t) => { void answerDraft(user.uid, d, t); }} />
       ) : (
-        <Today cards={cards} now={new Date()} fromCache={fromCache} lane={tab === 'nexo' ? 'nexo' : 'you'}
+        <Today cards={cards} now={new Date()} fromCache={fromCache} onFude={(c) => { void cardContext(user.uid, c).then((full) => openForCard(user.uid, full)); }} lane={tab === 'nexo' ? 'nexo' : 'you'}
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
           waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info} wake={wake} sleep={sleep}
           rest={rest} onRateRest={(d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); }}

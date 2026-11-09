@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kindForCard } from './link';
+import { buildContext, kindForCard } from './link';
 
 describe('kindForCard', () => {
   it('opens an exercise set for textbook homework', () => {
@@ -12,5 +12,14 @@ describe('kindForCard', () => {
   });
   it('falls back to free writing', () => {
     expect(kindForCard('Cover letter draft')).toEqual({ kind: 'doc', profile: 'free' });
+  });
+  it('builds the context from the card facts and its thread, newest kept when trimmed', () => {
+    const c = buildContext({ title: 'Yamashita report', due: '2026-11-10T17:00', type: 'ASSIGNMENT', entries: [{ by: 'nexo', text: 'Report on  the lecture' }, { by: 'eduardo', text: 'Angle A please' }] });
+    expect(c).toContain('Task: Yamashita report');
+    expect(c).toContain('Nexo: Report on the lecture');
+    expect(c.endsWith('He: Angle A please')).toBe(true);
+    const long = buildContext({ entries: [{ by: 'nexo', text: 'x'.repeat(5000) }, { by: 'eduardo', text: 'LAST' }] }, 100);
+    expect(long.length).toBeLessThan(130);
+    expect(long.endsWith('LAST')).toBe(true);
   });
 });

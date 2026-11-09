@@ -1,5 +1,5 @@
 import { applyFeedback, type WakeDoc, type WakeFeedback, type WakePrefs, type WakeRecord } from './alarm';
-import { arrayUnion, collection, deleteDoc, deleteField, doc, documentId, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
+import { arrayUnion, collection, deleteDoc, deleteField, doc, documentId, getDocs, increment, limitToLast, onSnapshot, orderBy, query, serverTimestamp, setDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { checklistLines } from './checklistlines';
 import type { DraftAttachment, Alloc, Market, Receipt, Card, CardFile, Draft, Entry, NexoStatus, Memo, Relay, Resource, TodayInfo } from './types';
@@ -680,4 +680,15 @@ export function rateRest(uid: string, date: string, patch: { wellbeing?: number 
 /** What the sync reads to send the bedtime reminder. */
 export function writeSleepPlan(uid: string, plan: SleepPlan): Promise<void> {
   return setDoc(doc(db, ...root(uid), 'meta', 'sleepPlan'), { ...planDoc(plan), updatedAt: serverTimestamp() });
+}
+
+/** A card with its thread and attached pictures, for a module that starts work from it (Fude's "Work on it"). */
+export async function cardContext(uid: string, card: Card): Promise<Card & { entries: Entry[]; files: CardFile[] }> {
+  const [es, fs] = await Promise.all([
+    getDocs(query(collection(db, ...root(uid), 'cards', card.id, 'entries'), orderBy(documentId()))),
+    getDocs(collection(db, ...root(uid), 'cards', card.id, 'files')),
+  ]);
+  const thumbs = new Map(fs.docs.map((d) => [d.id, (d.data() as { thumb?: string }).thumb] as const));
+  const files = (card.files ?? []).map((f) => { const t = thumbs.get(f.id); return t ? { ...f, thumb: t } : f; });
+  return { ...card, entries: es.docs.map((d) => ({ ...(d.data() as Omit<Entry, 'id'>), id: d.id })), files };
 }

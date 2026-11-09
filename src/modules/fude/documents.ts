@@ -14,6 +14,8 @@ export interface FudeDoc {
   /** The Nexo card this document was started from ("Work on it"), or the draft it edits. */
   cardId?: string;
   draftId?: string;
+  /** What Nexo knew about the task when this document was started from its card. The reviewer reads it as background. */
+  context?: string;
   /** The reviewer's progress: `requested` by the app, then `working`, then `ready` or `error`. */
   review?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; count?: number; at?: string };
   createdAt: string;

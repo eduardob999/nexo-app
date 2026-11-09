@@ -10,3 +10,17 @@ export function kindForCard(title: string, text = ''): Kind {
   if (REPORT.test(t)) return { kind: 'doc', profile: 'report-en' };
   return { kind: 'doc', profile: 'free' };
 }
+
+export interface ContextCard { title?: string | undefined; due?: string | null | undefined; place?: string | undefined; type?: string | undefined; entries?: { by: string; text: string; ts?: string }[] | undefined }
+
+/**
+ * What Nexo already knows about the task, as plain text for the checker and the reviewer: the card's facts and the
+ * thread, newest last, trimmed from the old end so the latest words always survive.
+ */
+export function buildContext(card: ContextCard, max = 3000): string {
+  const head = [card.title ? `Task: ${card.title}` : '', card.due ? `Due: ${card.due}` : '', card.place ? `Place: ${card.place}` : '', card.type ? `Kind: ${card.type}` : ''].filter(Boolean).join('\n');
+  const lines = (card.entries ?? []).map((e) => `${e.by === 'eduardo' ? 'He' : 'Nexo'}: ${e.text.replace(/\s+/g, ' ').trim()}`);
+  let body = lines.join('\n');
+  if (body.length > max) body = '…' + body.slice(body.length - max);
+  return [head, body].filter(Boolean).join('\n\n');
+}

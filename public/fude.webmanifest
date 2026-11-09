@@ -1,0 +1,18 @@
+{
+  "name": "Fude",
+  "short_name": "Fude",
+  "description": "Photograph a page, type your answers, get them checked. Part of Nexo Suite.",
+  "id": "./fude.html",
+  "start_url": "./fude.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#14161a",
+  "background_color": "#14161a",
+  "lang": "en",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icons/fude-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/fude-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

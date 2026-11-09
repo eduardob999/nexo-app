@@ -19,6 +19,8 @@ interface Props {
   cards: Card[];
   now: Date;
   fromCache: boolean;
+  /** Open this assignment in Fude, with everything Nexo knows about it. */
+  onFude?: ((card: Card) => void) | undefined;
   onDone: (card: Card) => void;
   onLater: (card: Card) => void;
   /** Join the picked cards into one. Nothing is deleted: the originals are closed and point at the new card. */
@@ -86,7 +88,7 @@ function MailIcon() {
 type PickProps = { selecting: boolean; picked: boolean; onPick: (card: Card) => void };
 const NOPICK: PickProps = { selecting: false, picked: false, onPick: () => {} };
 
-function Row({ card, now, onDone, onLater, hasDraft, closeable = false, pick = NOPICK }: { card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean; closeable?: boolean; pick?: PickProps }) {
+function Row({ onFude, card, now, onDone, onLater, hasDraft, closeable = false, pick = NOPICK }: { onFude?: ((card: Card) => void) | undefined; card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean; closeable?: boolean; pick?: PickProps }) {
   const [open, setOpen] = useState(false);
   const band = bandOf(card, now);
   const title = card.title ?? card.id;
@@ -118,6 +120,7 @@ function Row({ card, now, onDone, onLater, hasDraft, closeable = false, pick = N
             <span className="row-last"><b>{card.last.by === 'eduardo' ? 'You' : 'Nexo'}</b> {card.last.text}</span>
           ) : null}
         </button>
+        {onFude && band === 'assignment' ? <button type="button" className="tool-chip fude-chip" onClick={() => onFude(card)}>Fude</button> : null}
         {link ? <a className="join-link" href={link} target="_blank" rel="noreferrer">Join</a> : null}
         {placeLabel(card) && placeLabel(card) !== link ? <a className="pin pin-link" href={placeUrl(placeLabel(card) as string)} target="_blank" rel="noreferrer" aria-label={`Open ${placeLabel(card)} in Google Maps`}><PinIcon />{placeLabel(card)}</a> : null}
         {closeable ? (
@@ -142,7 +145,7 @@ function todayHoliday(cards: Card[], now: Date): Card | undefined {
   return cards.find((c) => c.type === 'HOLIDAY' && (c.due ?? '').slice(0, 10) === k);
 }
 
-export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], answeredRelays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, wake, onRecordWake, onAnswerWake, sleep, sleepActions, rest, onRateRest }: Props) {
+export function Today({ onFude, cards, now, fromCache, onDone, onLater, onJoin, onCallNexo, onWake = () => {}, lane = 'you', withDraft, waiting = 0, nexo, info, relays = [], answeredRelays = [], onAnswerRelay = () => {}, onCloseRelay = () => {}, wake, onRecordWake, onAnswerWake, sleep, sleepActions, rest, onRateRest }: Props) {
   const mine = sortQueue(cards.filter((c) => (lane === 'you' ? onTodayBoard(c, now) : c.for === lane && !isHis(c))), now);
   const wanted = lane === 'you' ? YOU_BANDS : NEXO_BANDS;
   const groups = wanted.map((b) => ({ band: b, items: mine.filter((c) => bandOf(c, now) === b) })).filter((g) => g.items.length > 0);
@@ -212,7 +215,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNe
             <section key={g.key}>
               <h2 className={`band-title sec-${g.key}`}>{SECTION_LABEL[g.key]} <span>{g.items.length}</span></h2>
               <ul className="rows">
-                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} closeable={g.key === 'close'} pick={pickFor(c)} />)}
+                {g.items.map((c) => <Row key={c.id} onFude={onFude} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} closeable={g.key === 'close'} pick={pickFor(c)} />)}
               </ul>
             </section>
           ))}
@@ -223,7 +226,7 @@ export function Today({ cards, now, fromCache, onDone, onLater, onJoin, onCallNe
             <section key={g.band}>
               <h2 className={`band-title band-${g.band}`}>{BAND_LABEL[g.band]} <span>{g.items.length}</span></h2>
               <ul className="rows">
-                {g.items.map((c) => <Row key={c.id} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} pick={pickFor(c)} />)}
+                {g.items.map((c) => <Row key={c.id} onFude={onFude} card={c} now={now} onDone={onDone} onLater={onLater} hasDraft={withDraft?.has(c.id) ?? false} pick={pickFor(c)} />)}
               </ul>
             </section>
           ))}

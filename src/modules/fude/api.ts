@@ -5,11 +5,22 @@
 import { getDocs, query, where, collection } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { newDoc, type FudeDoc } from './documents';
-import { kindForCard } from './link';
+import { buildContext, kindForCard } from './link';
 import { newSet } from './model';
-import { createDocument, createSet } from './store';
+import { createDocument, createSet, savePhoto } from './store';
+import type { CardFile } from '../../types';
 
-export interface CardLike { id: string; title?: string | undefined; due?: string | null | undefined; last?: { text: string } | undefined }
+/** A card as Fude sees it. The host fills `entries` and `files` (with `thumb`) so the document starts with everything Nexo knows. */
+export interface CardLike {
+  id: string;
+  title?: string | undefined;
+  due?: string | null | undefined;
+  place?: string | undefined;
+  type?: string | undefined;
+  last?: { text: string } | undefined;
+  entries?: { by: string; text: string; ts?: string }[] | undefined;
+  files?: CardFile[] | undefined;
+}
 export interface DraftLike { id: string; text?: string | undefined; subject?: string | undefined }
 
 const go = (id: string) => { window.location.hash = `#/homework/${id}`; return id; };
@@ -21,13 +32,20 @@ export async function openForCard(uid: string, card: CardLike): Promise<string> 
     if (!hit.empty) return go(hit.docs[0]?.id ?? '');
   }
   const now = new Date();
-  const k = kindForCard(card.title ?? '', card.last?.text ?? '');
+  const k = kindForCard(card.title ?? '', card.last?.text ?? card.entries?.[card.entries.length - 1]?.text ?? '');
+  const context = buildContext(card);
   if (k.kind === 'set') {
-    const s = { ...newSet(card.title ?? 'Homework', now, card.due ?? undefined), cardId: card.id };
+    const s = { ...newSet(card.title ?? 'Homework', now, card.due ?? undefined), cardId: card.id, ...(context ? { context } : {}) };
     await createSet(uid, s);
+    // Photos already on the card become the set's book pages, so "Read the questions" works at once.
+    for (const f of card.files ?? []) {
+      if (!(f.type ?? '').startsWith('image/') && !f.thumb) continue;
+      const { thumb, ...rec } = f;
+      await savePhoto(uid, s.id, rec, thumb, new Date());
+    }
     return go(s.id);
   }
-  const d: FudeDoc = { ...newDoc(card.title ?? 'Untitled', k.profile, now, card.due ?? undefined), cardId: card.id };
+  const d: FudeDoc = { ...newDoc(card.title ?? 'Untitled', k.profile, now, card.due ?? undefined), cardId: card.id, ...(context ? { context } : {}) };
   await createDocument(uid, d);
   return go(d.id);
 }

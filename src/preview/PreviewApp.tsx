@@ -123,7 +123,7 @@ export function PreviewApp() {
       { id: 'l', status: 'open', for: 'you', type: 'ASSIGNMENT', title: 'Submit L21 文型・練習 in KULMS', due: '2026-11-09T23:59:00+09:00', prio: 'high' },
       { id: 'y', status: 'open', for: 'you', type: 'ASSIGNMENT', title: 'Yamashita report in KULMS', due: '2026-11-10T17:00:00+09:00', prio: 'high' },
     ] as Card[];
-    return (<><Today cards={cs} now={n9} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} info={info as never} /><TabBar current="today" draftCount={0} /></>);
+    return (<><Today cards={cs} now={n9} onFude={() => {}} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} info={info as never} /><TabBar current="today" draftCount={0} /></>);
   }
   if (which === 'homework' || which === 'homework-open' || which === 'homework-read' || which === 'homework-proposal') {
     const mk = (id: string, title: string, due: string, answers: [string, string, string][]) => ({
