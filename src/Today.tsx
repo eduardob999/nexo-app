@@ -89,19 +89,41 @@ function MailIcon() {
 type PickProps = { selecting: boolean; picked: boolean; onPick: (card: Card) => void };
 const NOPICK: PickProps = { selecting: false, picked: false, onPick: () => {} };
 
-/** One line of what the card carries inside: trip times and the bring list, so they show without opening it. */
-function prepLine(card: Card): string {
-  const parts: string[] = [];
-  const out = card.plan?.out;
-  if (out?.leave || out?.arrive) parts.push(`Leave ${out.leave ?? '--:--'} → arrive ${out.arrive ?? '--:--'}`);
+/**
+ * What the card carries inside, in full, so it shows without opening it. His words on nmw9wmbfc03s:
+ * "A simplified version shows up unless I open it", then "Yes it should show it". The earlier one-line
+ * summary cut the bring list at three items and the checklist to a count. Display only: everything here
+ * sits inside the row's button, so a tap still opens the row and nothing is ticked from the list.
+ */
+function PrepDetail({ card }: { card: Card }) {
+  const plan = card.plan;
+  const out = plan?.out;
+  const back = plan?.back;
   const bring = card.bring ?? [];
-  if (bring.length > 0) {
-    const missing = bring.filter((b) => !b.got).map((b) => b.t);
-    parts.push(missing.length === 0 ? `Bring: all ${bring.length} packed` : `Bring: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? ` +${missing.length - 3}` : ''}`);
-  }
-  const items = (card as { items?: { done?: boolean }[] }).items ?? [];
-  if (items.length > 0) parts.push(`Checklist ${items.filter((i) => i.done).length}/${items.length}`);
-  return parts.join(' · ');
+  const items = (card.items ?? []).filter((i) => !i.deleted);
+  const know = (plan?.know ?? []).filter((k) => k.trim());
+  const side = (s: typeof out, from?: string, to?: string) =>
+    `${s?.leave ?? '--:--'}${from ? ` ${from}` : ''} → ${s?.arrive ?? '--:--'}${to ? ` ${to}` : ''}`;
+  const hasOut = !!(out?.leave || out?.arrive);
+  const hasBack = !!(back?.leave || back?.arrive);
+  if (!hasOut && !hasBack && bring.length === 0 && items.length === 0 && know.length === 0) return null;
+  return (
+    <span className="row-prep">
+      {hasOut ? <span className="prep-line"><b>Go</b> {side(out, out?.from ?? plan?.from, out?.to ?? plan?.to)}</span> : null}
+      {hasBack ? <span className="prep-line"><b>Back</b> {side(back ?? undefined, back?.from, back?.to)}</span> : null}
+      {bring.length > 0 ? (
+        <span className="prep-line"><b>{card.bringAs || 'Bring'}</b>{' '}
+          {bring.map((b, i) => <span key={i} className={`prep-item${b.got ? ' got' : ''}`}>{b.got ? '✓ ' : ''}{b.t}</span>)}
+        </span>
+      ) : null}
+      {items.length > 0 ? (
+        <span className="prep-list">
+          {items.map((it) => <span key={it.id} className={`prep-check${it.done ? ' got' : ''}`}><i aria-hidden="true">{it.done ? '☑' : '☐'}</i>{it.text}</span>)}
+        </span>
+      ) : null}
+      {know.length > 0 ? <span className="prep-list">{know.map((k, i) => <span key={i} className="prep-know">{k}</span>)}</span> : null}
+    </span>
+  );
 }
 
 function Row({ onFude, card, now, onDone, onLater, hasDraft, closeable = false, pick = NOPICK }: { onFude?: ((card: Card) => void) | undefined; card: Card; now: Date; onDone: Props['onDone']; onLater: Props['onLater']; hasDraft: boolean; closeable?: boolean; pick?: PickProps }) {
@@ -132,7 +154,7 @@ function Row({ onFude, card, now, onDone, onLater, hasDraft, closeable = false, 
           </span>
           {card.ask ? <span className="row-ask"><b>Nexo asks</b> {card.ask}</span> : null}
           {hol ? <span className="row-hol">{hol}</span> : null}
-          {prepLine(card) ? <span className="row-prep">{prepLine(card)}</span> : null}
+          <PrepDetail card={card} />
           {card.last && !card.ask && (open || (card.entryCount ?? 0) >= 2) ? (
             <span className="row-last"><b>{card.last.by === 'eduardo' ? 'You' : 'Nexo'}</b> {card.last.text}</span>
           ) : null}
