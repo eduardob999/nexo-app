@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Autosaver, type SaveState } from './autosave';
 import { Camera } from './Camera';
-import { applyFix, sortDocs, type FudeDoc, type Note } from './documents';
+import { applyFix, docMode, sortDocs, type DocMode, type FudeDoc, type Note } from './documents';
 import { lintText, PROFILES, profileById } from './profiles';
+import { markAt, markRanges, segments } from './marks';
+import { AutoReview } from './autoreview';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
 
@@ -34,13 +36,18 @@ interface Props {
   onContext?: (set: HomeworkSet, text: string) => void;
   /** Whole-text documents (reports, emails). */
   docs?: FudeDoc[];
-  onCreateDoc?: (title: string, profile: string, due?: string) => void;
+  onCreateDoc?: (title: string, profile: string, due?: string, mode?: DocMode) => void;
   onSaveDoc?: (doc: FudeDoc, text: string) => void;
+  /** Switch a document between Plain and Suggestions. */
+  onModeDoc?: (doc: FudeDoc, mode: DocMode) => void;
   notes?: Note[];
   /** The host's way to put a document's text back into the draft it came from. */
   onSendBackDraft?: (draftId: string, text: string) => void;
-  onReviewDoc?: (doc: FudeDoc, profile: unknown) => void;
+  onReviewDoc?: (doc: FudeDoc, profile: unknown, auto?: boolean) => void;
   onNoteStatus?: (doc: FudeDoc, note: Note, status: Note['status']) => void;
+  /** Rewrite or ask about a selected passage (Suggestions mode), and clear the answer. */
+  onSelection?: (doc: FudeDoc, mode: 'rewrite' | 'ask', text: string, question: string, profile: unknown) => void;
+  onClearSelection?: (doc: FudeDoc) => void;
 }
 
 const dueLabel = (due?: string) => (due ? new Date(due).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No deadline');
@@ -303,7 +310,7 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
 }
 
 /** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
-function DocView({ doc, notes, onSave, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onReview?: ((doc: FudeDoc, profile: unknown) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
+function DocView({ doc, notes, onSave, onMode, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -314,24 +321,84 @@ function DocView({ doc, notes, onSave, onReview, onNote, onSendBack }: { doc: Fu
   useEffect(() => () => saver.current?.dispose(), []);
   useEffect(() => { if (document.activeElement?.id !== 'fude-text') { setText(doc.text); saver.current?.adopt(doc.text); } }, [doc.text]);
   const lint = lintText(text, profile, doc.budget ?? profile.budget);
+  const suggest = docMode(doc) === 'suggest';
+  const area = useRef<HTMLTextAreaElement | null>(null);
+  const reviewProfile = () => ({ name: profile.name, lang: profile.lang, ...(lint.budget ? { budget: lint.budget } : {}), rules: profile.rules.map((r) => ({ msg: r.msg })) });
+  const reviewing = doc.review?.status === 'requested' || doc.review?.status === 'working';
+  // Suggestions mode reviews by itself after he pauses, through the same request the Check button makes.
+  const auto = useRef<AutoReview | null>(null);
+  const fireRef = useRef<(t: string) => void>(() => {});
+  fireRef.current = () => { if (suggest && onReview) onReview(doc, reviewProfile(), true); };
+  if (auto.current === null) auto.current = new AutoReview(doc.text, (t) => fireRef.current(t));
+  useEffect(() => () => auto.current?.dispose(), []);
+  useEffect(() => { auto.current?.setBusy(reviewing); }, [reviewing]);
+  useEffect(() => { if (document.activeElement?.id !== 'fude-text') auto.current?.adopt(doc.text); }, [doc.text]);
+  const live = suggest && !!onReview;
+  const [sel, setSel] = useState<{ start: number; end: number } | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [gone, setGone] = useState<string[]>([]);
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const marks = suggest ? markRanges(text, notes, lint.hits.filter((h) => !gone.includes(`${h.rule}-${h.index}`))) : [];
+  const active = marks.find((m) => m.id === focusId);
+  const activeNote = active?.kind === 'note' ? notes.find((n) => n.id === active.id) : undefined;
+  const activeHit = active?.kind === 'rule' ? lint.hits.find((h) => `${h.rule}-${h.index}` === active.id) : undefined;
+  const useFix = (n: Note) => { const next = applyFix(text, n.find, n.fix); if (next !== null) { setText(next); saver.current?.change(next); saver.current?.blur(); onNote?.(doc, n, 'accepted'); } setFocusId(null); };
+  // The field grows with its text so the underlines behind it never scroll out of step with it.
+  useLayoutEffect(() => { const a = area.current; if (suggest && a) { a.style.height = 'auto'; a.style.height = `${Math.max(a.scrollHeight, 240)}px`; } }, [text, suggest]);
   const unit = (doc.budget ?? profile.budget)?.unit === 'chars' ? lint.chars : lint.words;
   const b = lint.budget;
   return (
     <main className="screen hw">
       <header className="thread-top"><Back /><span className="kicker">{profile.name} · {dueLabel(doc.due)}</span></header>
       <h1 className="thread-title">{doc.title}</h1>
-      <textarea id="fude-text" className="hw-answer fude-text" lang={profile.lang === 'ja' ? 'ja' : undefined} rows={12} autoCorrect="off" spellCheck={profile.lang === 'en'}
+      {onMode ? <ModeSwitch mode={docMode(doc)} onChange={(m) => onMode(doc, m)} /> : null}
+      {suggest ? (
+        <div className="fude-edit">
+          <div className="fude-back" aria-hidden="true">
+            {segments(text, marks).map((p, i) => p.mark
+              ? <mark key={i} className={`fude-mark ${p.mark.kind} sev-${p.mark.sev}`}>{p.text}</mark>
+              : <span key={i}>{p.text}</span>)}
+            {'\n'}
+          </div>
+          <textarea id="fude-text" ref={area} className={`hw-answer fude-text${suggest ? ' on-back' : ''}`} lang={profile.lang === 'ja' ? 'ja' : undefined} rows={suggest ? 3 : 12} autoCorrect="off" spellCheck={profile.lang === 'en'}
         placeholder="Write here" value={text}
-        onChange={(e) => { setText(e.target.value); saver.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); }}
-        onCompositionStart={() => saver.current?.compositionStart()}
-        onCompositionEnd={(e) => saver.current?.compositionEnd(e.currentTarget.value)}
+        onChange={(e) => { setText(e.target.value); saver.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); if (live) auto.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); }}
+        onCompositionStart={() => { saver.current?.compositionStart(); if (live) auto.current?.compositionStart(); }}
+        onCompositionEnd={(e) => { saver.current?.compositionEnd(e.currentTarget.value); if (live) auto.current?.compositionEnd(e.currentTarget.value); }}
+        onBlur={() => saver.current?.blur()}
+            onSelect={(e) => { const t = e.currentTarget; setSel(t.selectionStart === t.selectionEnd ? null : { start: t.selectionStart, end: t.selectionEnd }); setFocusId(t.selectionStart === t.selectionEnd ? markAt(marks, t.selectionStart)?.id ?? null : null); }} />
+          {activeNote || activeHit ? (
+            <div className="fude-pop panel" role="dialog" aria-label="Suggestion">
+              {activeNote ? (<>
+                <p><b>{activeNote.kind}</b> {activeNote.msg}</p>
+                {activeNote.fix ? <p className="fude-fix">→ {activeNote.fix}</p> : null}
+                <div className="hw-photo-actions">
+                  {activeNote.fix && onNote ? <button type="button" className="tool-chip" onClick={() => useFix(activeNote)}>Use this fix</button> : null}
+                  {onNote ? <button type="button" className="tool-chip" onClick={() => { onNote(doc, activeNote, 'dismissed'); setFocusId(null); }}>{activeNote.fix ? 'Keep mine' : 'Got it'}</button> : null}
+                </div>
+              </>) : activeHit ? (<>
+                <p><b>{activeHit.match}</b> {activeHit.msg}</p>
+                <div className="hw-photo-actions"><button type="button" className="tool-chip" onClick={() => { setGone([...gone, `${activeHit.rule}-${activeHit.index}`]); setFocusId(null); }}>Keep mine</button></div>
+              </>) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+      <textarea id="fude-text" ref={area} className={`hw-answer fude-text${suggest ? ' on-back' : ''}`} lang={profile.lang === 'ja' ? 'ja' : undefined} rows={suggest ? 3 : 12} autoCorrect="off" spellCheck={profile.lang === 'en'}
+        placeholder="Write here" value={text}
+        onChange={(e) => { setText(e.target.value); saver.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); if (live) auto.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); }}
+        onCompositionStart={() => { saver.current?.compositionStart(); if (live) auto.current?.compositionStart(); }}
+        onCompositionEnd={(e) => { saver.current?.compositionEnd(e.currentTarget.value); if (live) auto.current?.compositionEnd(e.currentTarget.value); }}
         onBlur={() => saver.current?.blur()} />
+      )}
       {doc.cardId || (doc.draftId && onSendBack) ? (
         <div className="fude-review">
           {doc.cardId ? <a className="tool-chip" href={`#/card/${encodeURIComponent(doc.cardId)}`}>Back to the card</a> : null}
           {doc.draftId && onSendBack ? <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => { saver.current?.change(text); saver.current?.blur(); onSendBack(doc.draftId as string, text.trim()); }}>Send text back to the draft</button> : null}
         </div>
       ) : null}
+      {suggest && onSelection ? <SelectionTools doc={doc} text={text} sel={sel} asking={asking} setAsking={setAsking} question={question} setQuestion={setQuestion} onAsk={(mode, passage, q) => { onSelection(doc, mode, passage, q, reviewProfile()); setAsking(false); setQuestion(''); }} onUse={(req) => { const next = applyFix(text, req.text, req.fix ?? ''); if (next !== null) { setText(next); saver.current?.change(next); saver.current?.blur(); } onClearSelection?.(doc); }} onClose={() => onClearSelection?.(doc)} /> : null}
       <div className="fude-counts">
         <span className={lint.over ? 'bad' : lint.under ? 'warn' : ''}>{unit} {b?.unit ?? 'words'}{b ? ` of ${b.min ?? 0}–${b.max ?? '∞'}` : ''}</span>
         <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
@@ -340,7 +407,7 @@ function DocView({ doc, notes, onSave, onReview, onNote, onSendBack }: { doc: Fu
         <div className="fude-review">
           {doc.review?.status === 'requested' || doc.review?.status === 'working'
             ? <span className="mut" role="status">Checking your writing…</span>
-            : <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => onReview(doc, { name: profile.name, lang: profile.lang, ...(lint.budget ? { budget: lint.budget } : {}), rules: profile.rules.map((r) => ({ msg: r.msg })) })}>Check my writing</button>}
+            : <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => onReview(doc, reviewProfile())}>Check my writing</button>}
           {doc.review?.status === 'error' ? <span className="hw-note" role="alert">{doc.review.message}</span> : null}
           {doc.review?.status === 'ready' && notes.filter((n) => n.status === 'open').length === 0 ? <span className="mut">{doc.review.message ?? 'No problems found.'}</span> : null}
         </div>
@@ -372,12 +439,72 @@ function DocView({ doc, notes, onSave, onReview, onNote, onSendBack }: { doc: Fu
   );
 }
 
-function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?: string) => void }) {
+const MODE_LABEL: Record<DocMode, { name: string; hint: string }> = {
+  plain: { name: 'Plain', hint: 'A text field with counters. Press Check my writing when you want a review.' },
+  suggest: { name: 'Suggestions', hint: 'Suggestions appear in your text while you write, after you pause.' },
+};
+
+/** Two buttons, one per mode, so the choice is visible and one tap away. */
+function ModeSwitch({ mode, onChange }: { mode: DocMode; onChange: (m: DocMode) => void }) {
+  return (
+    <div className="fude-review" role="group" aria-label="Editor mode">
+      {(['plain', 'suggest'] as DocMode[]).map((m) => (
+        <button key={m} type="button" className={`tool-chip${m === mode ? ' on' : ''}`} aria-pressed={m === mode} onClick={() => { if (m !== mode) onChange(m); }}>{MODE_LABEL[m].name}</button>
+      ))}
+      <span className="mut">{MODE_LABEL[mode].hint}</span>
+    </div>
+  );
+}
+
+/** What to do with the words he has selected: rewrite them (proposed, he decides) or ask about them. */
+function SelectionTools({ doc, text, sel, asking, setAsking, question, setQuestion, onAsk, onUse, onClose }: { doc: FudeDoc; text: string; sel: { start: number; end: number } | null; asking: boolean; setAsking: (b: boolean) => void; question: string; setQuestion: (q: string) => void; onAsk: (mode: 'rewrite' | 'ask', passage: string, q: string) => void; onUse: (req: NonNullable<FudeDoc['selectionRequest']>) => void; onClose: () => void }) {
+  const req = doc.selectionRequest;
+  const passage = sel ? text.slice(sel.start, sel.end) : '';
+  const busy = req?.status === 'requested' || req?.status === 'working';
+  return (
+    <div className="fude-sel" aria-label="Selected text">
+      {passage.trim() && !busy ? (
+        <div className="fude-review">
+          <button type="button" className="tool-chip" onClick={() => onAsk('rewrite', passage, '')}>Rewrite</button>
+          <button type="button" className="tool-chip" aria-expanded={asking} onClick={() => setAsking(!asking)}>Ask about this</button>
+          <span className="mut">{Array.from(passage).length === 1 ? "1 character" : `${Array.from(passage).length} characters`} selected</span>
+        </div>
+      ) : null}
+      {asking && passage.trim() && !busy ? (
+        <form className="fude-review" onSubmit={(e) => { e.preventDefault(); onAsk('ask', passage, question.trim()); }}>
+          <input className="reply-input" lang="ja" placeholder="For example: is this too casual?" value={question} onChange={(e) => setQuestion(e.target.value)} />
+          <button type="submit" className="tool-chip">Ask</button>
+        </form>
+      ) : null}
+      {busy ? <span className="mut" role="status">{req?.mode === 'rewrite' ? 'Rewriting' : 'Thinking'}…</span> : null}
+      {req?.status === 'error' || req?.status === 'stale' ? (
+        <p className="hw-note" role="alert">{req.status === 'stale' ? 'The text changed while that was running. Select it again.' : req.message} <button type="button" className="tool-chip" onClick={onClose}>OK</button></p>
+      ) : null}
+      {req?.status === 'ready' && text.includes(req.text) ? (
+        <div className="panel fude-pop">
+          {req.mode === 'rewrite' ? (<>
+            <p className="mut">Your words</p><p>{req.text}</p>
+            <p className="mut">Suggested</p><p className="fude-fix">{req.fix}</p>
+            {req.msg ? <p className="mut">{req.msg}</p> : null}
+            <div className="hw-photo-actions"><button type="button" className="tool-chip" onClick={() => onUse(req)}>Use this</button><button type="button" className="tool-chip" onClick={onClose}>Keep mine</button></div>
+          </>) : (<>
+            <p className="mut">About “{req.text.length > 60 ? `${req.text.slice(0, 60)}…` : req.text}”{req.question ? `: ${req.question}` : ''}</p>
+            <p>{req.reply}</p>
+            <div className="hw-photo-actions"><button type="button" className="tool-chip" onClick={onClose}>Done</button></div>
+          </>)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?: string, mode?: DocMode) => void }) {
+  const [mode, setMode] = useState<DocMode>('plain');
   const [title, setTitle] = useState('');
   const [profile, setProfile] = useState(PROFILES[0]?.id ?? 'free');
   const [due, setDue] = useState('');
   return (
-    <form className="panel hw-new" onSubmit={(e) => { e.preventDefault(); onCreate(title, profile, due ? new Date(due).toISOString() : undefined); setTitle(''); setDue(''); }}>
+    <form className="panel hw-new" onSubmit={(e) => { e.preventDefault(); onCreate(title, profile, due ? new Date(due).toISOString() : undefined, mode); setTitle(''); setDue(''); }}>
       <label className="sr" htmlFor="fd-title">Title</label>
       <input id="fd-title" className="reply-input" placeholder="New document, for example the Yamashita report" value={title} onChange={(e) => setTitle(e.target.value)} />
       <label className="mut" htmlFor="fd-profile">Kind of writing</label>
@@ -385,6 +512,8 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
         {PROFILES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
       </select>
       <p className="mut">{profileById(profile).hint}</p>
+      <label className="mut">Editor</label>
+      <ModeSwitch mode={mode} onChange={setMode} />
       <label className="mut" htmlFor="fd-due">Deadline (optional)</label>
       <input id="fd-due" className="reply-input" type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
       <button type="submit" className="send-wide" disabled={!title.trim()}>Create document</button>
@@ -392,11 +521,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, notes = [], onReviewDoc, onNoteStatus, onSendBackDraft }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onReview={onReviewDoc} onNote={onNoteStatus} onSendBack={onSendBackDraft} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;

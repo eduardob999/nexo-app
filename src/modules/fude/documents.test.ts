@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFix, newDoc, sortDocs } from './documents';
+import { applyFix, docMode, newDoc, sortDocs } from './documents';
 
 const T = new Date('2026-11-09T10:00:00Z');
 describe('documents', () => {
@@ -7,6 +7,13 @@ describe('documents', () => {
     const d = newDoc('  ', 'report-en', T, '2026-11-10T17:00:00+09:00');
     expect(d).toMatchObject({ title: 'Untitled', profile: 'report-en', text: '', due: '2026-11-10T17:00:00+09:00' });
     expect(d.id.startsWith('fd')).toBe(true);
+  });
+  it('is plain unless it was made in suggest mode, and old or odd values read as plain', () => {
+    expect(newDoc('a', 'free', T).mode).toBe('plain');
+    expect(newDoc('a', 'free', T, undefined, 'suggest').mode).toBe('suggest');
+    expect(docMode({})).toBe('plain');
+    expect(docMode({ mode: 'suggest' })).toBe('suggest');
+    expect(docMode({ mode: 'live' })).toBe('plain');
   });
   it('sorts by deadline and hides deleted ones', () => {
     const a = newDoc('late', 'free', T, '2026-11-12');

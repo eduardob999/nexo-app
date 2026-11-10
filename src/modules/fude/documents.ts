@@ -2,10 +2,31 @@
 import type { CardFile } from '../../types';
 import type { Budget } from './profiles';
 
+/** How the editor behaves: `plain` is the field with counters and a Check button; `suggest` adds live suggestions in the text. */
+export type DocMode = 'plain' | 'suggest';
+export const DOC_MODES: DocMode[] = ['plain', 'suggest'];
+/** A document written before modes existed has none, and is plain. Anything unknown is plain too. */
+export const docMode = (d: { mode?: unknown }): DocMode => (d.mode === 'suggest' ? 'suggest' : 'plain');
+
+export interface SelectionRequest {
+  status: 'requested' | 'working' | 'ready' | 'stale' | 'error';
+  mode: 'rewrite' | 'ask';
+  /** The words he selected, exactly as they were in the text. */
+  text: string;
+  question?: string;
+  /** rewrite: the proposed replacement and one line on what changed. ask: the answer. */
+  fix?: string;
+  msg?: string;
+  reply?: string;
+  message?: string;
+  at?: string;
+}
+
 export interface FudeDoc {
   id: string;
   title: string;
   profile: string;
+  mode?: DocMode;
   text: string;
   due?: string;
   /** Overrides the profile's budget for this document (each lecture report has its own). */
@@ -17,6 +38,8 @@ export interface FudeDoc {
   /** What Nexo knew about the task when this document was started from its card. The reviewer reads it as background. */
   context?: string;
   /** The reviewer's progress: `requested` by the app, then `working`, then `ready` or `error`. */
+  /** A selected passage in Suggestions mode: asked by the app, answered by the helper. A rewrite is only ever a proposal. */
+  selectionRequest?: SelectionRequest;
   review?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; count?: number; at?: string };
   createdAt: string;
   updatedAt: string;
@@ -25,9 +48,9 @@ export interface FudeDoc {
 
 export const newDocId = (now: Date): string => `fd${now.getTime().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
-export function newDoc(title: string, profile: string, now: Date, due?: string): FudeDoc {
+export function newDoc(title: string, profile: string, now: Date, due?: string, mode: DocMode = 'plain'): FudeDoc {
   const t = now.toISOString();
-  return { id: newDocId(now), title: title.trim() || 'Untitled', profile, text: '', ...(due ? { due } : {}), createdAt: t, updatedAt: t };
+  return { id: newDocId(now), title: title.trim() || 'Untitled', profile, mode, text: '', ...(due ? { due } : {}), createdAt: t, updatedAt: t };
 }
 
 /** Documents on screen: not deleted, soonest deadline first, then the most recently touched. */

@@ -6,7 +6,7 @@
 import { collection, deleteField, doc, FieldPath, limit, onSnapshot, orderBy, query, setDoc, updateDoc, arrayUnion, where, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { setAnswer, putItem, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type Question } from './model';
-import type { FudeDoc, Note } from './documents';
+import type { DocMode, FudeDoc, Note, SelectionRequest } from './documents';
 import type { CardFile } from '../../types';
 
 const col = (uid: string) => collection(db, 'users', uid, 'homework');
@@ -106,9 +106,23 @@ export function saveDocText(uid: string, id: string, text: string, now: Date): P
   return updateDoc(dref(uid, id), { text, updatedAt: now.toISOString() });
 }
 
+/** Switch a document between Plain and Suggestions. Its own field, so the text is not touched. */
+export function setDocMode(uid: string, id: string, mode: DocMode, now: Date): Promise<void> {
+  return updateDoc(dref(uid, id), { mode, updatedAt: now.toISOString() });
+}
+
 /** Ask the reviewer to proofread the document. The profile travels with the request, so the app stays the one place that defines it. */
-export function requestReview(uid: string, id: string, profile: unknown, now: Date): Promise<void> {
-  return updateDoc(dref(uid, id), { review: { status: 'requested', profile, at: now.toISOString() } });
+export function requestReview(uid: string, id: string, profile: unknown, now: Date, auto = false): Promise<void> {
+  return updateDoc(dref(uid, id), { review: { status: 'requested', profile, at: now.toISOString(), ...(auto ? { auto: true } : {}) } });
+}
+
+/** Ask about one selected passage: a rewrite proposal or an answer to a question. The words travel with the request, so a later edit makes the result stale instead of wrong. */
+export function requestSelection(uid: string, id: string, mode: SelectionRequest['mode'], text: string, question: string, profile: unknown): Promise<void> {
+  return updateDoc(dref(uid, id), { selectionRequest: { status: 'requested', mode, text, ...(question ? { question } : {}), profile } });
+}
+
+export function clearSelection(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { selectionRequest: deleteField() });
 }
 
 export function watchNotes(uid: string, id: string, on: (notes: Note[]) => void): () => void {

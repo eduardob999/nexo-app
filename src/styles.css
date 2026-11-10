@@ -584,6 +584,7 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .tool-chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px 0 10px; border: 1px solid var(--edge); border-radius: 16px; background: var(--surface); color: var(--muted); font: 600 13px var(--sans); }
 .tool-chip svg { flex: none; }
 .tool-chip:active, .tool-chip[aria-expanded='true'] { background: var(--chip); color: var(--ink); }
+.tool-chip.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .qchips { gap: 6px; }
 .qchip { height: 34px; padding: 0 13px; border-radius: 17px; border: 1px solid var(--edge); background: var(--accent-tint); color: var(--accent); font-size: 14px; font-weight: 600; }
 .qchip:active { background: var(--chip); }
@@ -677,3 +678,16 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .hw-exp-ins { margin: 0; font-size: 13px; }
 .hw-exp-qa > span:last-child { border-left: 3px solid #4b2da8; padding-left: 8px; }
 .row-prep { font-size: 14px; color: var(--ink); line-height: 1.35; font-weight: 500; }
+
+/* Suggestions mode: the text sits on top of a copy of itself that carries the underlines. Same box, font and wrapping, or they drift apart. */
+.fude-edit { position: relative; margin-top: 12px; border: 1px solid var(--edge); border-radius: 14px; background: var(--surface); }
+.fude-edit:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.fude-back, .fude-edit .fude-text.on-back { box-sizing: border-box; width: 100%; margin: 0; padding: 10px 14px; border: 0; font: 18px/1.55 var(--sans); white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; letter-spacing: normal; }
+.fude-back { position: absolute; inset: 0; color: transparent; pointer-events: none; overflow: hidden; }
+.fude-edit .fude-text.on-back { position: relative; display: block; margin: 0; background: transparent; outline: 0; resize: none; overflow: hidden; min-height: 240px; }
+.fude-mark { color: transparent; background: transparent; text-decoration: underline wavy; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.fude-mark.note { text-decoration-color: var(--accent); }
+.fude-mark.sev-warn.rule, .fude-mark.sev-info.rule { text-decoration-color: #c98a00; }
+.fude-mark.sev-error.rule { text-decoration-color: #c0392b; }
+.fude-pop { margin: 0; padding: 10px 14px 12px; box-shadow: none; border-radius: 0 0 14px 14px; border-width: 1px 0 0; }
+.fude-sel .fude-pop { margin-top: 8px; border-width: 1px; border-radius: 14px; }
