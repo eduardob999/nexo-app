@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cardTags, holidayLine, placeLabel, placeUrl } from './cardmeta';
 import { isHis, nexoSection, SECTION_LABEL, SECTION_ORDER } from './nexo';
 import { NexoPanel } from './NexoPanel';
+import { Nearby } from './Nearby';
 import { isNewCard } from './seen';
 import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
@@ -223,6 +224,8 @@ export function Today({ onFude, cards, now, fromCache, onDone, onLater, onJoin, 
       {lane === 'you' ? <TodayStrip info={info} now={now} cards={cards} /> : null}
       {lane === 'you' ? <WakeSuggestion cards={cards} now={now} wake={wake} onRecord={onRecordWake} onAnswer={onAnswerWake} sleep={sleep} onGoToBed={sleepActions?.onGoToBed} onUndoBed={sleepActions?.onUndoBed} onImUp={sleepActions?.onImUp} onRate={sleepActions?.onRate} onEditTimes={sleepActions?.onEditTimes} onPlan={sleepActions?.onPlan} /> : null}
       {lane === 'you' && rest && onRateRest ? <RestCheckin recs={rest} now={now} onRate={onRateRest} /> : null}
+      {/* Card nmw9woh8bpsx: closest combini, station, toilet, pharmacy. Its own button, nothing runs until pressed. */}
+      {lane === 'you' ? <Nearby /> : null}
       {holiday && !info ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
       {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
       {lane === 'nexo' && sections.length > 0 ? (
