@@ -140,6 +140,8 @@ export function postpone(due: string | null | undefined, now: Date): string {
  */
 export function onTodayBoard(card: Card, now: Date): boolean {
   if (card.for === 'you' || isHis(card) || isQA(card)) return true;
+  // His move is made and Nexo owes the next one: the card stays off his board until Nexo answers (his words, 2026-11-11).
+  if (card.for === 'nexo' && card.last?.by === 'eduardo') return false;
   const band = bandOf(card, now);
   return card.for === 'nexo' && (band === 'urgent' || band === 'today' || band === 'incoming');
 }

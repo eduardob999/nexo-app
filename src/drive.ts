@@ -10,7 +10,7 @@ interface Token { value: string; until: number }
 
 function readToken(): Token | null {
   try {
-    const raw = sessionStorage.getItem(TOKEN_KEY);
+    const raw = localStorage.getItem(TOKEN_KEY);
     if (!raw) return null;
     const t = JSON.parse(raw) as Token;
     return t.until > Date.now() + 60_000 ? t : null;
@@ -29,7 +29,7 @@ export async function connectDrive(): Promise<void> {
   const result = await reauthenticateWithPopup(user, provider);
   const token = GoogleAuthProvider.credentialFromResult(result)?.accessToken;
   if (!token) throw new Error('Google did not give access to Drive');
-  try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ value: token, until: Date.now() + 55 * 60_000 } satisfies Token)); } catch { /* private window */ }
+  try { localStorage.setItem(TOKEN_KEY, JSON.stringify({ value: token, until: Date.now() + 55 * 60_000 } satisfies Token)); } catch { /* private window */ }
 }
 
 async function api(url: string, init: RequestInit, token: string): Promise<Response> {
