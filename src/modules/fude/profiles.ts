@@ -20,6 +20,21 @@ export const PROFILES: Profile[] = [
       { id: 'r4', pattern: '\\bI (did|performed|ran|used|built|made)\\b', sev: 'warn', msg: 'A claim about what you did: only allowed if you confirmed it.' },
     ],
   },
+  {
+    id: 'summary-en', name: 'Meeting summary (English)', hint: 'Teacher voice: short sentences, reasons with because and so, no "we", no names, no filler', lang: 'en',
+    budget: { unit: 'words', min: 1500, max: 2600 },
+    rules: [
+      NO_EM_DASH,
+      { id: 'we', pattern: '\\b(we|our|ours|us)\\b', flags: 'i', sev: 'warn', msg: 'Authorial "we": write the subject (the model, the table, the comment).' },
+      { id: 'conn', pattern: '\\b(Thus|However|Moreover|Furthermore|Additionally|Notably|Importantly|Interestingly)\\b', sev: 'warn', msg: 'Connective the summaries do not use: use so, because, but, or start a new sentence.' },
+      { id: 'again', pattern: '\\b(in other words|put differently|that is to say|in short)\\b', flags: 'i', sev: 'warn', msg: 'A second wording of the same point: keep the better one.' },
+      { id: 'hedge', pattern: '\\b(perhaps|presumably|arguably|it seems|strictly speaking)\\b', flags: 'i', sev: 'warn', msg: 'Hedge that shows deliberation: state what is known.' },
+      { id: 'filler', pattern: '\\b(key|crucial|pivotal|notable|remarkable|robust|seamless|comprehensive|promising|significant|powerful|interesting)\\b', flags: 'i', sev: 'info', msg: 'Adjective of importance: show the consequence instead.' },
+      { id: 'mood', pattern: '\\b(heated|agreed|objected|mentioned)\\b', flags: 'i', sev: 'warn', msg: 'Mood or reporting verb: state the comment and its outcome, no names, no mood.' },
+      { id: 'names', pattern: '\\b(Mamitsuka|Prof\\.?|Professor|John|sensei)\\b', sev: 'error', msg: 'No names of people in the summary.' },
+      { id: 'part', pattern: ',\\s+(enabling|allowing|making|providing|ensuring)\\b', sev: 'info', msg: 'Trailing participle clause: make it its own sentence with because or so.' },
+    ],
+  },
   { id: 'email', name: 'Email', hint: 'No em dashes; the register is set when the reviewer reads it', lang: 'any', rules: [NO_EM_DASH] },
   { id: 'free', name: 'Free writing', hint: 'No rules, just the counters', lang: 'any', rules: [] },
 ];

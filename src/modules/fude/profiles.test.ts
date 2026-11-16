@@ -22,6 +22,13 @@ describe('profiles and lint', () => {
     expect(lintText('', report).under).toBe(false);
     expect(lintText(long, report, { unit: 'words', max: 400 }).over).toBe(false);
   });
+  it('summary profile flags the voice slips and nothing in plain teacher prose', () => {
+    const p = profileById('summary-en');
+    expect(p.id).toBe('summary-en');
+    const bad = lintText('We tested it. However, the model, enabling speed, was crucial — John agreed.', p).hits.map((h) => h.rule).sort();
+    expect(bad).toEqual(['conn', 'em-dash', 'filler', 'mood', 'names', 'part', 'we'].sort());
+    expect(lintText('The model starts from the cheap energy because the gap is small.', p).hits).toEqual([]);
+  });
   it('free writing has no rules and no budget; unknown profile falls back to it', () => {
     expect(lintText('7.9 percent —', profileById('free')).hits).toEqual([]);
     expect(profileById('nope').id).toBe('free');
