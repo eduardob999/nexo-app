@@ -3,6 +3,8 @@ import { Autosaver, type SaveState } from './autosave';
 import { Camera } from './Camera';
 import { applyFix, docMode, sortDocs, type DocMode, type FudeDoc, type Note } from './documents';
 import { lintText, PROFILES, profileById } from './profiles';
+import { SuggestBar } from './SuggestBar';
+import { acceptAll, readPaused, writePaused } from './bulk';
 import { markAt, markRanges, segments } from './marks';
 import { AutoReview } from './autoreview';
 import { translationPrompt } from './translation';
@@ -460,7 +462,11 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
   // Suggestions mode reviews by itself after he pauses, through the same request the Check button makes.
   const auto = useRef<AutoReview | null>(null);
   const fireRef = useRef<(t: string) => void>(() => {});
-  fireRef.current = () => { if (suggest && onReview) onReview(doc, reviewProfile(), true); };
+  const [paused, setPausedState] = useState(() => readPaused(doc.id));
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
+  const setPaused = (p: boolean) => { setPausedState(p); writePaused(doc.id, p); };
+  fireRef.current = () => { if (suggest && onReview && !pausedRef.current) onReview(doc, reviewProfile(), true); };
   if (auto.current === null) auto.current = new AutoReview(doc.text, (t) => fireRef.current(t));
   useEffect(() => () => auto.current?.dispose(), []);
   useEffect(() => { auto.current?.setBusy(reviewing); }, [reviewing]);
@@ -499,6 +505,9 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
         {step === 9 ? <SubmitStep doc={doc} api={flowApi} text={text} /> : null}
       </>) : null}
       {show6 && onMode ? <ModeSwitch mode={docMode(doc)} onChange={(m) => onMode(doc, m)} /> : null}
+      {show6 ? <SuggestBar text={text} notes={notes} reviewing={reviewing} paused={paused} suggest={suggest} onPause={setPaused}
+        onAcceptAll={() => { const r = acceptAll(text, notes); if (r.applied.length) { setText(r.text); saver.current?.change(r.text); saver.current?.blur(); r.applied.forEach((n) => onNote?.(doc, n, 'accepted')); } }}
+        onRejectAll={() => notes.filter((n) => n.status === 'open').forEach((n) => onNote?.(doc, n, 'dismissed'))} /> : null}
       {show6 && suggest ? (
         <div className="fude-edit">
           <div className="fude-back" aria-hidden="true">
@@ -517,7 +526,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
           {activeNote || activeHit ? (
             <div className="fude-pop panel" role="dialog" aria-label="Suggestion">
               {activeNote ? (<>
-                <p><b>{activeNote.kind === 'fact' ? 'fact check' : activeNote.kind}</b> {activeNote.msg}</p>
+                <p><b>{activeNote.kind === 'fact' ? 'fact check' : activeNote.kind}</b>{activeNote.author === 'claude' ? ' · from Claude' : ''} {activeNote.msg}</p>
                 {activeNote.fix ? <p className="fude-fix">→ {activeNote.fix}</p> : null}
                 <div className="hw-photo-actions">
                   {activeNote.fix && onNote ? <button type="button" className="tool-chip" onClick={() => useFix(activeNote)}>Use this fix</button> : null}

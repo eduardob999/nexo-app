@@ -79,7 +79,7 @@ export function sortDocs(docs: FudeDoc[]): FudeDoc[] {
 }
 
 /** A proposal from the reviewer. `fix` is empty when it is not sure of an exact replacement. */
-export interface Note { id: string; find: string; kind: string; msg: string; fix: string; status: 'open' | 'accepted' | 'dismissed' }
+export interface Note { id: string; find: string; kind: string; msg: string; fix: string; status: 'open' | 'accepted' | 'dismissed'; /** "claude" for a suggestion written from a developer session; absent for the reviewer's. */ author?: string }
 
 /** Put a note's fix in place of the first occurrence of its words. Null when the words are gone or there is no fix. */
 export function applyFix(text: string, find: string, fix: string): string | null {

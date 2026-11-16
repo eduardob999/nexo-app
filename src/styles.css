@@ -744,3 +744,8 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .flow-checks { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .flow-checks li { display: flex; gap: 10px; align-items: center; }
 .flow-checks li.ok span { color: var(--accent); font-weight: 700; } .flow-checks li.no { color: var(--muted); }
+
+.fude-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 4px; }
+.fude-chip { font: 600 12px var(--mono); color: var(--muted); padding: 3px 8px; border: 1px solid var(--line, rgba(128,128,128,.35)); border-radius: 999px; }
+.fude-chip.busy { color: var(--today); }
+.fude-chip.off { color: var(--now); }
