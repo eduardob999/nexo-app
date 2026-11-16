@@ -4,7 +4,7 @@ import type { ModuleProps } from '../types';
 import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type ChatMsg, type ExportRec, type HomeworkSet } from './model';
 import { Homework } from './Screen';
-import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -42,6 +42,7 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
     <Homework sets={sets} openId={openId} thumbs={thumbs} docs={docs}
       onCreateDoc={(title, profile, due, mode) => { const d = newDoc(title, profile, new Date(), due, mode); void createDocument(uid, d).then(() => { window.location.hash = `#/homework/${d.id}`; }); }}
       onSaveDoc={(d, text) => { void saveDocText(uid, d.id, text, new Date()); }}
+      onFactsDoc={(d, facts) => { void saveDocFacts(uid, d.id, facts); }}
       onModeDoc={(d, mode) => { void setDocMode(uid, d.id, mode, new Date()); }}
       exports={exports}
       onExport={(set, fmt, instructions, exportId) => { void requestExport(uid, set.id, fmt, instructions, exportId); }}

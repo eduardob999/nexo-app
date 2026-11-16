@@ -40,6 +40,7 @@ interface Props {
   onSaveDoc?: (doc: FudeDoc, text: string) => void;
   /** Switch a document between Plain and Suggestions. */
   onModeDoc?: (doc: FudeDoc, mode: DocMode) => void;
+  onFactsDoc?: (doc: FudeDoc, facts: string) => void;
   notes?: Note[];
   /** The host's way to put a document's text back into the draft it came from. */
   onSendBackDraft?: (draftId: string, text: string) => void;
@@ -310,7 +311,7 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
 }
 
 /** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
-function DocView({ doc, notes, onSave, onMode, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
+function DocView({ doc, notes, onSave, onMode, onFacts, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -371,7 +372,7 @@ function DocView({ doc, notes, onSave, onMode, onSelection, onClearSelection, on
           {activeNote || activeHit ? (
             <div className="fude-pop panel" role="dialog" aria-label="Suggestion">
               {activeNote ? (<>
-                <p><b>{activeNote.kind}</b> {activeNote.msg}</p>
+                <p><b>{activeNote.kind === 'fact' ? 'fact check' : activeNote.kind}</b> {activeNote.msg}</p>
                 {activeNote.fix ? <p className="fude-fix">→ {activeNote.fix}</p> : null}
                 <div className="hw-photo-actions">
                   {activeNote.fix && onNote ? <button type="button" className="tool-chip" onClick={() => useFix(activeNote)}>Use this fix</button> : null}
@@ -403,6 +404,15 @@ function DocView({ doc, notes, onSave, onMode, onSelection, onClearSelection, on
         <span className={lint.over ? 'bad' : lint.under ? 'warn' : ''}>{unit} {b?.unit ?? 'words'}{b ? ` of ${b.min ?? 0}–${b.max ?? '∞'}` : ''}</span>
         <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
       </div>
+      {onFacts ? (
+        <details className="panel hw-context">
+          <summary>{doc.facts?.trim() ? 'Facts: claims are checked against this' : 'Facts: add a fact sheet to check claims'}</summary>
+          <textarea className="hw-answer" rows={6} autoCorrect="off" defaultValue={doc.facts ?? ''}
+            placeholder="Paste what you may rely on: lecture notes, a paper's key points, the fact sheet from a search. The reviewer then flags any sentence that says more than this, or something different."
+            onBlur={(e) => { if (e.target.value !== (doc.facts ?? '')) onFacts(doc, e.target.value); }} />
+          <p className="mut">Saved when you leave the box. Changing it re-checks every sentence against the new facts.</p>
+        </details>
+      ) : null}
       {onReview ? (
         <div className="fude-review">
           {doc.review?.status === 'requested' || doc.review?.status === 'working'
@@ -416,7 +426,7 @@ function DocView({ doc, notes, onSave, onMode, onSelection, onClearSelection, on
         <ul className="panel fude-notes" aria-label="Reviewer notes">
           {notes.filter((n) => n.status === 'open').map((n) => (
             <li key={n.id}>
-              <p><b>{n.kind}</b> “{n.find}”</p>
+              <p><b>{n.kind === 'fact' ? 'fact check' : n.kind}</b> “{n.find}”</p>
               <p>{n.msg}</p>
               {n.fix ? <p className="fude-fix">→ {n.fix}</p> : null}
               <div className="hw-photo-actions">
@@ -521,11 +531,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;

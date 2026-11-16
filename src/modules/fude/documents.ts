@@ -37,6 +37,8 @@ export interface FudeDoc {
   draftId?: string;
   /** What Nexo knew about the task when this document was started from its card. The reviewer reads it as background. */
   context?: string;
+  /** His fact sheet (class notes, a paper, a search he trusts). When present the reviewer also checks every claim against it. */
+  facts?: string;
   /** The reviewer's progress: `requested` by the app, then `working`, then `ready` or `error`. */
   /** A selected passage in Suggestions mode: asked by the app, answered by the helper. A rewrite is only ever a proposal. */
   selectionRequest?: SelectionRequest;
