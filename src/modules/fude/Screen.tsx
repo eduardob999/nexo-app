@@ -6,6 +6,7 @@ import { lintText, PROFILES, profileById } from './profiles';
 import { markAt, markRanges, segments } from './marks';
 import { AutoReview } from './autoreview';
 import { translationPrompt } from './translation';
+import { STATUS_LABEL, tally } from './assignment';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
 
@@ -42,6 +43,10 @@ interface Props {
   /** Switch a document between Plain and Suggestions. */
   onModeDoc?: (doc: FudeDoc, mode: DocMode) => void;
   onFactsDoc?: (doc: FudeDoc, facts: string) => void;
+  /** The assignment's instructions, and the check of the text against them. */
+  onRequirements?: (doc: FudeDoc, requirements: string) => void;
+  onAssignmentCheck?: (doc: FudeDoc, text: string) => void;
+  onClearAssignmentCheck?: (doc: FudeDoc) => void;
   /** Ask for the translation prompt's glossary of what is easy to mistranslate, and clear it. */
   onTranslate?: (doc: FudeDoc, text: string) => void;
   onClearTranslate?: (doc: FudeDoc) => void;
@@ -319,6 +324,41 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
 }
 
 /** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
+function AssignmentPanel({ doc, text, onSaveReq, onCheck, onClear }: { doc: FudeDoc; text: string; onSaveReq?: Props['onRequirements']; onCheck: () => void; onClear: () => void }) {
+  const [req, setReq] = useState(doc.requirements ?? '');
+  const chk = doc.assignmentCheck;
+  const busy = chk?.status === 'requested' || chk?.status === 'working';
+  const items = chk?.status === 'ready' ? (chk.items ?? []) : [];
+  const t = tally(items);
+  const outdated = chk?.status === 'ready' && chk.text !== text;
+  return (
+    <details className="panel hw-context" open={!!chk || !doc.requirements ? true : undefined}>
+      <summary>{chk?.status === 'ready' ? `Assignment check: ${t.met} of ${t.total} done` : 'Assignment: check the text does what it asks'}</summary>
+      <textarea className="hw-answer" rows={5} value={req} autoCorrect="off"
+        placeholder="Paste the assignment instructions exactly as given (every part, length, language, what to relate it to)."
+        onChange={(e) => setReq(e.target.value)} onBlur={() => { if (req !== (doc.requirements ?? '')) onSaveReq?.(doc, req); }} />
+      <div className="hw-photo-actions">
+        {busy ? <span className="mut" role="status">Checking against the assignment…</span>
+          : <button type="button" className="tool-chip" disabled={!text.trim() || !(req.trim() || doc.context)} onClick={() => { if (req !== (doc.requirements ?? '')) onSaveReq?.(doc, req); onCheck(); }}>Check against the assignment</button>}
+        {chk ? <button type="button" className="tool-chip" onClick={onClear}>Close results</button> : null}
+      </div>
+      {chk?.status === 'error' ? <p className="hw-note" role="alert">{chk.message}</p> : null}
+      {outdated ? <p className="hw-note">You changed the text after this check. Check again before you submit.</p> : null}
+      {items.length ? (
+        <ul className="fude-notes" aria-label="Assignment requirements">
+          {items.map((i, n) => (
+            <li key={n} className={`sev-${i.status === 'met' ? 'info' : i.status === 'partial' ? 'warn' : 'error'}`}>
+              <p><b>{STATUS_LABEL[i.status]}</b> {i.req}</p>
+              {i.evidence ? <p className="mut">“{i.evidence}”</p> : null}
+              {i.gap ? <p>{i.gap}</p> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </details>
+  );
+}
+
 function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearCheck }: { doc: FudeDoc; text: string; onAsk: () => void; onClear: () => void; onSaveJa?: Props['onSaveTranslation']; onCheck?: Props['onCheckTranslation']; onClearCheck?: Props['onClearTranslationCheck'] }) {
   const req = doc.translationRequest;
   const [copied, setCopied] = useState(false);
@@ -390,7 +430,7 @@ function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearC
   );
 }
 
-function DocView({ doc, notes, onSave, onMode, onFacts, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSaveTranslation?: Props['onSaveTranslation']; onCheckTranslation?: Props['onCheckTranslation']; onClearTranslationCheck?: Props['onClearTranslationCheck']; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
+function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onRequirements?: Props['onRequirements']; onAssignmentCheck?: Props['onAssignmentCheck']; onClearAssignmentCheck?: Props['onClearAssignmentCheck']; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSaveTranslation?: Props['onSaveTranslation']; onCheckTranslation?: Props['onCheckTranslation']; onClearTranslationCheck?: Props['onClearTranslationCheck']; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -492,6 +532,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onTranslate, onClearTran
           <p className="mut">Saved when you leave the box. Changing it re-checks every sentence against the new facts.</p>
         </details>
       ) : null}
+      {onAssignmentCheck ? <AssignmentPanel doc={doc} text={text} onSaveReq={onRequirements} onCheck={() => onAssignmentCheck(doc, text)} onClear={() => onClearAssignmentCheck?.(doc)} /> : null}
       {onReview ? (
         <div className="fude-review">
           {doc.review?.status === 'requested' || doc.review?.status === 'working'
@@ -611,11 +652,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onSaveTranslation={onSaveTranslation} onCheckTranslation={onCheckTranslation} onClearTranslationCheck={onClearTranslationCheck} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onRequirements={onRequirements} onAssignmentCheck={onAssignmentCheck} onClearAssignmentCheck={onClearAssignmentCheck} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onSaveTranslation={onSaveTranslation} onCheckTranslation={onCheckTranslation} onClearTranslationCheck={onClearTranslationCheck} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;

@@ -4,7 +4,7 @@ import type { ModuleProps } from '../types';
 import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type ChatMsg, type ExportRec, type HomeworkSet } from './model';
 import { Homework } from './Screen';
-import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -53,6 +53,9 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
       onReviewDoc={(d, profile, auto) => { void requestReview(uid, d.id, profile, new Date(), auto === true); }}
       onSelection={(d, mode, text, question, profile) => { void requestSelection(uid, d.id, mode, text, question, profile); }}
       onClearSelection={(d) => { void clearSelection(uid, d.id); }}
+      onRequirements={(d, r) => { void saveDocRequirements(uid, d.id, r); }}
+      onAssignmentCheck={(d, text) => { void requestAssignmentCheck(uid, d.id, text); }}
+      onClearAssignmentCheck={(d) => { void clearAssignmentCheck(uid, d.id); }}
       onTranslate={(d, text) => { void requestTranslation(uid, d.id, text); }}
       onClearTranslate={(d) => { void clearTranslation(uid, d.id); }}
       onSaveTranslation={(d, ja) => { void saveTranslationDraft(uid, d.id, ja); }}

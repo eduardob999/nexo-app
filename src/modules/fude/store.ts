@@ -144,6 +144,19 @@ export function clearTranslationCheck(uid: string, id: string): Promise<void> {
   return updateDoc(dref(uid, id), { translationCheck: deleteField() });
 }
 
+export function saveDocRequirements(uid: string, id: string, requirements: string): Promise<void> {
+  return updateDoc(dref(uid, id), { requirements });
+}
+
+/** Judge the text against the assignment's instructions. The words travel with the request, so a later edit is not mistaken for what was judged. */
+export function requestAssignmentCheck(uid: string, id: string, text: string): Promise<void> {
+  return updateDoc(dref(uid, id), { assignmentCheck: { status: 'requested', text } });
+}
+
+export function clearAssignmentCheck(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { assignmentCheck: deleteField() });
+}
+
 export function clearTranslation(uid: string, id: string): Promise<void> {
   return updateDoc(dref(uid, id), { translationRequest: deleteField() });
 }

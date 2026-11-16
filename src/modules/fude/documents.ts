@@ -1,6 +1,7 @@
 /** Whole-text documents: a report, an email, free writing. One text, one profile (profiles.ts). */
 import type { CardFile } from '../../types';
 import type { Budget } from './profiles';
+import type { AssignmentCheck } from './assignment';
 import type { TranslationCheck, TranslationRequest } from './translation';
 
 /** How the editor behaves: `plain` is the field with counters and a Check button; `suggest` adds live suggestions in the text. */
@@ -46,6 +47,9 @@ export interface FudeDoc {
   /** Asked by the app, answered by the helper: what a translator could get wrong in `text`. */
   translationRequest?: TranslationRequest;
   /** The Japanese he pasted back (kept so it survives a reload) and the helper's comparison of it with `text`. */
+  /** The assignment's instructions, pasted as given. The assignment check judges the text against them. */
+  requirements?: string;
+  assignmentCheck?: AssignmentCheck;
   translationDraft?: string;
   translationCheck?: TranslationCheck;
   review?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; count?: number; at?: string };
