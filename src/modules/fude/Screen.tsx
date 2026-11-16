@@ -5,6 +5,7 @@ import { applyFix, docMode, sortDocs, type DocMode, type FudeDoc, type Note } fr
 import { lintText, PROFILES, profileById } from './profiles';
 import { markAt, markRanges, segments } from './marks';
 import { AutoReview } from './autoreview';
+import { translationPrompt } from './translation';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
 
@@ -41,6 +42,9 @@ interface Props {
   /** Switch a document between Plain and Suggestions. */
   onModeDoc?: (doc: FudeDoc, mode: DocMode) => void;
   onFactsDoc?: (doc: FudeDoc, facts: string) => void;
+  /** Ask for the translation prompt's glossary of what is easy to mistranslate, and clear it. */
+  onTranslate?: (doc: FudeDoc, text: string) => void;
+  onClearTranslate?: (doc: FudeDoc) => void;
   notes?: Note[];
   /** The host's way to put a document's text back into the draft it came from. */
   onSendBackDraft?: (draftId: string, text: string) => void;
@@ -311,7 +315,34 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
 }
 
 /** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
-function DocView({ doc, notes, onSave, onMode, onFacts, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
+function TranslatePanel({ doc, text, onAsk, onClear }: { doc: FudeDoc; text: string; onAsk: () => void; onClear: () => void }) {
+  const req = doc.translationRequest;
+  const [copied, setCopied] = useState(false);
+  const busy = req?.status === 'requested' || req?.status === 'working';
+  const prompt = req?.status === 'ready' && req.items ? translationPrompt(req.text, req.items, { budget: doc.budget }) : '';
+  const outdated = !!req && req.status === 'ready' && req.text !== text;
+  return (
+    <div className="fude-review">
+      {busy ? <span className="mut" role="status">Finding what is easy to mistranslate…</span>
+        : <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => { setCopied(false); onAsk(); }}>{prompt ? 'Rebuild translation prompt' : 'Translation prompt'}</button>}
+      {req?.status === 'error' ? <span className="hw-note" role="alert">{req.message}</span> : null}
+      {req?.status === 'stale' ? <span className="mut">The text changed while it was working. Press the button again.</span> : null}
+      {prompt ? (
+        <div className="panel fude-notes" aria-label="Translation prompt">
+          <p><b>Translation prompt</b> · {req?.items?.length ?? 0} terms, names and nuances pinned down</p>
+          {outdated ? <p className="hw-note">You changed the text after this was built. Rebuild it before you copy.</p> : null}
+          <textarea className="hw-answer" readOnly rows={8} value={prompt} onFocus={(e) => e.currentTarget.select()} />
+          <div className="hw-photo-actions">
+            <button type="button" className="tool-chip" disabled={outdated} onClick={() => { void navigator.clipboard.writeText(prompt).then(() => setCopied(true), () => setCopied(false)); }}>{copied ? 'Copied' : 'Copy prompt'}</button>
+            <button type="button" className="tool-chip" onClick={onClear}>Close</button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DocView({ doc, notes, onSave, onMode, onFacts, onTranslate, onClearTranslate, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -422,6 +453,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onSelection, onClearSele
           {doc.review?.status === 'ready' && notes.filter((n) => n.status === 'open').length === 0 ? <span className="mut">{doc.review.message ?? 'No problems found.'}</span> : null}
         </div>
       ) : null}
+      {onTranslate ? <TranslatePanel doc={doc} text={text} onAsk={() => onTranslate(doc, text)} onClear={() => onClearTranslate?.(doc)} /> : null}
       {notes.filter((n) => n.status === 'open').length ? (
         <ul className="panel fude-notes" aria-label="Reviewer notes">
           {notes.filter((n) => n.status === 'open').map((n) => (
@@ -531,11 +563,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onTranslate, onClearTranslate, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;

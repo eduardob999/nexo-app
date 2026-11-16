@@ -1,6 +1,7 @@
 /** Whole-text documents: a report, an email, free writing. One text, one profile (profiles.ts). */
 import type { CardFile } from '../../types';
 import type { Budget } from './profiles';
+import type { TranslationRequest } from './translation';
 
 /** How the editor behaves: `plain` is the field with counters and a Check button; `suggest` adds live suggestions in the text. */
 export type DocMode = 'plain' | 'suggest';
@@ -42,6 +43,8 @@ export interface FudeDoc {
   /** The reviewer's progress: `requested` by the app, then `working`, then `ready` or `error`. */
   /** A selected passage in Suggestions mode: asked by the app, answered by the helper. A rewrite is only ever a proposal. */
   selectionRequest?: SelectionRequest;
+  /** Asked by the app, answered by the helper: what a translator could get wrong in `text`. */
+  translationRequest?: TranslationRequest;
   review?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; count?: number; at?: string };
   createdAt: string;
   updatedAt: string;

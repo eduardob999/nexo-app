@@ -4,7 +4,7 @@ import type { ModuleProps } from '../types';
 import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type ChatMsg, type ExportRec, type HomeworkSet } from './model';
 import { Homework } from './Screen';
-import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -53,6 +53,8 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
       onReviewDoc={(d, profile, auto) => { void requestReview(uid, d.id, profile, new Date(), auto === true); }}
       onSelection={(d, mode, text, question, profile) => { void requestSelection(uid, d.id, mode, text, question, profile); }}
       onClearSelection={(d) => { void clearSelection(uid, d.id); }}
+      onTranslate={(d, text) => { void requestTranslation(uid, d.id, text); }}
+      onClearTranslate={(d) => { void clearTranslation(uid, d.id); }}
       onNoteStatus={(d, n, status) => { void setNoteStatus(uid, d.id, n.id, status); }}
       onCreate={(title, due) => { const s = newSet(title, new Date(), due); void createSet(uid, s).then(() => { window.location.hash = `#/homework/${s.id}`; }); }}
       onAddItem={(set, n, prompt) => { void saveItems(uid, set, [{ n, prompt }], new Date()); }}

@@ -126,6 +126,15 @@ export function requestSelection(uid: string, id: string, mode: SelectionRequest
   return updateDoc(dref(uid, id), { selectionRequest: { status: 'requested', mode, text, ...(question ? { question } : {}), profile } });
 }
 
+/** Ask what a translator could get wrong in this text. The words travel with the request, so a later edit makes the list stale instead of wrong. */
+export function requestTranslation(uid: string, id: string, text: string): Promise<void> {
+  return updateDoc(dref(uid, id), { translationRequest: { status: 'requested', text } });
+}
+
+export function clearTranslation(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { translationRequest: deleteField() });
+}
+
 export function clearSelection(uid: string, id: string): Promise<void> {
   return updateDoc(dref(uid, id), { selectionRequest: deleteField() });
 }
