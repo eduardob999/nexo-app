@@ -337,13 +337,13 @@ function AssignmentPanel({ doc, text, onSaveReq, onCheck, onClear }: { doc: Fude
       <textarea className="hw-answer" rows={5} value={req} autoCorrect="off"
         placeholder="Paste the assignment instructions exactly as given (every part, length, language, what to relate it to)."
         onChange={(e) => setReq(e.target.value)} onBlur={() => { if (req !== (doc.requirements ?? '')) onSaveReq?.(doc, req); }} />
-      <div className="hw-photo-actions">
+      <div className="fude-tool-actions">
         {busy ? <span className="mut" role="status">Checking against the assignment…</span>
           : <button type="button" className="tool-chip" disabled={!text.trim() || !(req.trim() || doc.context)} onClick={() => { if (req !== (doc.requirements ?? '')) onSaveReq?.(doc, req); onCheck(); }}>Check against the assignment</button>}
         {chk ? <button type="button" className="tool-chip" onClick={onClear}>Close results</button> : null}
       </div>
-      {chk?.status === 'error' ? <p className="hw-note" role="alert">{chk.message}</p> : null}
-      {outdated ? <p className="hw-note">You changed the text after this check. Check again before you submit.</p> : null}
+      {chk?.status === 'error' ? <p className="fude-tool-warn" role="alert">{chk.message}</p> : null}
+      {outdated ? <p className="fude-tool-warn">You changed the text after this check. Check again before you submit.</p> : null}
       {items.length ? (
         <ul className="fude-notes" aria-label="Assignment requirements">
           {items.map((i, n) => (
@@ -372,37 +372,38 @@ function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearC
   const notes = chk?.status === 'ready' ? (chk.items ?? []).map((n, i) => ({ n, i })).filter((x) => !skip.includes(x.i)) : [];
   const jaChanged = chk?.status === 'ready' && chk.japanese !== ja;
   return (
-    <div className="fude-review">
-      {busy ? <span className="mut" role="status">Finding what is easy to mistranslate…</span>
-        : <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => { setCopied(false); onAsk(); }}>{prompt ? 'Rebuild translation prompt' : 'Translation prompt'}</button>}
-      {req?.status === 'error' ? <span className="hw-note" role="alert">{req.message}</span> : null}
-      {req?.status === 'stale' ? <span className="mut">The text changed while it was working. Press the button again.</span> : null}
+    <div className="fude-tools">
+      <div className="fude-review">
+        {busy ? <span className="mut" role="status">Finding what is easy to mistranslate…</span>
+          : <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => { setCopied(false); onAsk(); }}>{prompt ? 'Rebuild translation prompt' : 'Translation prompt'}</button>}
+        {req?.status === 'error' ? <span className="hw-note" role="alert">{req.message}</span> : null}
+        {req?.status === 'stale' ? <span className="mut">The text changed while it was working. Press the button again.</span> : null}
+      </div>
       {prompt ? (
-        <div className="panel fude-notes" aria-label="Translation prompt">
-          <p><b>Translation prompt</b> · {req?.items?.length ?? 0} terms, names and nuances pinned down</p>
-          {outdated ? <p className="hw-note">You changed the text after this was built. Rebuild it before you copy.</p> : null}
-          <textarea className="hw-answer" readOnly rows={8} value={prompt} onFocus={(e) => e.currentTarget.select()} />
-          <div className="hw-photo-actions">
+        <section className="panel fude-tool" aria-label="Translation prompt">
+          <header className="fude-tool-head"><h3>Translation prompt</h3><p>{req?.items?.length ?? 0} terms, names and nuances pinned down. Paste it into ChatGPT.</p></header>
+          {outdated ? <p className="fude-tool-warn">You changed the text after this was built. Rebuild it before you copy.</p> : null}
+          <textarea className="hw-answer fude-tool-box" readOnly rows={9} value={prompt} onFocus={(e) => e.currentTarget.select()} />
+          <div className="fude-tool-actions">
             <button type="button" className="tool-chip" disabled={outdated} onClick={() => { void navigator.clipboard.writeText(prompt).then(() => setCopied(true), () => setCopied(false)); }}>{copied ? 'Copied' : 'Copy prompt'}</button>
             <button type="button" className="tool-chip" onClick={onClear}>Close</button>
           </div>
-        </div>
+        </section>
       ) : null}
       {onCheck ? (
-        <div className="panel fude-notes" aria-label="Translation check">
-          <p><b>Check the translation</b></p>
-          <p className="mut">Paste the Japanese you got back. It is compared with your English above, sentence by sentence.</p>
-          <textarea className="hw-answer" lang="ja" rows={7} value={ja} placeholder="ここに日本語訳を貼り付け" autoCorrect="off"
+        <section className="panel fude-tool" aria-label="Translation check">
+          <header className="fude-tool-head"><h3>Check the translation</h3><p>Paste the Japanese you got back. It is compared with your English above, sentence by sentence.</p></header>
+          <textarea className="hw-answer fude-tool-box" lang="ja" rows={7} value={ja} placeholder="ここに日本語訳を貼り付け" autoCorrect="off"
             onChange={(e) => { setJa(e.target.value); setSkip([]); }} onBlur={() => { if (ja !== (doc.translationDraft ?? '')) onSaveJa?.(doc, ja); }} />
-          <div className="fude-counts"><span>{Array.from(ja.replace(/\s+/g, '')).length} characters</span></div>
-          <div className="hw-photo-actions">
+          <div className="fude-tool-actions">
+            <span className="fude-tool-count">{Array.from(ja.replace(/\s+/g, '')).length} characters</span>
             {checking ? <span className="mut" role="status">Comparing with your English…</span>
               : <button type="button" className="tool-chip" disabled={!ja.trim() || !text.trim()} onClick={() => { setSkip([]); onCheck(doc, text, ja); }}>Submit for checking</button>}
           </div>
-          {chk?.status === 'error' ? <p className="hw-note" role="alert">{chk.message}</p> : null}
+          {chk?.status === 'error' ? <p className="fude-tool-warn" role="alert">{chk.message}</p> : null}
           {chk?.status === 'ready' ? (
             <>
-              {jaChanged ? <p className="hw-note">You changed the Japanese after this check. Submit again to check the new version.</p> : null}
+              {jaChanged ? <p className="fude-tool-warn">You changed the Japanese after this check. Submit again to check the new version.</p> : null}
               {notes.length === 0 ? <p className="mut">{(chk.items ?? []).length ? 'All notes handled.' : 'No departures from your English found.'}</p> : (
                 <ul className="fude-notes" aria-label="Translation notes">
                   {notes.map(({ n, i }) => (
@@ -421,10 +422,10 @@ function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearC
                   ))}
                 </ul>
               )}
-              <div className="hw-photo-actions"><button type="button" className="tool-chip" onClick={() => onClearCheck?.(doc)}>Close results</button></div>
+              <div className="fude-tool-actions"><button type="button" className="tool-chip" onClick={() => onClearCheck?.(doc)}>Close results</button></div>
             </>
           ) : null}
-        </div>
+        </section>
       ) : null}
     </div>
   );
