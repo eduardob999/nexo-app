@@ -131,6 +131,19 @@ export function requestTranslation(uid: string, id: string, text: string): Promi
   return updateDoc(dref(uid, id), { translationRequest: { status: 'requested', text } });
 }
 
+export function saveTranslationDraft(uid: string, id: string, japanese: string): Promise<void> {
+  return updateDoc(dref(uid, id), { translationDraft: japanese });
+}
+
+/** Compare his Japanese with his English. Both travel with the request, so editing either afterwards does not change what was compared. */
+export function requestTranslationCheck(uid: string, id: string, english: string, japanese: string): Promise<void> {
+  return updateDoc(dref(uid, id), { translationDraft: japanese, translationCheck: { status: 'requested', english, japanese } });
+}
+
+export function clearTranslationCheck(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { translationCheck: deleteField() });
+}
+
 export function clearTranslation(uid: string, id: string): Promise<void> {
   return updateDoc(dref(uid, id), { translationRequest: deleteField() });
 }

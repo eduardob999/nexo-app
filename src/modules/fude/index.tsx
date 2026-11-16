@@ -4,7 +4,7 @@ import type { ModuleProps } from '../types';
 import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type ChatMsg, type ExportRec, type HomeworkSet } from './model';
 import { Homework } from './Screen';
-import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -55,6 +55,9 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
       onClearSelection={(d) => { void clearSelection(uid, d.id); }}
       onTranslate={(d, text) => { void requestTranslation(uid, d.id, text); }}
       onClearTranslate={(d) => { void clearTranslation(uid, d.id); }}
+      onSaveTranslation={(d, ja) => { void saveTranslationDraft(uid, d.id, ja); }}
+      onCheckTranslation={(d, en, ja) => { void requestTranslationCheck(uid, d.id, en, ja); }}
+      onClearTranslationCheck={(d) => { void clearTranslationCheck(uid, d.id); }}
       onNoteStatus={(d, n, status) => { void setNoteStatus(uid, d.id, n.id, status); }}
       onCreate={(title, due) => { const s = newSet(title, new Date(), due); void createSet(uid, s).then(() => { window.location.hash = `#/homework/${s.id}`; }); }}
       onAddItem={(set, n, prompt) => { void saveItems(uid, set, [{ n, prompt }], new Date()); }}

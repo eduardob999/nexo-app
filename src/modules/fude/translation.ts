@@ -36,3 +36,15 @@ export function translationPrompt(text: string, items: GlossaryItem[], opts: { b
     '--- ENGLISH TEXT ---\n' + text.trim() + '\n--- END ---\n'
   );
 }
+
+export type CheckKind = 'meaning' | 'omission' | 'addition' | 'term' | 'hedge' | 'name' | 'style';
+export interface CheckNote { find: string; en: string; kind: CheckKind; msg: string; fix: string }
+/** His pasted Japanese compared with his English. Asked by the app, answered by the helper; a fix is only a proposal. */
+export interface TranslationCheck {
+  status: 'requested' | 'working' | 'ready' | 'error';
+  english: string;
+  japanese: string;
+  items?: CheckNote[];
+  message?: string;
+  at?: string;
+}

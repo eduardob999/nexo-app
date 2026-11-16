@@ -45,6 +45,10 @@ interface Props {
   /** Ask for the translation prompt's glossary of what is easy to mistranslate, and clear it. */
   onTranslate?: (doc: FudeDoc, text: string) => void;
   onClearTranslate?: (doc: FudeDoc) => void;
+  /** The pasted Japanese: saved as typed, compared with the English on Submit, and the comparison cleared. */
+  onSaveTranslation?: (doc: FudeDoc, japanese: string) => void;
+  onCheckTranslation?: (doc: FudeDoc, english: string, japanese: string) => void;
+  onClearTranslationCheck?: (doc: FudeDoc) => void;
   notes?: Note[];
   /** The host's way to put a document's text back into the draft it came from. */
   onSendBackDraft?: (draftId: string, text: string) => void;
@@ -315,12 +319,18 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
 }
 
 /** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
-function TranslatePanel({ doc, text, onAsk, onClear }: { doc: FudeDoc; text: string; onAsk: () => void; onClear: () => void }) {
+function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearCheck }: { doc: FudeDoc; text: string; onAsk: () => void; onClear: () => void; onSaveJa?: Props['onSaveTranslation']; onCheck?: Props['onCheckTranslation']; onClearCheck?: Props['onClearTranslationCheck'] }) {
   const req = doc.translationRequest;
   const [copied, setCopied] = useState(false);
   const busy = req?.status === 'requested' || req?.status === 'working';
   const prompt = req?.status === 'ready' && req.items ? translationPrompt(req.text, req.items, { budget: doc.budget }) : '';
   const outdated = !!req && req.status === 'ready' && req.text !== text;
+  const [ja, setJa] = useState(doc.translationDraft ?? '');
+  const [skip, setSkip] = useState<number[]>([]);
+  const chk = doc.translationCheck;
+  const checking = chk?.status === 'requested' || chk?.status === 'working';
+  const notes = chk?.status === 'ready' ? (chk.items ?? []).map((n, i) => ({ n, i })).filter((x) => !skip.includes(x.i)) : [];
+  const jaChanged = chk?.status === 'ready' && chk.japanese !== ja;
   return (
     <div className="fude-review">
       {busy ? <span className="mut" role="status">Finding what is easy to mistranslate…</span>
@@ -338,11 +348,49 @@ function TranslatePanel({ doc, text, onAsk, onClear }: { doc: FudeDoc; text: str
           </div>
         </div>
       ) : null}
+      {onCheck ? (
+        <div className="panel fude-notes" aria-label="Translation check">
+          <p><b>Check the translation</b></p>
+          <p className="mut">Paste the Japanese you got back. It is compared with your English above, sentence by sentence.</p>
+          <textarea className="hw-answer" lang="ja" rows={7} value={ja} placeholder="ここに日本語訳を貼り付け" autoCorrect="off"
+            onChange={(e) => { setJa(e.target.value); setSkip([]); }} onBlur={() => { if (ja !== (doc.translationDraft ?? '')) onSaveJa?.(doc, ja); }} />
+          <div className="fude-counts"><span>{Array.from(ja.replace(/\s+/g, '')).length} characters</span></div>
+          <div className="hw-photo-actions">
+            {checking ? <span className="mut" role="status">Comparing with your English…</span>
+              : <button type="button" className="tool-chip" disabled={!ja.trim() || !text.trim()} onClick={() => { setSkip([]); onCheck(doc, text, ja); }}>Submit for checking</button>}
+          </div>
+          {chk?.status === 'error' ? <p className="hw-note" role="alert">{chk.message}</p> : null}
+          {chk?.status === 'ready' ? (
+            <>
+              {jaChanged ? <p className="hw-note">You changed the Japanese after this check. Submit again to check the new version.</p> : null}
+              {notes.length === 0 ? <p className="mut">{(chk.items ?? []).length ? 'All notes handled.' : 'No departures from your English found.'}</p> : (
+                <ul className="fude-notes" aria-label="Translation notes">
+                  {notes.map(({ n, i }) => (
+                    <li key={i}>
+                      <p><b>{n.kind}</b>{n.find ? <> “{n.find}”</> : null}{n.en ? <> · English: “{n.en}”</> : null}</p>
+                      <p>{n.msg}</p>
+                      {n.fix ? <p className="fude-fix" lang="ja">→ {n.fix}</p> : null}
+                      <div className="hw-photo-actions">
+                        {n.fix && n.find && !jaChanged ? <button type="button" className="tool-chip" onClick={() => {
+                          const next = applyFix(ja, n.find, n.fix);
+                          if (next !== null) { setJa(next); onSaveJa?.(doc, next); setSkip((s) => [...s, i]); }
+                        }}>Use this fix</button> : null}
+                        <button type="button" className="tool-chip" onClick={() => setSkip((s) => [...s, i])}>{n.fix ? 'Keep mine' : 'Got it'}</button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="hw-photo-actions"><button type="button" className="tool-chip" onClick={() => onClearCheck?.(doc)}>Close results</button></div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function DocView({ doc, notes, onSave, onMode, onFacts, onTranslate, onClearTranslate, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
+function DocView({ doc, notes, onSave, onMode, onFacts, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSaveTranslation?: Props['onSaveTranslation']; onCheckTranslation?: Props['onCheckTranslation']; onClearTranslationCheck?: Props['onClearTranslationCheck']; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -453,7 +501,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onTranslate, onClearTran
           {doc.review?.status === 'ready' && notes.filter((n) => n.status === 'open').length === 0 ? <span className="mut">{doc.review.message ?? 'No problems found.'}</span> : null}
         </div>
       ) : null}
-      {onTranslate ? <TranslatePanel doc={doc} text={text} onAsk={() => onTranslate(doc, text)} onClear={() => onClearTranslate?.(doc)} /> : null}
+      {onTranslate ? <TranslatePanel doc={doc} text={text} onAsk={() => onTranslate(doc, text)} onClear={() => onClearTranslate?.(doc)} onSaveJa={onSaveTranslation} onCheck={onCheckTranslation} onClearCheck={onClearTranslationCheck} /> : null}
       {notes.filter((n) => n.status === 'open').length ? (
         <ul className="panel fude-notes" aria-label="Reviewer notes">
           {notes.filter((n) => n.status === 'open').map((n) => (
@@ -563,11 +611,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onTranslate, onClearTranslate, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onSaveTranslation={onSaveTranslation} onCheckTranslation={onCheckTranslation} onClearTranslationCheck={onClearTranslationCheck} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;
