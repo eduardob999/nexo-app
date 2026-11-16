@@ -107,6 +107,19 @@ export function PreviewApp() {
     { date: '2026-11-07', kind: 'light', wellbeing: 4, performance: null },
     { date: '2026-11-08', kind: 'full', wellbeing: null, performance: null },
   ];
+  if (which.startsWith('fude-flow-')) {
+    // fude-flow-<step>: the assignment flow at that step, with the fixtures of a half-finished 高橋 report.
+    const step = Number(which.slice('fude-flow-'.length)) || 1;
+    const ME = '# ME\n\n## The block\n\nME. Eduardo Bogado, master\'s student, Bioinformatics Center (Mamitsuka laboratory), Kyoto University. My research predicts properties of chemical compounds with DFT and machine learning.\n\n## Language rule for Japanese output\n\nKeep in Latin letters what Japanese scientific writing leaves in English.\n';
+    const text = 'Extracellular vesicles (EVs) are lipid-bound particles that cells release and that carry proteins and nucleic acids between cells.';
+    const fdoc = { id: 'fdflow', title: 'Submit 高橋 report (11 Nov lecture) in KULMS by Tue 17 Nov 17:00', profile: 'report-en', cardId: 'n-asg', due: '2026-11-17T17:00:00+09:00', createdAt: '2026-11-16T01:00:00Z', updatedAt: '2026-11-16T02:00:00Z',
+      text: step >= 5 ? text : '', requirements: 'Due Tue 17 Nov 17:00 JST, no resubmission, max 10 points. Write it following 「レポート作成について」 and submit in KULMS.\n\nRequirements:\n1. 【講義内容】 summary of the lecture\n2. 【考察】 your own thoughts\n3. About 1000 Japanese characters',
+      flow: { step, sources: { gmail: true, drive: true, mailspring: false, past: true }, ...(step >= 3 ? { contextItems: [{ id: 'c1', source: 'gmail', title: 'Nov 11 slide photos', from: 'me', date: '11 Nov', text: 'Slide 今日の内容: 細胞外小胞（EV）とは / EVの治療応用について', on: true, why: 'his own notes' }, { id: 'c2', source: 'drive', title: '20261111_104300.jpg', text: 'Bulk analysis NGS qPCR MS', on: false }] } : {}), ...(step >= 5 ? { research: 'EVs: exosomes 30-150 nm; sources: Buschmann 2021.' } : {}) },
+      ...(step === 2 ? { contextRequest: { status: 'ready', sources: { gmail: true, drive: true, mailspring: false, past: true }, items: [] } } : {}),
+      ...(step >= 8 ? { translationDraft: '細胞外小胞（EV）は、細胞が放出する脂質膜粒子である。' } : {}) };
+    const api = { me: ME, canCloseCard: true, save: (_d: unknown, patch: unknown) => { ((window as unknown as { __flow?: unknown[] }).__flow ??= []).push(patch); }, facts: () => {}, requirements: () => {}, askContext: (_d: unknown, src: unknown, hint: unknown) => { ((window as unknown as { __ctx?: unknown[] }).__ctx ??= []).push([src, hint]); }, clearContext: () => {}, submit: async () => {}, reopen: () => {} };
+    return (<><Homework sets={[]} docs={[fdoc as never]} openId="fdflow" flowApi={api} onCreate={() => {}} onAddItem={() => {}} onAnswer={() => {}} onCreateDoc={() => {}} onSaveDoc={() => {}} onModeDoc={() => {}} onFactsDoc={() => {}} onRequirements={() => {}} onAssignmentCheck={() => {}} onClearAssignmentCheck={() => {}} onTranslate={() => {}} onClearTranslate={() => {}} onSaveTranslation={() => {}} onCheckTranslation={() => {}} onClearTranslationCheck={() => {}} onReviewDoc={() => {}} onNoteStatus={() => {}} onSelection={() => {}} onClearSelection={() => {}} notes={[]} /><TabBar current="browse" draftCount={0} /></>);
+  }
   if (which === 'deadline') {
     const n9 = new Date('2026-11-09T14:00:00+09:00');
     const arr = (f: (h: number) => number) => Array.from({ length: 24 }, (_, h) => f(h));

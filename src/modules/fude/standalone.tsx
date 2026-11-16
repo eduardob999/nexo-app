@@ -9,6 +9,7 @@ import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthS
 import { isFirebaseConfigured } from '../../firebase';
 import { parseHash } from '../../useHash';
 import { FudeModule } from './index';
+import { markDone } from '../../cards';
 import '@fontsource/instrument-sans/latin-400.css';
 import '@fontsource/instrument-sans/latin-600.css';
 import '@fontsource/instrument-sans/latin-700.css';
@@ -35,7 +36,7 @@ function Standalone() {
     );
   }
   const r = parseHash(hash);
-  return <FudeModule uid={user.uid} openId={r.name === 'homework' ? r.id : undefined} />;
+  return <FudeModule uid={user.uid} openId={r.name === 'homework' ? r.id : undefined} host={{ markCardDone: (id) => markDone(user.uid, id) }} />;
 }
 
 const container = document.getElementById('root');

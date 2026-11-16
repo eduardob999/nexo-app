@@ -716,3 +716,31 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .hw-context > .fude-notes, .hw-context > .fude-tool-actions, .hw-context > .fude-tool-warn { margin-top: 12px; }
 .fude-tool .mut { margin: 0; font-size: 14px; }
 .fude-tools > .panel { margin-top: 0; }
+
+/* The assignment flow (Flow.tsx): a numbered bar, one step on screen, Back and Next at the foot. */
+.flow-bar { display: flex; gap: 6px; margin: 12px 0 4px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
+.flow-bar::-webkit-scrollbar { display: none; }
+.flow-dot { flex: 1 0 34px; height: 34px; border-radius: 17px; border: 1px solid var(--edge); background: var(--surface); color: var(--muted); font: 700 13px var(--mono); padding: 0; }
+.flow-dot.done { background: var(--chip); color: var(--ink); }
+.flow-dot.now { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.flow-head { margin: 12px 0 0; }
+.flow-head h2 { margin: 2px 0 4px; font: 700 22px/1.2 var(--sans); }
+.flow-head p { margin: 0; }
+.flow-head .kicker { color: var(--accent); }
+.flow-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 20px 0 8px; }
+.flow-next, .flow-primary { min-height: 44px; padding: 0 20px; border: 0; border-radius: 22px; background: var(--chip); color: var(--ink); font: 600 15px var(--sans); }
+.flow-next.ready, .flow-primary { background: var(--accent); color: var(--on-accent); }
+.flow-primary:disabled { opacity: .45; }
+.flow-sources, .flow-items { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.flow-items li { display: grid; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.flow-items li:first-child { border-top: 0; padding-top: 0; }
+.flow-check { display: flex; gap: 12px; align-items: flex-start; }
+.flow-check input { width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+.flow-check span { display: grid; gap: 2px; }
+.flow-check small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.flow-pre { white-space: pre-wrap; word-break: break-word; font: 13px/1.45 var(--mono); max-height: 280px; overflow: auto; margin: 8px 0 0; padding: 10px; border-radius: 12px; background: var(--chip); }
+.flow-file { position: relative; overflow: hidden; cursor: pointer; }
+.flow-file input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+.flow-checks { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.flow-checks li { display: flex; gap: 10px; align-items: center; }
+.flow-checks li.ok span { color: var(--accent); font-weight: 700; } .flow-checks li.no { color: var(--muted); }

@@ -27,3 +27,15 @@ describe('translationPrompt', () => {
     expect(p).not.toContain('Japanese characters in total');
   });
 });
+
+describe('translationPrompt in the assignment flow', () => {
+  it('carries the request, the background and the Japanese rule when given, and nothing extra when not', () => {
+    const plain = translationPrompt('Hello.', []);
+    expect(plain).not.toContain('WHAT THE REPORT IS FOR');
+    const p = translationPrompt('Hello.', [], { request: '1) Summary', jaRule: 'Keep DFT in Latin letters.', context: 'lecture notes' });
+    expect(p).toContain('WHAT THE REPORT IS FOR');
+    expect(p).toContain('1) Summary');
+    expect(p).toContain('- Keep DFT in Latin letters.');
+    expect(p).toContain('lecture notes');
+  });
+});

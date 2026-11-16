@@ -3,6 +3,7 @@ import type { CardFile } from '../../types';
 import type { Budget } from './profiles';
 import type { AssignmentCheck } from './assignment';
 import type { TranslationCheck, TranslationRequest } from './translation';
+import type { ContextRequest, Flow } from './flow';
 
 /** How the editor behaves: `plain` is the field with counters and a Check button; `suggest` adds live suggestions in the text. */
 export type DocMode = 'plain' | 'suggest';
@@ -49,6 +50,9 @@ export interface FudeDoc {
   /** The Japanese he pasted back (kept so it survives a reload) and the helper's comparison of it with `text`. */
   /** The assignment's instructions, pasted as given. The assignment check judges the text against them. */
   requirements?: string;
+  /** Set on an assignment document: the nine-step flow (flow.ts). Without it the document keeps the plain editor screen. */
+  flow?: Flow;
+  contextRequest?: ContextRequest;
   assignmentCheck?: AssignmentCheck;
   translationDraft?: string;
   translationCheck?: TranslationCheck;

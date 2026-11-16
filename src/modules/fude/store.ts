@@ -7,6 +7,7 @@ import { collection, deleteField, doc, FieldPath, limit, onSnapshot, orderBy, qu
 import { db } from '../../firebase';
 import { setAnswer, putItem, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type Question } from './model';
 import type { DocMode, FudeDoc, Note, SelectionRequest } from './documents';
+import type { ContextSources } from './flow';
 import type { CardFile } from '../../types';
 
 const col = (uid: string) => collection(db, 'users', uid, 'homework');
@@ -218,4 +219,36 @@ export function watchExports(uid: string, setId: string, on: (x: ExportRec[]) =>
 /** Ask the helper to lay the answers out as a document. `exportId` makes it a revision of that export. */
 export function requestExport(uid: string, setId: string, format: 'pdf' | 'docx' | 'md', instructions: string, exportId?: string): Promise<void> {
   return updateDoc(ref(uid, setId), { exportRequest: { status: 'requested', mode: exportId ? 'revise' : 'create', format, instructions: instructions.trim(), ...(exportId ? { exportId } : {}) } });
+}
+
+// ---- the assignment flow --------------------------------------------------------------------------------------
+/** Change fields of `flow` one by one (dotted paths), so two devices editing different steps do not overwrite each other. */
+export function saveFlow(uid: string, id: string, patch: Record<string, unknown>): Promise<void> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch)) out[`flow.${k}`] = v === undefined ? deleteField() : v;
+  return updateDoc(dref(uid, id), out);
+}
+
+/** Ask the helper to look for context in the chosen sources. The sources and the hint travel with the request. */
+export function requestContext(uid: string, id: string, sources: ContextSources, hint: string): Promise<void> {
+  return updateDoc(dref(uid, id), { contextRequest: { status: 'requested', sources, ...(hint.trim() ? { hint: hint.trim() } : {}) }, 'flow.sources': sources });
+}
+
+export function clearContextRequest(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { contextRequest: deleteField() });
+}
+
+/** The submitted version, kept on the document so future similar works can start from it. The card is closed by the host. */
+export function saveSubmission(uid: string, id: string, final: { english: string; japanese?: string }, now: Date): Promise<void> {
+  const at = now.toISOString();
+  return updateDoc(dref(uid, id), { 'flow.submittedAt': at, 'flow.final': { ...final, at }, archiveRequest: { status: 'requested' }, updatedAt: at });
+}
+
+export function reopenSubmission(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { 'flow.submittedAt': deleteField(), 'flow.final': deleteField() });
+}
+
+/** ME.md, mirrored by the helper into `users/{uid}/fudeconfig/me`, so the prompts always carry the current standing description. */
+export function watchMe(uid: string, on: (file: string) => void): () => void {
+  return onSnapshot(doc(db, 'users', uid, 'fudeconfig', 'me'), (snap) => on(snap.exists() ? String((snap.data() as { text?: string }).text ?? '') : ''), () => on(''));
 }

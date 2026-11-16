@@ -16,14 +16,17 @@ const line = (i: GlossaryItem): string => {
   return `- ${head}${i.note ? `: ${i.note}` : ''}`;
 };
 
-export function translationPrompt(text: string, items: GlossaryItem[], opts: { budget?: { unit: 'words' | 'chars'; max?: number } | undefined } = {}): string {
+export function translationPrompt(text: string, items: GlossaryItem[], opts: { budget?: { unit: 'words' | 'chars'; max?: number } | undefined; request?: string | undefined; jaRule?: string | undefined; context?: string | undefined } = {}): string {
   const headings = Array.from(new Set(text.match(/【[^】\n]+】/g) ?? []));
   const of = (k: GlossaryKind) => items.filter((i) => i.kind === k);
   const section = (title: string, k: GlossaryKind) => (of(k).length ? `${title}\n${of(k).map(line).join('\n')}\n\n` : '');
   const cap = opts.budget?.unit === 'chars' && opts.budget.max ? `Length: at most ${opts.budget.max} Japanese characters in total; if the translation would be longer, shorten by dropping the least important detail and tell me what you dropped.\n` : '';
   return (
     'Translate the English text below into Japanese for a university report (レポート). It is a student\'s own text: translate what it says and do not add, remove or strengthen any claim.\n\n' +
+    (opts.request?.trim() ? `WHAT THE REPORT IS FOR (the assignment, so every choice serves it)\n${opts.request.trim()}\n\n` : '') +
+    (opts.context?.trim() ? `BACKGROUND (to resolve ambiguous words; do not translate this part)\n${opts.context.trim().slice(0, 6000)}\n\n` : '') +
     'STYLE\n' +
+    (opts.jaRule?.trim() ? `- ${opts.jaRule.trim()}\n` : '') +
     '- Academic report register, である調 throughout (change this line if your course wants です・ます).\n' +
     (headings.length ? `- Keep the headings ${headings.join(' and ')} and the paragraph breaks as they are.\n` : '- Keep the paragraph breaks as they are.\n') +
     '- Keep gene, protein, residue and method names in Latin letters exactly as written (PINK1, Parkin, DJ-1, Ser65, Phos-tag SDS-PAGE, GAPDH, Km, kcat).\n' +

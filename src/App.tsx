@@ -271,7 +271,7 @@ export function App() {
             onRate: (d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); },
           }} />
       ) : tab === 'homework' ? (
-        <FudeModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} host={{ sendBackDraft: (draftId, text) => { const d = drafts.find((x) => x.id === draftId); if (d) { void editDraft(user.uid, d, text); flash('Text sent back to the draft'); window.location.hash = '#/drafts'; } } }} />
+        <FudeModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} host={{ markCardDone: (cardId) => markDone(user.uid, cardId), sendBackDraft: (draftId, text) => { const d = drafts.find((x) => x.id === draftId); if (d) { void editDraft(user.uid, d, text); flash('Text sent back to the draft'); window.location.hash = '#/drafts'; } } }} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} />
       ) : tab === 'shelf' ? (

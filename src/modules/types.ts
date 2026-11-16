@@ -22,5 +22,5 @@ export interface ModuleProps {
   /** The open item from the URL, when there is one. */
   openId?: string | undefined;
   /** What the host can do for the module, when it wants to offer it. A module never imports host code. */
-  host?: { sendBackDraft?: (draftId: string, text: string) => void };
+  host?: { sendBackDraft?: (draftId: string, text: string) => void; markCardDone?: (cardId: string) => Promise<void> | void };
 }

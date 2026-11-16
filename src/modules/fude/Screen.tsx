@@ -7,6 +7,8 @@ import { markAt, markRanges, segments } from './marks';
 import { AutoReview } from './autoreview';
 import { translationPrompt } from './translation';
 import { STATUS_LABEL, tally } from './assignment';
+import { clampStep, compileContext, firstOpenStep, isFlow, meJaRule } from './flow';
+import { AnswerStep, ContextStep, PromptStep, RequestStep, SkipTranslation, StepBar, StepHead, StepNav, SubmitStep, type FlowApi } from './Flow';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
 
@@ -62,6 +64,8 @@ interface Props {
   /** Rewrite or ask about a selected passage (Suggestions mode), and clear the answer. */
   onSelection?: (doc: FudeDoc, mode: 'rewrite' | 'ask', text: string, question: string, profile: unknown) => void;
   onClearSelection?: (doc: FudeDoc) => void;
+  /** What the assignment flow needs from the host (Flow.tsx). A document with `flow` and no api falls back to the plain editor. */
+  flowApi?: FlowApi;
 }
 
 const dueLabel = (due?: string) => (due ? new Date(due).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No deadline');
@@ -324,7 +328,7 @@ function AddQuestion({ onAdd }: { onAdd: (n: string, prompt: string) => void }) 
 }
 
 /** One whole text: a big IME-safe field with live counters and the profile's rules underneath. */
-function AssignmentPanel({ doc, text, onSaveReq, onCheck, onClear }: { doc: FudeDoc; text: string; onSaveReq?: Props['onRequirements']; onCheck: () => void; onClear: () => void }) {
+function AssignmentPanel({ doc, text, onSaveReq, onCheck, onClear, hideRequest }: { hideRequest?: boolean | undefined; doc: FudeDoc; text: string; onSaveReq?: Props['onRequirements']; onCheck: () => void; onClear: () => void }) {
   const [req, setReq] = useState(doc.requirements ?? '');
   const chk = doc.assignmentCheck;
   const busy = chk?.status === 'requested' || chk?.status === 'working';
@@ -332,14 +336,14 @@ function AssignmentPanel({ doc, text, onSaveReq, onCheck, onClear }: { doc: Fude
   const t = tally(items);
   const outdated = chk?.status === 'ready' && chk.text !== text;
   return (
-    <details className="panel hw-context" open={!!chk || !doc.requirements ? true : undefined}>
+    <details className="panel hw-context" open={!!chk || !doc.requirements || hideRequest ? true : undefined}>
       <summary>{chk?.status === 'ready' ? `Assignment check: ${t.met} of ${t.total} done` : 'Assignment: check the text does what it asks'}</summary>
-      <textarea className="hw-answer" rows={5} value={req} autoCorrect="off"
+      {hideRequest ? null : <textarea className="hw-answer" rows={5} value={req} autoCorrect="off"
         placeholder="Paste the assignment instructions exactly as given (every part, length, language, what to relate it to)."
-        onChange={(e) => setReq(e.target.value)} onBlur={() => { if (req !== (doc.requirements ?? '')) onSaveReq?.(doc, req); }} />
+        onChange={(e) => setReq(e.target.value)} onBlur={() => { if (req !== (doc.requirements ?? '')) onSaveReq?.(doc, req); }} />}
       <div className="fude-tool-actions">
         {busy ? <span className="mut" role="status">Checking against the assignment…</span>
-          : <button type="button" className="tool-chip" disabled={!text.trim() || !(req.trim() || doc.context)} onClick={() => { if (req !== (doc.requirements ?? '')) onSaveReq?.(doc, req); onCheck(); }}>Check against the assignment</button>}
+          : <button type="button" className="tool-chip" disabled={!text.trim() || !(req.trim() || doc.context || doc.requirements)} onClick={() => { if (req !== (doc.requirements ?? '')) onSaveReq?.(doc, req); onCheck(); }}>Check against the assignment</button>}
         {chk ? <button type="button" className="tool-chip" onClick={onClear}>Close results</button> : null}
       </div>
       {chk?.status === 'error' ? <p className="fude-tool-warn" role="alert">{chk.message}</p> : null}
@@ -359,11 +363,15 @@ function AssignmentPanel({ doc, text, onSaveReq, onCheck, onClear }: { doc: Fude
   );
 }
 
-function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearCheck }: { doc: FudeDoc; text: string; onAsk: () => void; onClear: () => void; onSaveJa?: Props['onSaveTranslation']; onCheck?: Props['onCheckTranslation']; onClearCheck?: Props['onClearTranslationCheck'] }) {
+function TranslateWrap({ on, doc, api, children }: { on: boolean; doc: FudeDoc; api: FlowApi | undefined; children: React.ReactNode }) {
+  return on && api ? <SkipTranslation doc={doc} api={api}>{children}</SkipTranslation> : <>{children}</>;
+}
+
+function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearCheck, part = 'both', extra }: { extra?: { request?: string; jaRule?: string; context?: string } | undefined; part?: 'prompt' | 'check' | 'both'; doc: FudeDoc; text: string; onAsk: () => void; onClear: () => void; onSaveJa?: Props['onSaveTranslation']; onCheck?: Props['onCheckTranslation']; onClearCheck?: Props['onClearTranslationCheck'] }) {
   const req = doc.translationRequest;
   const [copied, setCopied] = useState(false);
   const busy = req?.status === 'requested' || req?.status === 'working';
-  const prompt = req?.status === 'ready' && req.items ? translationPrompt(req.text, req.items, { budget: doc.budget }) : '';
+  const prompt = req?.status === 'ready' && req.items ? translationPrompt(req.text, req.items, { budget: doc.budget, ...(extra ?? {}) }) : '';
   const outdated = !!req && req.status === 'ready' && req.text !== text;
   const [ja, setJa] = useState(doc.translationDraft ?? '');
   const [skip, setSkip] = useState<number[]>([]);
@@ -371,15 +379,18 @@ function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearC
   const checking = chk?.status === 'requested' || chk?.status === 'working';
   const notes = chk?.status === 'ready' ? (chk.items ?? []).map((n, i) => ({ n, i })).filter((x) => !skip.includes(x.i)) : [];
   const jaChanged = chk?.status === 'ready' && chk.japanese !== ja;
+  // In the assignment flow the glossary is built as soon as the step opens, so the prompt is simply there.
+  const asked = useRef(false);
+  useEffect(() => { if (extra && part === 'prompt' && !req && text.trim() && !asked.current) { asked.current = true; onAsk(); } }, [extra, part, req, text, onAsk]);
   return (
     <div className="fude-tools">
-      <div className="fude-review">
+      {part === 'check' ? null : <div className="fude-review">
         {busy ? <span className="mut" role="status">Finding what is easy to mistranslate…</span>
           : <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => { setCopied(false); onAsk(); }}>{prompt ? 'Rebuild translation prompt' : 'Translation prompt'}</button>}
         {req?.status === 'error' ? <span className="hw-note" role="alert">{req.message}</span> : null}
         {req?.status === 'stale' ? <span className="mut">The text changed while it was working. Press the button again.</span> : null}
-      </div>
-      {prompt ? (
+      </div>}
+      {part !== 'check' && prompt ? (
         <section className="panel fude-tool" aria-label="Translation prompt">
           <header className="fude-tool-head"><h3>Translation prompt</h3><p>{req?.items?.length ?? 0} terms, names and nuances pinned down. Paste it into ChatGPT.</p></header>
           {outdated ? <p className="fude-tool-warn">You changed the text after this was built. Rebuild it before you copy.</p> : null}
@@ -390,7 +401,7 @@ function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearC
           </div>
         </section>
       ) : null}
-      {onCheck ? (
+      {onCheck && part !== 'prompt' ? (
         <section className="panel fude-tool" aria-label="Translation check">
           <header className="fude-tool-head"><h3>Check the translation</h3><p>Paste the Japanese you got back. It is compared with your English above, sentence by sentence.</p></header>
           <textarea className="hw-answer fude-tool-box" lang="ja" rows={7} value={ja} placeholder="ここに日本語訳を貼り付け" autoCorrect="off"
@@ -431,7 +442,7 @@ function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearC
   );
 }
 
-function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, onSelection, onClearSelection, onReview, onNote, onSendBack }: { doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onRequirements?: Props['onRequirements']; onAssignmentCheck?: Props['onAssignmentCheck']; onClearAssignmentCheck?: Props['onClearAssignmentCheck']; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSaveTranslation?: Props['onSaveTranslation']; onCheckTranslation?: Props['onCheckTranslation']; onClearTranslationCheck?: Props['onClearTranslationCheck']; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
+function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, onSelection, onClearSelection, onReview, onNote, onSendBack, flowApi }: { flowApi?: FlowApi | undefined; doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onRequirements?: Props['onRequirements']; onAssignmentCheck?: Props['onAssignmentCheck']; onClearAssignmentCheck?: Props['onClearAssignmentCheck']; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSaveTranslation?: Props['onSaveTranslation']; onCheckTranslation?: Props['onCheckTranslation']; onClearTranslationCheck?: Props['onClearTranslationCheck']; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -469,12 +480,26 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
   useLayoutEffect(() => { const a = area.current; if (suggest && a) { a.style.height = 'auto'; a.style.height = `${Math.max(a.scrollHeight, 240)}px`; } }, [text, suggest]);
   const unit = (doc.budget ?? profile.budget)?.unit === 'chars' ? lint.chars : lint.words;
   const b = lint.budget;
+  const flowOn = isFlow(doc) && !!flowApi;
+  const [step, setStep] = useState(() => (flowOn ? (doc.flow?.submittedAt ? 9 : doc.flow?.step ? clampStep(doc.flow.step) : firstOpenStep(doc)) : 6));
+  const goStep = (n: number) => { setStep(n); window.scrollTo(0, 0); flowApi?.save(doc, { step: n }); };
+  const show6 = !flowOn || step === 6;
   return (
-    <main className="screen hw">
+    <main className={`screen hw${flowOn ? ' flow' : ''}`}>
       <header className="thread-top"><Back /><span className="kicker">{profile.name} · {dueLabel(doc.due)}</span></header>
       <h1 className="thread-title">{doc.title}</h1>
-      {onMode ? <ModeSwitch mode={docMode(doc)} onChange={(m) => onMode(doc, m)} /> : null}
-      {suggest ? (
+      {flowOn && flowApi ? (<>
+        <StepBar doc={doc} step={step} onGo={goStep} />
+        <StepHead step={step} />
+        {step === 1 ? <RequestStep doc={doc} api={flowApi} /> : null}
+        {step === 2 ? <ContextStep doc={doc} api={flowApi} /> : null}
+        {step === 3 ? <PromptStep doc={doc} api={flowApi} kind="research" /> : null}
+        {step === 4 ? <AnswerStep doc={doc} api={flowApi} /> : null}
+        {step === 5 ? <PromptStep doc={doc} api={flowApi} kind="draft" /> : null}
+        {step === 9 ? <SubmitStep doc={doc} api={flowApi} text={text} /> : null}
+      </>) : null}
+      {show6 && onMode ? <ModeSwitch mode={docMode(doc)} onChange={(m) => onMode(doc, m)} /> : null}
+      {show6 && suggest ? (
         <div className="fude-edit">
           <div className="fude-back" aria-hidden="true">
             {segments(text, marks).map((p, i) => p.mark
@@ -505,26 +530,26 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
             </div>
           ) : null}
         </div>
-      ) : (
+      ) : show6 ? (
       <textarea id="fude-text" ref={area} className={`hw-answer fude-text${suggest ? ' on-back' : ''}`} lang={profile.lang === 'ja' ? 'ja' : undefined} rows={suggest ? 3 : 12} autoCorrect="off" spellCheck={profile.lang === 'en'}
         placeholder="Write here" value={text}
         onChange={(e) => { setText(e.target.value); saver.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); if (live) auto.current?.change(e.target.value, (e.nativeEvent as InputEvent).isComposing === true); }}
         onCompositionStart={() => { saver.current?.compositionStart(); if (live) auto.current?.compositionStart(); }}
         onCompositionEnd={(e) => { saver.current?.compositionEnd(e.currentTarget.value); if (live) auto.current?.compositionEnd(e.currentTarget.value); }}
         onBlur={() => saver.current?.blur()} />
-      )}
-      {doc.cardId || (doc.draftId && onSendBack) ? (
+      ) : null}
+      {show6 && (doc.cardId || (doc.draftId && onSendBack) ? (
         <div className="fude-review">
           {doc.cardId ? <a className="tool-chip" href={`#/card/${encodeURIComponent(doc.cardId)}`}>Back to the card</a> : null}
           {doc.draftId && onSendBack ? <button type="button" className="tool-chip" disabled={!text.trim()} onClick={() => { saver.current?.change(text); saver.current?.blur(); onSendBack(doc.draftId as string, text.trim()); }}>Send text back to the draft</button> : null}
         </div>
-      ) : null}
-      {suggest && onSelection ? <SelectionTools doc={doc} text={text} sel={sel} asking={asking} setAsking={setAsking} question={question} setQuestion={setQuestion} onAsk={(mode, passage, q) => { onSelection(doc, mode, passage, q, reviewProfile()); setAsking(false); setQuestion(''); }} onUse={(req) => { const next = applyFix(text, req.text, req.fix ?? ''); if (next !== null) { setText(next); saver.current?.change(next); saver.current?.blur(); } onClearSelection?.(doc); }} onClose={() => onClearSelection?.(doc)} /> : null}
-      <div className="fude-counts">
+      ) : null)}
+      {show6 && suggest && onSelection ? <SelectionTools doc={doc} text={text} sel={sel} asking={asking} setAsking={setAsking} question={question} setQuestion={setQuestion} onAsk={(mode, passage, q) => { onSelection(doc, mode, passage, q, reviewProfile()); setAsking(false); setQuestion(''); }} onUse={(req) => { const next = applyFix(text, req.text, req.fix ?? ''); if (next !== null) { setText(next); saver.current?.change(next); saver.current?.blur(); } onClearSelection?.(doc); }} onClose={() => onClearSelection?.(doc)} /> : null}
+      {show6 ? <div className="fude-counts">
         <span className={lint.over ? 'bad' : lint.under ? 'warn' : ''}>{unit} {b?.unit ?? 'words'}{b ? ` of ${b.min ?? 0}–${b.max ?? '∞'}` : ''}</span>
         <span className={`hw-save ${state}`} aria-live="polite">{state === 'dirty' ? 'Typing…' : state === 'saved' ? 'Saved' : ''}</span>
-      </div>
-      {onFacts ? (
+      </div> : null}
+      {onFacts && !flowOn ? (
         <details className="panel hw-context">
           <summary>{doc.facts?.trim() ? 'Facts: claims are checked against this' : 'Facts: add a fact sheet to check claims'}</summary>
           <textarea className="hw-answer" rows={6} autoCorrect="off" defaultValue={doc.facts ?? ''}
@@ -533,8 +558,8 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
           <p className="mut">Saved when you leave the box. Changing it re-checks every sentence against the new facts.</p>
         </details>
       ) : null}
-      {onAssignmentCheck ? <AssignmentPanel doc={doc} text={text} onSaveReq={onRequirements} onCheck={() => onAssignmentCheck(doc, text)} onClear={() => onClearAssignmentCheck?.(doc)} /> : null}
-      {onReview ? (
+      {onAssignmentCheck && show6 ? <AssignmentPanel hideRequest={flowOn} doc={doc} text={text} onSaveReq={onRequirements} onCheck={() => onAssignmentCheck(doc, text)} onClear={() => onClearAssignmentCheck?.(doc)} /> : null}
+      {show6 && onReview ? (
         <div className="fude-review">
           {doc.review?.status === 'requested' || doc.review?.status === 'working'
             ? <span className="mut" role="status">Checking your writing…</span>
@@ -543,8 +568,8 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
           {doc.review?.status === 'ready' && notes.filter((n) => n.status === 'open').length === 0 ? <span className="mut">{doc.review.message ?? 'No problems found.'}</span> : null}
         </div>
       ) : null}
-      {onTranslate ? <TranslatePanel doc={doc} text={text} onAsk={() => onTranslate(doc, text)} onClear={() => onClearTranslate?.(doc)} onSaveJa={onSaveTranslation} onCheck={onCheckTranslation} onClearCheck={onClearTranslationCheck} /> : null}
-      {notes.filter((n) => n.status === 'open').length ? (
+      {onTranslate && (!flowOn || step === 7 || step === 8) ? <TranslateWrap on={flowOn && !!flowApi} doc={doc} api={flowApi}><TranslatePanel extra={flowOn && flowApi ? { request: doc.requirements ?? '', jaRule: meJaRule(flowApi.me), context: compileContext(doc.flow) } : undefined} part={flowOn ? (step === 7 ? 'prompt' : 'check') : 'both'} doc={doc} text={text} onAsk={() => onTranslate(doc, text)} onClear={() => onClearTranslate?.(doc)} onSaveJa={onSaveTranslation} onCheck={onCheckTranslation} onClearCheck={onClearTranslationCheck} /></TranslateWrap> : null}
+      {show6 && notes.filter((n) => n.status === 'open').length ? (
         <ul className="panel fude-notes" aria-label="Reviewer notes">
           {notes.filter((n) => n.status === 'open').map((n) => (
             <li key={n.id}>
@@ -562,11 +587,12 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
           ))}
         </ul>
       ) : null}
-      {lint.hits.length ? (
+      {show6 && lint.hits.length ? (
         <ul className="panel fude-hits" aria-label="Rule notes">
           {lint.hits.map((h) => <li key={`${h.rule}-${h.index}`} className={`sev-${h.sev}`}><b>{h.match}</b> {h.msg}</li>)}
         </ul>
       ) : null}
+      {flowOn ? <StepNav doc={doc} step={step} onGo={goStep} /> : null}
     </main>
   );
 }
@@ -653,11 +679,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft, flowApi }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onRequirements={onRequirements} onAssignmentCheck={onAssignmentCheck} onClearAssignmentCheck={onClearAssignmentCheck} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onSaveTranslation={onSaveTranslation} onCheckTranslation={onCheckTranslation} onClearTranslationCheck={onClearTranslationCheck} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onRequirements={onRequirements} onAssignmentCheck={onAssignmentCheck} onClearAssignmentCheck={onClearAssignmentCheck} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onSaveTranslation={onSaveTranslation} onCheckTranslation={onCheckTranslation} onClearTranslationCheck={onClearTranslationCheck} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} flowApi={flowApi} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;

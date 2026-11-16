@@ -4,7 +4,8 @@ import type { ModuleProps } from '../types';
 import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type ChatMsg, type ExportRec, type HomeworkSet } from './model';
 import { Homework } from './Screen';
-import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import type { FlowApi } from './Flow';
+import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, saveFlow, requestContext, clearContextRequest, saveSubmission, reopenSubmission, watchMe, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -32,6 +33,18 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
     if (!openDoc) { setNotes([]); return undefined; }
     return watchNotes(uid, openDoc, setNotes);
   }, [uid, openDoc]);
+  const [me, setMe] = useState('');
+  useEffect(() => watchMe(uid, setMe), [uid]);
+  const flowApi: FlowApi = {
+    me, canCloseCard: !!host?.markCardDone,
+    save: (d, patch) => { void saveFlow(uid, d.id, patch); },
+    facts: (d, facts) => { void saveDocFacts(uid, d.id, facts); },
+    requirements: (d, r) => { void saveDocRequirements(uid, d.id, r); },
+    askContext: (d, sources, hint) => { void requestContext(uid, d.id, sources, hint); },
+    clearContext: (d) => { void clearContextRequest(uid, d.id); },
+    submit: async (d, final) => { await saveSubmission(uid, d.id, final, new Date()); if (d.cardId && host?.markCardDone) await host.markCardDone(d.cardId); },
+    reopen: (d) => { void reopenSubmission(uid, d.id); },
+  };
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   useEffect(() => watchHomework(uid, setSets, (e) => console.warn('[fude]', e)), [uid]);
   useEffect(() => {
@@ -39,7 +52,7 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
     return watchThumbs(uid, openId, setThumbs);
   }, [uid, openId]);
   return (
-    <Homework sets={sets} openId={openId} thumbs={thumbs} docs={docs}
+    <Homework flowApi={flowApi} sets={sets} openId={openId} thumbs={thumbs} docs={docs}
       onCreateDoc={(title, profile, due, mode) => { const d = newDoc(title, profile, new Date(), due, mode); void createDocument(uid, d).then(() => { window.location.hash = `#/homework/${d.id}`; }); }}
       onSaveDoc={(d, text) => { void saveDocText(uid, d.id, text, new Date()); }}
       onFactsDoc={(d, facts) => { void saveDocFacts(uid, d.id, facts); }}
