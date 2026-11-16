@@ -6,7 +6,7 @@
 export type Sev = 'info' | 'warn' | 'error';
 export interface Rule { id: string; pattern: string; flags?: string; sev: Sev; msg: string }
 export interface Budget { unit: 'words' | 'chars'; min?: number; max?: number }
-export interface Profile { id: string; name: string; hint: string; lang: 'en' | 'ja' | 'any'; budget?: Budget; rules: Rule[] }
+export interface Profile { id: string; name: string; hint: string; lang: 'en' | 'ja' | 'any'; budget?: Budget; rules: Rule[]; /** Ask the reviewer to be thorough and to give a fix for every note. */ strict?: boolean; /** Style instructions the reviewer reads with the rules. */ reviewNotes?: string }
 
 const NO_EM_DASH: Rule = { id: 'em-dash', pattern: '—', sev: 'warn', msg: 'Em dash (house style: no em dashes in prose).' };
 
@@ -22,6 +22,8 @@ export const PROFILES: Profile[] = [
   },
   {
     id: 'summary-en', name: 'Meeting summary (English)', hint: 'Teacher voice: short sentences, reasons with because and so, no "we", no names, no filler', lang: 'en',
+    strict: true,
+    reviewNotes: 'Voice: a science teacher explaining to a bright class. One idea per sentence (12 to 22 words). Say what a thing does, in the order the reader meets it, and why, with "because" and "so". Flag definition chains ("X is a Y that Z, enabling W"), stacked appositions, trailing participle clauses, and sentences whose only verb is "is" when a real verb would explain better. Impersonal, no "we". Placeholders like {cite:key} and {ref:key} are references: never change or flag them. The fix must keep the facts, numbers and citations exactly and only change the wording.',
     budget: { unit: 'words', min: 1500, max: 2600 },
     rules: [
       NO_EM_DASH,

@@ -457,7 +457,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
   const lint = lintText(text, profile, doc.budget ?? profile.budget);
   const suggest = docMode(doc) === 'suggest';
   const area = useRef<HTMLTextAreaElement | null>(null);
-  const reviewProfile = () => ({ name: profile.name, lang: profile.lang, ...(lint.budget ? { budget: lint.budget } : {}), rules: profile.rules.map((r) => ({ msg: r.msg })) });
+  const reviewProfile = () => ({ name: profile.name, lang: profile.lang, ...(lint.budget ? { budget: lint.budget } : {}), rules: profile.rules.map((r) => ({ msg: r.msg })), ...(profile.strict ? { strict: true } : {}), ...(profile.reviewNotes ? { notes: profile.reviewNotes } : {}) });
   const reviewing = doc.review?.status === 'requested' || doc.review?.status === 'working';
   // Suggestions mode reviews by itself after he pauses, through the same request the Check button makes.
   const auto = useRef<AutoReview | null>(null);
