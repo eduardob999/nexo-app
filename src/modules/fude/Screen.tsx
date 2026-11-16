@@ -4,6 +4,7 @@ import { Camera } from './Camera';
 import { applyFix, docMode, sortDocs, type DocMode, type FudeDoc, type Note } from './documents';
 import { lintText, PROFILES, profileById } from './profiles';
 import { SuggestBar } from './SuggestBar';
+import { ChangesPanel } from './ChangesPanel';
 import { acceptAll, readPaused, writePaused } from './bulk';
 import { markAt, markRanges, segments } from './marks';
 import { AutoReview } from './autoreview';
@@ -63,6 +64,7 @@ interface Props {
   onSendBackDraft?: (draftId: string, text: string) => void;
   onReviewDoc?: (doc: FudeDoc, profile: unknown, auto?: boolean) => void;
   onNoteStatus?: (doc: FudeDoc, note: Note, status: Note['status']) => void;
+  onBase?: (doc: FudeDoc, base: string | null) => void;
   /** Rewrite or ask about a selected passage (Suggestions mode), and clear the answer. */
   onSelection?: (doc: FudeDoc, mode: 'rewrite' | 'ask', text: string, question: string, profile: unknown) => void;
   onClearSelection?: (doc: FudeDoc) => void;
@@ -444,7 +446,7 @@ function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearC
   );
 }
 
-function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, onSelection, onClearSelection, onReview, onNote, onSendBack, flowApi }: { flowApi?: FlowApi | undefined; doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onRequirements?: Props['onRequirements']; onAssignmentCheck?: Props['onAssignmentCheck']; onClearAssignmentCheck?: Props['onClearAssignmentCheck']; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSaveTranslation?: Props['onSaveTranslation']; onCheckTranslation?: Props['onCheckTranslation']; onClearTranslationCheck?: Props['onClearTranslationCheck']; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
+function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, onSelection, onClearSelection, onReview, onNote, onBase, onSendBack, flowApi }: { flowApi?: FlowApi | undefined; doc: FudeDoc; notes: Note[]; onSave: (doc: FudeDoc, text: string) => void; onMode?: ((doc: FudeDoc, mode: DocMode) => void) | undefined; onFacts?: ((doc: FudeDoc, facts: string) => void) | undefined; onRequirements?: Props['onRequirements']; onAssignmentCheck?: Props['onAssignmentCheck']; onClearAssignmentCheck?: Props['onClearAssignmentCheck']; onTranslate?: ((doc: FudeDoc, text: string) => void) | undefined; onClearTranslate?: ((doc: FudeDoc) => void) | undefined; onSaveTranslation?: Props['onSaveTranslation']; onCheckTranslation?: Props['onCheckTranslation']; onClearTranslationCheck?: Props['onClearTranslationCheck']; onSelection?: Props['onSelection'] | undefined; onClearSelection?: Props['onClearSelection'] | undefined; onReview?: ((doc: FudeDoc, profile: unknown, auto?: boolean) => void) | undefined; onBase?: ((doc: FudeDoc, base: string | null) => void) | undefined; onNote?: ((doc: FudeDoc, note: Note, status: Note['status']) => void) | undefined; onSendBack?: ((draftId: string, text: string) => void) | undefined }) {
   const profile = profileById(doc.profile);
   const [text, setText] = useState(doc.text);
   const [state, setState] = useState<SaveState>('idle');
@@ -508,6 +510,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
       {show6 ? <SuggestBar text={text} notes={notes} reviewing={reviewing} paused={paused} suggest={suggest} onPause={setPaused}
         onAcceptAll={() => { const r = acceptAll(text, notes); if (r.applied.length) { setText(r.text); saver.current?.change(r.text); saver.current?.blur(); r.applied.forEach((n) => onNote?.(doc, n, 'accepted')); } }}
         onRejectAll={() => notes.filter((n) => n.status === 'open').forEach((n) => onNote?.(doc, n, 'dismissed'))} /> : null}
+      {show6 && onBase ? <ChangesPanel base={doc.base} text={text} onBase={(b) => onBase(doc, b)} onText={(t) => { setText(t); saver.current?.change(t); saver.current?.blur(); }} /> : null}
       {show6 && suggest ? (
         <div className="fude-edit">
           <div className="fude-back" aria-hidden="true">
@@ -688,11 +691,11 @@ function NewDoc({ onCreate }: { onCreate: (title: string, profile: string, due?:
   );
 }
 
-export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, notes = [], onReviewDoc, onNoteStatus, onSelection, onClearSelection, onSendBackDraft, flowApi }: Props) {
+export function Homework({ sets, openId, onCreate, onAddItem, onAnswer, thumbs = {}, onPhotos, onRead, onConfirm, onDiscard, onCheck, onContext, chat = [], onChat, exports = [], onExport, docs = [], onCreateDoc, onSaveDoc, onModeDoc, onFactsDoc, onRequirements, onAssignmentCheck, onClearAssignmentCheck, onTranslate, onClearTranslate, onSaveTranslation, onCheckTranslation, onClearTranslationCheck, notes = [], onReviewDoc, onNoteStatus, onBase, onSelection, onClearSelection, onSendBackDraft, flowApi }: Props) {
   const list = sortSets(sets);
   const docList = sortDocs(docs);
   const openDoc = openId ? docs.find((d) => d.id === openId && !d.deleted) : undefined;
-  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onRequirements={onRequirements} onAssignmentCheck={onAssignmentCheck} onClearAssignmentCheck={onClearAssignmentCheck} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onSaveTranslation={onSaveTranslation} onCheckTranslation={onCheckTranslation} onClearTranslationCheck={onClearTranslationCheck} onReview={onReviewDoc} onNote={onNoteStatus} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} flowApi={flowApi} />;
+  if (openDoc && onSaveDoc) return <DocView key={openDoc.id} doc={openDoc} notes={notes} onSave={onSaveDoc} onMode={onModeDoc} onFacts={onFactsDoc} onRequirements={onRequirements} onAssignmentCheck={onAssignmentCheck} onClearAssignmentCheck={onClearAssignmentCheck} onTranslate={onTranslate} onClearTranslate={onClearTranslate} onSaveTranslation={onSaveTranslation} onCheckTranslation={onCheckTranslation} onClearTranslationCheck={onClearTranslationCheck} onReview={onReviewDoc} onNote={onNoteStatus} onBase={onBase} onSelection={onSelection} onClearSelection={onClearSelection} onSendBack={onSendBackDraft} flowApi={flowApi} />;
   const open = openId ? sets.find((s) => s.id === openId && !s.deleted) : undefined;
   if (openId && !open && !openDoc) {
     return <main className="screen"><header className="thread-top"><Back /><span className="kicker">HOMEWORK</span></header><p className="empty">That set is not here (yet).</p></main>;

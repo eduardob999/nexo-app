@@ -56,6 +56,8 @@ export interface FudeDoc {
   assignmentCheck?: AssignmentCheck;
   translationDraft?: string;
   translationCheck?: TranslationCheck;
+  /** A saved version to compare against: the Changes panel shows what differs from it, and he can revert any change. */
+  base?: string;
   review?: { status: 'requested' | 'working' | 'ready' | 'error'; message?: string; count?: number; at?: string };
   createdAt: string;
   updatedAt: string;

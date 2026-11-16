@@ -112,6 +112,11 @@ export function setDocMode(uid: string, id: string, mode: DocMode, now: Date): P
   return updateDoc(dref(uid, id), { mode, updatedAt: now.toISOString() });
 }
 
+/** Save (or clear, with null) the version the Changes panel compares against. Its own field, so the text is not touched. */
+export function setDocBase(uid: string, id: string, base: string | null): Promise<void> {
+  return updateDoc(dref(uid, id), { base: base === null ? deleteField() : base });
+}
+
 /** The fact sheet the reviewer checks claims against. Its own field, so the text is not touched. */
 export function saveDocFacts(uid: string, id: string, facts: string): Promise<void> {
   return updateDoc(dref(uid, id), { facts });

@@ -5,7 +5,7 @@ import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type ChatMsg, type ExportRec, type HomeworkSet } from './model';
 import { Homework } from './Screen';
 import type { FlowApi } from './Flow';
-import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, saveFlow, requestContext, clearContextRequest, saveSubmission, reopenSubmission, watchMe, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setDocBase, saveFlow, requestContext, clearContextRequest, saveSubmission, reopenSubmission, watchMe, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -75,6 +75,7 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
       onCheckTranslation={(d, en, ja) => { void requestTranslationCheck(uid, d.id, en, ja); }}
       onClearTranslationCheck={(d) => { void clearTranslationCheck(uid, d.id); }}
       onNoteStatus={(d, n, status) => { void setNoteStatus(uid, d.id, n.id, status); }}
+      onBase={(d, base) => { void setDocBase(uid, d.id, base); }}
       onCreate={(title, due) => { const s = newSet(title, new Date(), due); void createSet(uid, s).then(() => { window.location.hash = `#/homework/${s.id}`; }); }}
       onAddItem={(set, n, prompt) => { void saveItems(uid, set, [{ n, prompt }], new Date()); }}
       onAnswer={(set, item, text) => { void saveAnswer(uid, set.id, item, text, new Date()); }}
