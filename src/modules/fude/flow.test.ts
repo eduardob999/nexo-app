@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeText, chosenContext, compileContext, currentStep, draftPrompt, factSheet, firstOpenStep, meBlock, meJaRule, researchPrompt, stepDone, type FlowDoc, type ContextItem } from './flow';
+import { DEFAULT_HEADER, headerFor, jaBudgetOf, LECTURE_STYLE, GENERAL_STYLE, styleFor, submitLang, decodeText, chosenContext, compileContext, currentStep, draftPrompt, factSheet, firstOpenStep, meBlock, meJaRule, researchPrompt, stepDone, type FlowDoc, type ContextItem } from './flow';
 
 const item = (o: Partial<ContextItem>): ContextItem => ({ id: 'a', source: 'gmail', title: 'Nov 11 notes', text: 'x', on: true, ...o });
 const base: FlowDoc = { title: '高橋 report', text: '' };
@@ -34,9 +34,13 @@ describe('steps', () => {
     expect(stepDone({ ...d, text: 'abcd' }, 6)).toBe(false);
   });
   it('translation steps are done by skipping', () => {
-    expect(stepDone({ ...base, flow: { skipTranslation: true } }, 7)).toBe(true);
     expect(stepDone({ ...base, flow: { skipTranslation: true } }, 8)).toBe(true);
-    expect(stepDone(base, 8)).toBe(false);
+    expect(stepDone({ ...base, flow: { skipTranslation: true } }, 9)).toBe(true);
+    expect(stepDone(base, 9)).toBe(false);
+  });
+  it('the naturalize step is done when he passes it', () => {
+    expect(stepDone({ ...base, flow: {} }, 7)).toBe(false);
+    expect(stepDone({ ...base, flow: { naturalizeDone: true } }, 7)).toBe(true);
     expect(stepDone({ ...base, flow: {} }, 3)).toBe(false);
   });
   it('lands on the first step that is not done', () => {
@@ -45,9 +49,15 @@ describe('steps', () => {
     expect(firstOpenStep({ ...base, requirements: 'r', flow: { contextSkipped: true } })).toBe(3);
   });
   it('a submitted document sits on the last step, and a bad stored step is clamped', () => {
-    expect(currentStep({ ...base, flow: { submittedAt: 'now', step: 2 } })).toBe(9);
+    expect(currentStep({ ...base, flow: { submittedAt: 'now', step: 2 } })).toBe(10);
     expect(currentStep({ ...base, flow: { step: 99 } })).toBe(1);
     expect(currentStep({ ...base, flow: { step: 4 } })).toBe(4);
+  });
+  it('a step stored before the naturalize step existed means the same step one place later', () => {
+    expect(currentStep({ ...base, flow: { step: 7 } })).toBe(8);
+    expect(currentStep({ ...base, flow: { step: 9 } })).toBe(10);
+    expect(currentStep({ ...base, flow: { step: 6 } })).toBe(6);
+    expect(currentStep({ ...base, flow: { step: 7, v: 2 } })).toBe(7);
   });
 });
 
@@ -90,5 +100,38 @@ describe('decodeText', () => {
     expect(decodeText(buf([0xef, 0xbb, 0xbf, 0x41]))).toBe('A');
     expect(decodeText(new TextEncoder().encode('こんにちは').buffer as ArrayBuffer)).toBe('こんにちは');
     expect(decodeText(buf([0x82, 0xa0]))).toBe('あ');
+  });
+});
+
+describe('the lecture-report workflow', () => {
+  const i = { title: '高橋 report', request: 'Lecture report. 各テーマを1000〜2000字程度にまとめること。 【講義内容】【考察】', context: '[Gmail: transcript]\nfacts', me: ME };
+  it('reads the Japanese character range from the assignment text', () => {
+    expect(jaBudgetOf({ requirements: i.request })).toEqual({ min: 1000, max: 2000 });
+    expect(jaBudgetOf({ requirements: 'Write about it.' })).toBeUndefined();
+  });
+  it('a lecture in Japanese means the draft is in English for translation, sized to the character range', () => {
+    const p = draftPrompt({ ...i, submitLang: submitLang({ lectureLanguage: 'ja' }), jaBudget: { min: 1000, max: 2000 } });
+    expect(p).toContain('submitted in Japanese');
+    expect(p).toContain('translates cleanly');
+    expect(p).toMatch(/Length: about \d+ to \d+ words/);
+    expect(p).toContain('1000 to 2000 characters');
+    expect(submitLang({ lectureLanguage: 'en' })).toBeUndefined();
+  });
+  it('the lecture style carries the rules he gave: chronology, the lecturer, explained terms, long sentences', () => {
+    const p = draftPrompt(i);
+    for (const k of ['chronological order', 'Then the lecturer talked about', 'the lecturer', 'Explain every abbreviation', 'long, flowing sentences', 'No em dashes']) expect(p).toContain(k);
+    expect(styleFor(undefined, i.request)).toBe(LECTURE_STYLE);
+    expect(styleFor(undefined, 'Write a summary of the paper')).toBe(GENERAL_STYLE);
+    expect(styleFor('Only this.', i.request)).toBe('Only this.');
+  });
+  it('his opinion notes go in the prompt, and an assignment that asks for an opinion without notes asks for them', () => {
+    expect(draftPrompt({ ...i, opinion: 'It struck me that methods decide what we see.' })).toContain('methods decide what we see');
+    expect(draftPrompt({ ...i, request: 'Write your own opinion (考察).' })).toContain('write NEED:');
+    expect(draftPrompt({ ...i, request: 'Summarise.' })).not.toContain('MY OPINION NOTES');
+  });
+  it('the header defaults to the Japanese report header and can be emptied', () => {
+    expect(headerFor(undefined)).toBe(DEFAULT_HEADER);
+    expect(headerFor({ header: '' })).toBe('');
+    expect(DEFAULT_HEADER).toContain('氏名：Eduardo Bogado');
   });
 });

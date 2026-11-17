@@ -10,8 +10,9 @@ import { markAt, markRanges, segments } from './marks';
 import { AutoReview } from './autoreview';
 import { translationPrompt } from './translation';
 import { STATUS_LABEL, tally } from './assignment';
-import { clampStep, compileContext, firstOpenStep, isFlow, meJaRule } from './flow';
-import { AnswerStep, ContextStep, PromptStep, RequestStep, SkipTranslation, StepBar, StepHead, StepNav, SubmitStep, type FlowApi } from './Flow';
+import { clampStep, compileContext, firstOpenStep, headerFor, isFlow, jaBudgetOf, LAST_STEP, meJaRule, storedStep } from './flow';
+import { AnswerStep, CompareBox, ContextStep, EditsBox, HeaderBox, NaturalizeStep, PromptStep, RequestStep, SkipTranslation, StepBar, StepHead, StepNav, SubmitStep, type FlowApi } from './Flow';
+import { lengthVerdict } from './lengths';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
 
@@ -371,7 +372,7 @@ function TranslateWrap({ on, doc, api, children }: { on: boolean; doc: FudeDoc; 
   return on && api ? <SkipTranslation doc={doc} api={api}>{children}</SkipTranslation> : <>{children}</>;
 }
 
-function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearCheck, part = 'both', extra }: { extra?: { request?: string; jaRule?: string; context?: string } | undefined; part?: 'prompt' | 'check' | 'both'; doc: FudeDoc; text: string; onAsk: () => void; onClear: () => void; onSaveJa?: Props['onSaveTranslation']; onCheck?: Props['onCheckTranslation']; onClearCheck?: Props['onClearTranslationCheck'] }) {
+function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearCheck, part = 'both', extra }: { extra?: { request?: string; jaRule?: string; context?: string; header?: string; jaBudget?: { min?: number; max?: number } | undefined } | undefined; part?: 'prompt' | 'check' | 'both'; doc: FudeDoc; text: string; onAsk: () => void; onClear: () => void; onSaveJa?: Props['onSaveTranslation']; onCheck?: Props['onCheckTranslation']; onClearCheck?: Props['onClearTranslationCheck'] }) {
   const req = doc.translationRequest;
   const [copied, setCopied] = useState(false);
   const busy = req?.status === 'requested' || req?.status === 'working';
@@ -411,7 +412,7 @@ function TranslatePanel({ doc, text, onAsk, onClear, onSaveJa, onCheck, onClearC
           <textarea className="hw-answer fude-tool-box" lang="ja" rows={7} value={ja} placeholder="ここに日本語訳を貼り付け" autoCorrect="off"
             onChange={(e) => { setJa(e.target.value); setSkip([]); }} onBlur={() => { if (ja !== (doc.translationDraft ?? '')) onSaveJa?.(doc, ja); }} />
           <div className="fude-tool-actions">
-            <span className="fude-tool-count">{Array.from(ja.replace(/\s+/g, '')).length} characters</span>
+            <span className={`fude-tool-count${extra?.jaBudget && lengthVerdict(ja, extra.jaBudget).status === 'over' ? ' bad' : ''}`}>{extra?.jaBudget ? lengthVerdict(ja, extra.jaBudget).message : `${Array.from(ja.replace(/\s+/g, '')).length} characters`}</span>
             {checking ? <span className="mut" role="status">Comparing with your English…</span>
               : <button type="button" className="tool-chip" disabled={!ja.trim() || !text.trim()} onClick={() => { setSkip([]); onCheck(doc, text, ja); }}>Submit for checking</button>}
           </div>
@@ -489,8 +490,8 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
   const unit = (doc.budget ?? profile.budget)?.unit === 'chars' ? lint.chars : lint.words;
   const b = lint.budget;
   const flowOn = isFlow(doc) && !!flowApi;
-  const [step, setStep] = useState(() => (flowOn ? (doc.flow?.submittedAt ? 9 : doc.flow?.step ? clampStep(doc.flow.step) : firstOpenStep(doc)) : 6));
-  const goStep = (n: number) => { setStep(n); window.scrollTo(0, 0); flowApi?.save(doc, { step: n }); };
+  const [step, setStep] = useState(() => (flowOn ? (doc.flow?.submittedAt ? LAST_STEP : doc.flow?.step ? clampStep(storedStep(doc.flow)) : firstOpenStep(doc)) : 6));
+  const goStep = (n: number) => { setStep(n); window.scrollTo(0, 0); flowApi?.save(doc, { step: n, v: 2 }); };
   const show6 = !flowOn || step === 6;
   return (
     <main className={`screen hw${flowOn ? ' flow' : ''}`}>
@@ -504,7 +505,8 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
         {step === 3 ? <PromptStep doc={doc} api={flowApi} kind="research" /> : null}
         {step === 4 ? <AnswerStep doc={doc} api={flowApi} /> : null}
         {step === 5 ? <PromptStep doc={doc} api={flowApi} kind="draft" /> : null}
-        {step === 9 ? <SubmitStep doc={doc} api={flowApi} text={text} /> : null}
+        {step === 7 ? <NaturalizeStep doc={doc} api={flowApi} text={text} /> : null}
+        {step === LAST_STEP ? <SubmitStep doc={doc} api={flowApi} text={text} /> : null}
       </>) : null}
       {show6 && onMode ? <ModeSwitch mode={docMode(doc)} onChange={(m) => onMode(doc, m)} /> : null}
       {show6 ? <SuggestBar text={text} notes={notes} reviewing={reviewing} paused={paused} suggest={suggest} onPause={setPaused}
@@ -570,6 +572,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
           <p className="mut">Saved when you leave the box. Changing it re-checks every sentence against the new facts.</p>
         </details>
       ) : null}
+      {flowOn && flowApi && show6 ? <EditsBox doc={doc} api={flowApi} text={text} /> : null}
       {onAssignmentCheck && show6 ? <AssignmentPanel hideRequest={flowOn} doc={doc} text={text} onSaveReq={onRequirements} onCheck={() => onAssignmentCheck(doc, text)} onClear={() => onClearAssignmentCheck?.(doc)} /> : null}
       {show6 && onReview ? (
         <div className="fude-review">
@@ -580,7 +583,9 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
           {doc.review?.status === 'ready' && notes.filter((n) => n.status === 'open').length === 0 ? <span className="mut">{doc.review.message ?? 'No problems found.'}</span> : null}
         </div>
       ) : null}
-      {onTranslate && (!flowOn || step === 7 || step === 8) ? <TranslateWrap on={flowOn && !!flowApi} doc={doc} api={flowApi}><TranslatePanel extra={flowOn && flowApi ? { request: doc.requirements ?? '', jaRule: meJaRule(flowApi.me), context: compileContext(doc.flow) } : undefined} part={flowOn ? (step === 7 ? 'prompt' : 'check') : 'both'} doc={doc} text={text} onAsk={() => onTranslate(doc, text)} onClear={() => onClearTranslate?.(doc)} onSaveJa={onSaveTranslation} onCheck={onCheckTranslation} onClearCheck={onClearTranslationCheck} /></TranslateWrap> : null}
+      {flowOn && flowApi && step === 8 && !doc.flow?.skipTranslation ? <HeaderBox doc={doc} api={flowApi} /> : null}
+      {onTranslate && (!flowOn || step === 8 || step === 9) ? <TranslateWrap on={flowOn && !!flowApi} doc={doc} api={flowApi}><TranslatePanel extra={flowOn && flowApi ? { request: doc.requirements ?? '', jaRule: meJaRule(flowApi.me), context: compileContext(doc.flow), header: headerFor(doc.flow), jaBudget: jaBudgetOf(doc) } : undefined} part={flowOn ? (step === 8 ? 'prompt' : 'check') : 'both'} doc={doc} text={text} onAsk={() => onTranslate(doc, text)} onClear={() => onClearTranslate?.(doc)} onSaveJa={onSaveTranslation} onCheck={onCheckTranslation} onClearCheck={onClearTranslationCheck} /></TranslateWrap> : null}
+      {flowOn && flowApi && step === 9 && !doc.flow?.skipTranslation ? <CompareBox doc={doc} api={flowApi} text={text} ja={doc.translationDraft ?? ''} onUseMerged={(m) => onSaveTranslation?.(doc, m)} /> : null}
       {show6 && notes.filter((n) => n.status === 'open').length ? (
         <ul className="panel fude-notes" aria-label="Reviewer notes">
           {notes.filter((n) => n.status === 'open').map((n) => (

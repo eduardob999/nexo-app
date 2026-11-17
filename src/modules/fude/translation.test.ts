@@ -39,3 +39,18 @@ describe('translationPrompt in the assignment flow', () => {
     expect(p).toContain('lecture notes');
   });
 });
+
+describe('translationPrompt for a Japanese report with a length range and a header', () => {
+  const p = translationPrompt('Hello.', [], { jaBudget: { min: 1000, max: 2000 }, header: '2026年11月11日 高橋先生の講義レポート\n氏名：Eduardo Bogado' });
+  it('asks for a literal translation and a complete one even when it is over the limit', () => {
+    expect(p).toContain('as literally as possible');
+    expect(p).toContain('1000 to 2000 characters');
+    expect(p).toContain('Do not shorten or cut anything on your own');
+    expect(p).toContain('list which sentences could be dropped');
+  });
+  it('carries the header lines exactly and asks for the character count', () => {
+    expect(p).toContain('HEADER');
+    expect(p).toContain('2026年11月11日 高橋先生の講義レポート\n氏名：Eduardo Bogado');
+    expect(p).toContain('one line with the character count');
+  });
+});

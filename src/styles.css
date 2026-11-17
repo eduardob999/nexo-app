@@ -738,6 +738,13 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .flow-check input { width: 22px; height: 22px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
 .flow-check span { display: grid; gap: 2px; }
 .flow-check small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.flow-field { display: grid; gap: 6px; }
+.flow-field small { color: var(--muted); font-size: 13px; line-height: 1.35; }
+.flow-lang { display: grid; gap: 8px; margin-top: 4px; }
+.flow-warns { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.flow-edit-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.flow-edit-items li small { display: block; color: var(--muted); font-size: 13px; line-height: 1.35; }
+.flow-edit-items .edit-needs b, .flow-edit-items .edit-skipped b { color: var(--danger, #b3261e); }
 .flow-pre { white-space: pre-wrap; word-break: break-word; font: 13px/1.45 var(--mono); max-height: 280px; overflow: auto; margin: 8px 0 0; padding: 10px; border-radius: 12px; background: var(--chip); }
 .flow-file { position: relative; overflow: hidden; cursor: pointer; }
 .flow-file input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }

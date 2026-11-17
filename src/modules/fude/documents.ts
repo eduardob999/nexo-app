@@ -4,6 +4,7 @@ import type { Budget } from './profiles';
 import type { AssignmentCheck } from './assignment';
 import type { TranslationCheck, TranslationRequest } from './translation';
 import type { ContextRequest, Flow } from './flow';
+import type { CompareRequest, EditRequest } from './edits';
 
 /** How the editor behaves: `plain` is the field with counters and a Check button; `suggest` adds live suggestions in the text. */
 export type DocMode = 'plain' | 'suggest';
@@ -53,6 +54,10 @@ export interface FudeDoc {
   /** Set on an assignment document: the nine-step flow (flow.ts). Without it the document keeps the plain editor screen. */
   flow?: Flow;
   contextRequest?: ContextRequest;
+  /** A pasted list of modifications, applied by the helper to `text` as a proposal. */
+  editRequest?: EditRequest;
+  /** Two Japanese translations compared with the English. */
+  compareRequest?: CompareRequest;
   assignmentCheck?: AssignmentCheck;
   translationDraft?: string;
   translationCheck?: TranslationCheck;

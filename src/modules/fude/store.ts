@@ -8,6 +8,7 @@ import { db } from '../../firebase';
 import { setAnswer, putItem, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type Question } from './model';
 import type { DocMode, FudeDoc, Note, SelectionRequest } from './documents';
 import type { ContextSources } from './flow';
+import type { CompareRequest } from './edits';
 import type { CardFile } from '../../types';
 
 const col = (uid: string) => collection(db, 'users', uid, 'homework');
@@ -256,4 +257,24 @@ export function reopenSubmission(uid: string, id: string): Promise<void> {
 /** ME.md, mirrored by the helper into `users/{uid}/fudeconfig/me`, so the prompts always carry the current standing description. */
 export function watchMe(uid: string, on: (file: string) => void): () => void {
   return onSnapshot(doc(db, 'users', uid, 'fudeconfig', 'me'), (snap) => on(snap.exists() ? String((snap.data() as { text?: string }).text ?? '') : ''), () => on(''));
+}
+
+// ---- edits from a pasted list, and two translations side by side ------------------------------------------------
+/** Ask the helper to apply a list of modifications to the text. The words travel with the request, so a later edit makes the result stale instead of wrong. */
+export function requestEdits(uid: string, id: string, text: string, instructions: string): Promise<void> {
+  return updateDoc(dref(uid, id), { editRequest: { status: 'requested', text, instructions } });
+}
+
+export function clearEdits(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { editRequest: deleteField() });
+}
+
+/** Compare two Japanese translations with the English. All three travel with the request. */
+export function requestCompare(uid: string, id: string, req: Pick<CompareRequest, 'english' | 'a' | 'b' | 'labelA' | 'labelB' | 'budget'>): Promise<void> {
+  const clean = Object.fromEntries(Object.entries(req).filter(([, v]) => v !== undefined));
+  return updateDoc(dref(uid, id), { compareRequest: { status: 'requested', ...clean } });
+}
+
+export function clearCompare(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { compareRequest: deleteField() });
 }

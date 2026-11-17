@@ -1,7 +1,11 @@
 /** The screens of the assignment flow (flow.ts). Each step is one card; the editor and the checks of step 6 and 7-8 stay in Screen.tsx. */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { FudeDoc } from './documents';
-import { decodeText, chosenContext, compileContext, DEFAULT_SOURCES, draftPrompt, factSheet, firstOpenStep, LAST_STEP, meBlock, researchPrompt, SOURCE_LABEL, STEPS, stepDone, type ContextItem, type ContextSources } from './flow';
+import { decodeText, chosenContext, compileContext, DEFAULT_SOURCES, draftPrompt, factSheet, firstOpenStep, headerFor, jaBudgetOf, LAST_STEP, meBlock, researchPrompt, SOURCE_LABEL, STEPS, stepDone, styleFor, submitLang, type ContextItem, type ContextSources } from './flow';
+import { diffWords, changedWords } from './diff';
+import { driftWarnings, EDIT_LABEL, listItems } from './edits';
+import { editorCounterNote, englishWordTarget, enWords, jaChars, lengthVerdict } from './lengths';
+import { NATURALIZE_HEAD, naturalizePrompt } from './naturalize';
 
 export interface FlowApi {
   /** ME.md as mirrored by the helper; empty until it arrives. */
@@ -13,6 +17,12 @@ export interface FlowApi {
   clearContext: (doc: FudeDoc) => void;
   submit: (doc: FudeDoc, final: { english: string; japanese?: string }) => Promise<void>;
   reopen: (doc: FudeDoc) => void;
+  /** Replace the text, keeping the old one as the version the Changes panel compares against. */
+  replaceText: (doc: FudeDoc, text: string) => void;
+  askEdits: (doc: FudeDoc, text: string, instructions: string) => void;
+  clearEdits: (doc: FudeDoc) => void;
+  askCompare: (doc: FudeDoc, req: { english: string; a: string; b: string; labelA?: string; labelB?: string; budget?: { min?: number; max?: number } }) => void;
+  clearCompare: (doc: FudeDoc) => void;
   canCloseCard: boolean;
 }
 
@@ -82,7 +92,26 @@ export function RequestStep({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
         placeholder="Paste the assignment exactly as given: every part, length, language, what to relate it to, how to submit. Then add a numbered list of requirements."
         onChange={(e) => setReq(e.target.value)} onBlur={() => { if (req !== (doc.requirements ?? '')) api.requirements(doc, req); }} />
       {!req.trim() ? <p className="fude-tool-warn">Nothing here yet. Nexo fills this when it opens the card; paste the instructions if it has not.</p> : <p className="mut">Saved when you leave the box. Every later prompt and check uses this text.</p>}
+      <LanguageBox doc={doc} api={api} />
     </section>
+  );
+}
+
+/** What language the lecture was in decides what language the report is submitted in (the course rule: an English lecture gets an English report). */
+export function LanguageBox({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
+  const lang = doc.flow?.lectureLanguage;
+  const jb = jaBudgetOf(doc);
+  const set = (l: 'ja' | 'en') => api.save(doc, { lectureLanguage: l, skipTranslation: l === 'en' });
+  return (
+    <div className="flow-lang">
+      <p className="mut">The lecture was given in</p>
+      <div className="fude-tool-actions" role="group" aria-label="Lecture language">
+        <button type="button" className={`tool-chip${lang === 'ja' ? ' on' : ''}`} aria-pressed={lang === 'ja'} onClick={() => set('ja')}>Japanese</button>
+        <button type="button" className={`tool-chip${lang === 'en' ? ' on' : ''}`} aria-pressed={lang === 'en'} onClick={() => set('en')}>English</button>
+      </div>
+      <p className="mut">{lang === 'ja' ? `So the report is submitted in Japanese. You write the English first and translate it${jb ? `; the course asks for ${jb.min ?? 0}–${jb.max ?? ''} Japanese characters, which is ${(() => { const t = englishWordTarget(jb); return t ? `about ${t.min ?? ''}–${t.max ?? ''} English words` : ''; })()}` : ''}.`
+        : lang === 'en' ? 'So the report is submitted in English and the translation steps are skipped.' : 'Not set yet. The draft prompt and the translation steps depend on it.'}</p>
+    </div>
   );
 }
 
@@ -159,7 +188,7 @@ export function ContextStep({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
               <li key={i.id}>
                 <label className="flow-check">
                   <input type="checkbox" checked={i.on} onChange={() => toggle(i.id)} />
-                  <span><b>{i.title}</b><small>{SOURCE_LABEL[i.source]}{i.from ? ` · ${i.from}` : ''}{i.date ? ` · ${i.date}` : ''}{i.why ? ` · ${i.why}` : ''}</small></span>
+                  <span><b>{i.unread ? 'Not read: ' : ''}{i.title}</b><small>{SOURCE_LABEL[i.source]}{i.from ? ` · ${i.from}` : ''}{i.date ? ` · ${i.date}` : ''}{i.why ? ` · ${i.why}` : ''}</small></span>
                 </label>
                 <details><summary>{i.text.length.toLocaleString('en-GB')} characters</summary><pre className="flow-pre">{i.text}</pre></details>
                 {i.source === 'paste' || i.source === 'file' ? <button type="button" className="tool-chip" onClick={() => setItems(items.filter((x) => x.id !== i.id))}>Remove</button> : null}
@@ -185,6 +214,7 @@ export function ContextStep({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
 const promptInput = (doc: FudeDoc, me: string) => ({
   title: doc.title, request: doc.requirements ?? '', context: compileContext(doc.flow), research: doc.flow?.research ?? '',
   me: meBlock(me), due: dueText(doc.due), budget: doc.budget,
+  style: doc.flow?.style, opinion: doc.flow?.opinion, submitLang: submitLang(doc.flow), jaBudget: jaBudgetOf(doc),
 });
 
 /** Step 3 and 5: the two prompts. They are rebuilt from the saved fields every time, so they never go stale. */
@@ -195,11 +225,37 @@ export function PromptStep({ doc, api, kind }: { doc: FudeDoc; api: FlowApi; kin
   const ctx = chosenContext(doc.flow).length;
   return (
     <div className="fude-tools">
+      {kind === 'draft' ? <DraftSettings doc={doc} api={api} /> : null}
       <CopyBox label={kind === 'research' ? 'Research prompt' : 'Draft prompt'} text={text} blocked={blocked}
         note={kind === 'research'
           ? `Uses the request, ${ctx ? `${ctx} context item${ctx === 1 ? '' : 's'}` : 'no context items'} and your standing description. Paste it into Perplexity (Pro Search, Academic).`
           : `Uses the request, your context and the research answer${doc.flow?.research?.trim() ? '' : ' (none pasted yet)'}. Paste it into GPT or any model, or skip this and write the draft yourself in the next step.`} />
     </div>
+  );
+}
+
+/** Step 5: the style rules and his own opinion notes, both saved on the document and both placed in the draft prompt. */
+function DraftSettings({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
+  const [style, setStyle] = useState(styleFor(doc.flow?.style, doc.requirements ?? ''));
+  const [opinion, setOpinion] = useState(doc.flow?.opinion ?? '');
+  useEffect(() => { if (document.activeElement?.id !== 'flow-style') setStyle(styleFor(doc.flow?.style, doc.requirements ?? '')); }, [doc.flow?.style, doc.requirements]);
+  useEffect(() => { if (document.activeElement?.id !== 'flow-opinion') setOpinion(doc.flow?.opinion ?? ''); }, [doc.flow?.opinion]);
+  const custom = !!doc.flow?.style?.trim();
+  return (
+    <section className="panel fude-tool" aria-label="Draft settings">
+      <details open={!custom}>
+        <summary>Style rules{custom ? ' (yours)' : ' (the default for this kind of assignment)'}</summary>
+        <textarea id="flow-style" className="hw-answer" rows={9} autoCorrect="off" value={style} onChange={(e) => setStyle(e.target.value)}
+          onBlur={() => { if (style.trim() !== styleFor(doc.flow?.style, doc.requirements ?? '')) api.save(doc, { style: style.trim() }); }} />
+        {custom ? <div className="fude-tool-actions"><button type="button" className="tool-chip" onClick={() => api.save(doc, { style: undefined })}>Back to the default</button></div> : null}
+        <p className="mut">One rule per line. They go into the draft prompt.</p>
+      </details>
+      <label className="flow-field"><b>My opinion notes</b>
+        <small>Your own views for the part that asks for your opinion. The draft may use them and may not add views of its own.</small>
+        <textarea id="flow-opinion" className="hw-answer" rows={5} autoCorrect="off" value={opinion} placeholder="What struck you, what you would question, how it connects to your research"
+          onChange={(e) => setOpinion(e.target.value)} onBlur={() => { if (opinion !== (doc.flow?.opinion ?? '')) api.save(doc, { opinion }); }} />
+      </label>
+    </section>
   );
 }
 
@@ -237,7 +293,8 @@ export function SubmitStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; tex
     ['Text written', !!text.trim()],
     ['Checked against the assignment', !!items],
     ['Every requirement met', items ? unmet === 0 : false],
-    ...(!flow.skipTranslation ? [['Japanese pasted', !!ja] as [string, boolean], ['Japanese compared with the English', doc.translationCheck?.status === 'ready' && doc.translationCheck.japanese === ja] as [string, boolean]] : []),
+    ['Checked the university\'s generative-AI rules for this course (disclosure, limits)', !!flow.aiRulesChecked],
+    ...(!flow.skipTranslation ? [['Japanese pasted', !!ja] as [string, boolean], ['Japanese compared with the English', doc.translationCheck?.status === 'ready' && doc.translationCheck.japanese === ja] as [string, boolean], ...(jaBudgetOf(doc) ? [[`Japanese length ${lengthVerdict(ja, jaBudgetOf(doc)).message}`, lengthVerdict(ja, jaBudgetOf(doc)).status === 'ok'] as [string, boolean]] : [])] : []),
   ];
   const done = !!flow.submittedAt;
   const go = async () => {
@@ -250,6 +307,7 @@ export function SubmitStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; tex
       <ul className="flow-checks">
         {checks.map(([label, ok]) => <li key={label} className={ok ? 'ok' : 'no'}><span aria-hidden="true">{ok ? '✓' : '○'}</span>{label}</li>)}
       </ul>
+      {!flow.aiRulesChecked && !done ? <div className="fude-tool-actions"><button type="button" className="tool-chip" onClick={() => api.save(doc, { aiRulesChecked: true })}>I checked the generative-AI rules</button></div> : null}
       {unmet ? <p className="fude-tool-warn">{unmet} requirement{unmet === 1 ? ' is' : 's are'} not fully met. Go back to step 6 to see which.</p> : null}
       {done ? (
         <>
@@ -263,6 +321,135 @@ export function SubmitStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; tex
       )}
       {err ? <p className="fude-tool-warn" role="alert">{err}</p> : null}
       <details><summary>Final text ({text.trim().split(/\s+/).filter(Boolean).length} words)</summary><pre className="flow-pre">{text}</pre></details>
+      {ja ? <><details><summary>Japanese ({jaChars(ja).toLocaleString('en-GB')} characters)</summary><pre className="flow-pre" lang="ja">{ja}</pre></details><p className="mut">{editorCounterNote}</p></> : null}
+    </section>
+  );
+}
+
+/** Step 7. The naturalizing pass: copy the prompt, paste what came back, see what changed, and take it or leave it. */
+export function NaturalizeStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; text: string }) {
+  const safe = doc.flow?.naturalizeSafe !== false;
+  const prompt = naturalizePrompt(text, safe);
+  const [back, setBack] = useState(doc.flow?.naturalized ?? '');
+  useEffect(() => { if (document.activeElement?.id !== 'flow-naturalized') setBack(doc.flow?.naturalized ?? ''); }, [doc.flow?.naturalized]);
+  const hunks = useMemo(() => (back.trim() ? diffWords(text, back.trim()) : []), [text, back]);
+  const warns = back.trim() ? driftWarnings(text, back.trim()) : [];
+  const done = !!doc.flow?.naturalizeDone;
+  return (
+    <div className="fude-tools">
+      <CopyBox label="Naturalize prompt" text={prompt} blocked={text.trim() ? '' : 'The text is empty. Write or paste the draft in step 6 first.'}
+        note={`The instruction is the one you use: "${NATURALIZE_HEAD}". Paste it into ChatGPT, then paste its answer below.`} />
+      <label className="flow-check"><input type="checkbox" checked={safe} onChange={() => api.save(doc, { naturalizeSafe: !safe })} />
+        <span><b>Add the safeguards</b><small>Keeps facts, numbers, headings, paragraphs, long sentences and term explanations from being changed.</small></span></label>
+      <section className="panel fude-tool" aria-label="What came back">
+        <textarea id="flow-naturalized" className="hw-answer fude-tool-box" rows={10} autoCorrect="off" value={back} placeholder="Paste the naturalized version here"
+          onChange={(e) => setBack(e.target.value)} onBlur={() => { if (back !== (doc.flow?.naturalized ?? '')) api.save(doc, { naturalized: back }); }} />
+        {back.trim() ? (<>
+          <p className="mut">{hunks.length ? `${hunks.length} changes, about ${changedWords(hunks)} words. ${enWords(text)} words before, ${enWords(back)} now.` : 'Identical to your text.'}</p>
+          {warns.length ? <ul className="flow-warns" role="alert">{warns.map((w) => <li key={w} className="fude-tool-warn">{w}</li>)}</ul> : hunks.length ? <p className="mut">No numbers, headings or paragraphs were changed.</p> : null}
+          {hunks.length ? <details><summary>See the changes</summary><ul className="fude-hunks">{hunks.slice(0, 40).map((h) => <li key={h.id}>{h.removed ? <del className="fude-del">{h.removed.trim()}</del> : null}{h.added ? <ins className="fude-ins">{h.added.trim()}</ins> : null}</li>)}</ul></details> : null}
+        </>) : null}
+        <div className="fude-tool-actions">
+          <button type="button" className="flow-primary" disabled={!back.trim() || !hunks.length} onClick={() => { api.replaceText(doc, back.trim()); api.save(doc, { naturalized: undefined, naturalizeDone: true }); }}>Use this version</button>
+          <button type="button" className="tool-chip" onClick={() => api.save(doc, { naturalizeDone: !done })}>{done ? 'Done ✓ (tap to undo)' : 'Keep my text and continue'}</button>
+        </div>
+        <p className="mut">Using it keeps your earlier version in the Changes panel of step 6, where any change can be reverted.</p>
+      </section>
+    </div>
+  );
+}
+
+/** Step 6: a pasted list of modifications applied to the text as a proposal. */
+export function EditsBox({ doc, api, text }: { doc: FudeDoc; api: FlowApi; text: string }) {
+  const [list, setList] = useState('');
+  const req = doc.editRequest;
+  const busy = req?.status === 'requested' || req?.status === 'working';
+  const items = listItems(list);
+  const ready = req?.status === 'ready' && req.text === text && typeof req.result === 'string';
+  const result = ready ? (req?.result as string) : '';
+  const hunks = useMemo(() => (ready ? diffWords(text, result) : []), [ready, text, result]);
+  const warns = ready ? driftWarnings(text, result) : [];
+  return (
+    <section className="panel fude-tool" aria-label="Apply a list of changes">
+      <header className="fude-tool-head"><h3>Apply a list of changes</h3><p>Paste your modifications, one per line. Nothing changes until you accept the result.</p></header>
+      <textarea className="hw-answer" rows={7} autoCorrect="off" value={list} placeholder={'1. Call the teacher "the lecturer" instead of "he"\n2. Make this sentence easier to follow: ...\n3. Say "emphasized that" instead of "warned"'}
+        onChange={(e) => setList(e.target.value)} />
+      <div className="fude-tool-actions">
+        <span className="fude-tool-count">{items.length} change{items.length === 1 ? '' : 's'}</span>
+        {busy ? <span className="mut" role="status">Applying the changes…</span>
+          : <button type="button" className="tool-chip" disabled={!items.length || !text.trim()} onClick={() => api.askEdits(doc, text, list.trim())}>Apply these changes</button>}
+      </div>
+      {req?.status === 'error' ? <p className="fude-tool-warn" role="alert">{req.message ?? 'That could not run. Try again.'}</p> : null}
+      {req?.status === 'stale' || (req?.status === 'ready' && !ready) ? <p className="fude-tool-warn">The text changed while it was working. Apply the list again.</p> : null}
+      {ready ? (<>
+        <ul className="flow-edit-items" aria-label="What happened to each change">
+          {(req?.items ?? []).map((i) => <li key={i.n} className={`edit-${i.status}`}><b>{EDIT_LABEL[i.status]}</b> {i.instruction}{i.note ? <small> {i.note}</small> : null}</li>)}
+        </ul>
+        <p className="mut">{hunks.length ? `${hunks.length} places changed, about ${changedWords(hunks)} words.` : 'The text is unchanged.'}</p>
+        {warns.length ? <ul className="flow-warns" role="alert">{warns.map((w) => <li key={w} className="fude-tool-warn">{w}</li>)}</ul> : null}
+        {hunks.length ? <details open><summary>See the changes</summary><ul className="fude-hunks">{hunks.slice(0, 40).map((h) => <li key={h.id}>{h.removed ? <del className="fude-del">{h.removed.trim()}</del> : null}{h.added ? <ins className="fude-ins">{h.added.trim()}</ins> : null}</li>)}</ul></details> : null}
+        <div className="fude-tool-actions">
+          <button type="button" className="flow-primary" disabled={!hunks.length} onClick={() => { api.replaceText(doc, result); api.clearEdits(doc); setList(''); }}>Use the revised text</button>
+          <button type="button" className="tool-chip" onClick={() => api.clearEdits(doc)}>Discard</button>
+        </div>
+      </>) : null}
+    </section>
+  );
+}
+
+/** Step 8: the header lines the Japanese submission starts with, saved on the document and placed in the translation prompt. */
+export function HeaderBox({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
+  const [h, setH] = useState(headerFor(doc.flow));
+  useEffect(() => { if (document.activeElement?.id !== 'flow-header') setH(headerFor(doc.flow)); }, [doc.flow?.header]);
+  const open = h.includes('〇〇') || h.includes('YYYY');
+  return (
+    <section className="panel fude-tool" aria-label="Header of the Japanese report">
+      <header className="fude-tool-head"><h3>Header of the Japanese report</h3><p>Date and teacher, lecture title, your name and affiliation. Empty means no header.</p></header>
+      <textarea id="flow-header" className="hw-answer" rows={5} lang="ja" autoCorrect="off" value={h} onChange={(e) => setH(e.target.value)} onBlur={() => { if (h !== headerFor(doc.flow)) api.save(doc, { header: h }); }} />
+      {open ? <p className="fude-tool-warn">Fill in the parts marked 〇〇 and the date before you copy the prompt.</p> : null}
+    </section>
+  );
+}
+
+/** Step 9: two Japanese translations compared with the English. The merged text is a proposal he can take whole. */
+export function CompareBox({ doc, api, text, ja, onUseMerged }: { doc: FudeDoc; api: FlowApi; text: string; ja: string; onUseMerged: (merged: string) => void }) {
+  const [b, setB] = useState('');
+  const req = doc.compareRequest;
+  const busy = req?.status === 'requested' || req?.status === 'working';
+  const budget = jaBudgetOf(doc);
+  const ready = req?.status === 'ready' && req.english === text && req.a === ja && !!req.result;
+  const r = req?.result;
+  return (
+    <section className="panel fude-tool" aria-label="Compare two translations">
+      <header className="fude-tool-head"><h3>Compare with a second translation</h3><p>Your Japanese above is version A. Paste another one as B; both are checked against the English, sentence by sentence.</p></header>
+      <textarea className="hw-answer" lang="ja" rows={6} autoCorrect="off" value={b} placeholder="ここに別の日本語訳（B）を貼り付け" onChange={(e) => setB(e.target.value)} />
+      <div className="fude-tool-actions">
+        <span className="fude-tool-count">B: {jaChars(b).toLocaleString('en-GB')} characters</span>
+        {busy ? <span className="mut" role="status">Comparing the two…</span>
+          : <button type="button" className="tool-chip" disabled={!b.trim() || !ja.trim() || !text.trim()} onClick={() => api.askCompare(doc, { english: text, a: ja, b: b.trim(), ...(budget ? { budget } : {}) })}>Compare A and B</button>}
+      </div>
+      {req?.status === 'error' ? <p className="fude-tool-warn" role="alert">{req.message ?? 'That could not run. Try again.'}</p> : null}
+      {req?.status === 'stale' || (req?.status === 'ready' && !ready) ? <p className="fude-tool-warn">The English or version A changed. Compare again.</p> : null}
+      {ready && r ? (<>
+        <p>{r.summary}</p>
+        <p className="mut">A {lengthVerdict(req?.a ?? '', budget).message} · B {lengthVerdict(req?.b ?? '', budget).message} · Merged {lengthVerdict(r.merged, budget).message}</p>
+        <ul className="fude-notes" aria-label="Differences">
+          {r.items.map((i) => (
+            <li key={i.n}>
+              <p><b>{i.kind}</b> · better: <b>{i.pick === 'a' ? 'A' : i.pick === 'b' ? 'B' : i.pick}</b></p>
+              <p className="mut">English: “{i.english}”</p>
+              <p lang="ja">A: {i.a}</p><p lang="ja">B: {i.b}</p>
+              <p>{i.note}</p>
+              {i.fix ? <p className="fude-fix" lang="ja">→ {i.fix}</p> : null}
+            </li>
+          ))}
+        </ul>
+        <details><summary>The merged version</summary><pre className="flow-pre" lang="ja">{r.merged}</pre></details>
+        <div className="fude-tool-actions">
+          <button type="button" className="tool-chip" onClick={() => onUseMerged(r.merged)}>Use the merged version as my Japanese</button>
+          <button type="button" className="tool-chip" onClick={() => api.clearCompare(doc)}>Close</button>
+        </div>
+      </>) : null}
     </section>
   );
 }

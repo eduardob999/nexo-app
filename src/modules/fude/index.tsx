@@ -5,7 +5,7 @@ import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type ChatMsg, type ExportRec, type HomeworkSet } from './model';
 import { Homework } from './Screen';
 import type { FlowApi } from './Flow';
-import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setDocBase, saveFlow, requestContext, clearContextRequest, saveSubmission, reopenSubmission, watchMe, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setDocBase, saveFlow, requestEdits, clearEdits, requestCompare, clearCompare, requestContext, clearContextRequest, saveSubmission, reopenSubmission, watchMe, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -44,6 +44,12 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
     clearContext: (d) => { void clearContextRequest(uid, d.id); },
     submit: async (d, final) => { await saveSubmission(uid, d.id, final, new Date()); if (d.cardId && host?.markCardDone) await host.markCardDone(d.cardId); },
     reopen: (d) => { void reopenSubmission(uid, d.id); },
+    // Keep the old text as the version the Changes panel compares against, unless he is already tracking from an earlier one.
+    replaceText: (d, text) => { void (d.base === undefined ? setDocBase(uid, d.id, d.text) : Promise.resolve()).then(() => saveDocText(uid, d.id, text, new Date())); },
+    askEdits: (d, text, instructions) => { void requestEdits(uid, d.id, text, instructions); },
+    clearEdits: (d) => { void clearEdits(uid, d.id); },
+    askCompare: (d, req) => { void requestCompare(uid, d.id, req); },
+    clearCompare: (d) => { void clearCompare(uid, d.id); },
   };
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   useEffect(() => watchHomework(uid, setSets, (e) => console.warn('[fude]', e)), [uid]);
