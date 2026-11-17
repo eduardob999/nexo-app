@@ -67,7 +67,7 @@ export function SleepFeedback({ rec, wakeLog, onSave, onClose }: Props) {
             </div>
           </div>
         ) : null}
-        <input className="sleep-note" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+        <textarea className="sleep-note" rows={2} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         <div className="sheet-foot">
           <button type="button" className="chip-btn" onClick={onClose}>Later</button>
           <button type="submit" className="send-wide">Save</button>

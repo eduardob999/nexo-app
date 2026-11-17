@@ -30,8 +30,8 @@ function Mirror({ text, tokens }: { text: string; tokens: { start: number; end: 
 
 export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
   const [text, setText] = usePersisted('add');
-  const [forWho, setForWho] = useState<'you' | 'nexo'>('you');
-  const [prio, setPrio] = useState<'high' | 'normal' | 'low'>('normal');
+  const [forWho, setForWho] = useState<'you' | 'nexo'>('nexo');
+  const [prio, setPrio] = useState<'high' | 'normal' | 'low'>('high');
   const [files, setFiles] = useState<File[]>(initialFiles);
   const [drive, setDrive] = useState(driveReady());
   const [msg, setMsg] = useState('');
@@ -68,8 +68,7 @@ export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
           <Mirror text={text} tokens={parsed.tokens} />
           <label className="sr" htmlFor="add-text">New task</label>
           <textarea id="add-text" className="add-input" autoFocus rows={1} placeholder="What needs doing? Try “call the office tomorrow 3pm”"
-            value={text} onChange={(e) => setText(e.target.value)} onPaste={onPaste}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} />
+            value={text} onChange={(e) => setText(e.target.value)} onPaste={onPaste} enterKeyHint="enter" />
         </div>
         <div className="chips">
           <span className={`chip ${parsed.due ? 'on' : ''}`}>

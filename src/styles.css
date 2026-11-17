@@ -538,7 +538,7 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .factors { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip-btn.factor { height: 40px; }
 .chip-btn.factor[aria-pressed='true'] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.sleep-note { height: 44px; padding: 0 12px; border: 1px solid var(--edge); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; width: 100%; }
+.sleep-note { min-height: 44px; padding: 10px 12px; resize: none; border: 1px solid var(--edge); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; width: 100%; }
 /* sleep screen */
 .sleep-bars { padding: 14px 12px 10px; }
 .sleep-axis { display: flex; justify-content: space-between; margin: 0 0 6px 54px; font: 500 11px var(--mono); color: var(--muted); }
@@ -760,3 +760,5 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .fude-hunks li { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
 .fude-del { color: var(--now); text-decoration: line-through; }
 .fude-ins { color: var(--ok, #2c7a4b); text-decoration: none; background: rgba(44, 122, 75, .12); padding: 0 2px; }
+
+.reply-input.chat-ta { height: auto; min-height: 40px; max-height: 40vh; padding: 9px 16px; line-height: 1.4; resize: none; field-sizing: content; }

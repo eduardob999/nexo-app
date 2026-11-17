@@ -14,7 +14,7 @@ export function Chat({ msgs, onBack, onSend }: Props) {
   const [text, setText] = usePersisted('chat-draft');
   const barRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const state = chatState(msgs);
 
   // The reply bar is fixed, so the page keeps clear of its real height and the last message is never hidden.
@@ -86,7 +86,7 @@ export function Chat({ msgs, onBack, onSend }: Props) {
         ) : null}
         <form className="reply-form" onSubmit={(e) => { e.preventDefault(); send(); }}>
           <label className="sr" htmlFor="chat-input">Message to Nexo</label>
-          <input id="chat-input" ref={inputRef} className="reply-input" placeholder="Message" enterKeyHint="send" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} />
+          <textarea id="chat-input" ref={inputRef} className="reply-input chat-ta" rows={1} placeholder="Message" enterKeyHint="enter" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} />
           <button type="submit" className="send small" aria-label="Send message" disabled={!text.trim()}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
           </button>
