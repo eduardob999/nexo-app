@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { connectDrive, driveReady } from './drive';
+import { connectDrive, driveReady, warmDrive } from './drive';
 import { addPicked, removePicked } from './addfiles';
 import { usePersisted } from './persist';
 import { parseQuickAdd } from './parse';
@@ -9,7 +9,7 @@ import { checklistLines } from './checklistlines';
 import { readClipboard } from './clipboard';
 
 interface Props {
-  onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low', files: File[], lines: string[]) => void;
+  onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low', files: File[], lines: string[], callNow: boolean) => void;
   /** Preview only: files already chosen. */
   initialFiles?: File[];
   onClose: () => void;
@@ -52,11 +52,13 @@ export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
   };
   const now = new Date();
   const parsed = parseQuickAdd(text, now);
-  const submit = () => {
+  const submit = (callNow = false) => {
     if (!parsed.title) return;
+    // A stale Drive token is renewed here, inside the tap, because a popup opened later would be blocked.
+    if (files.length > 0) warmDrive();
     // The text is spent once the card exists, so it must not come back the next time the sheet opens.
     setText('');
-    onAdd(parsed.title, forWho, parsed.due, prio, files, listOn ? checklistLines(list) : []);
+    onAdd(parsed.title, forWho, parsed.due, prio, files, listOn ? checklistLines(list) : [], callNow && forWho === 'nexo');
     onClose();
   };
   return (
@@ -114,6 +116,7 @@ export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
           <button type="button" className="chip-btn" onClick={() => setForWho(forWho === 'you' ? 'nexo' : 'you')}>
             For {forWho === 'you' ? 'me' : 'Nexo'}
           </button>
+          {forWho === 'nexo' ? <button type="button" className="chip-btn call-now" disabled={!parsed.title} onClick={() => submit(true)}>Add and call Nexo</button> : null}
           <button type="submit" className="send" aria-label="Add task" disabled={!parsed.title}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
           </button>

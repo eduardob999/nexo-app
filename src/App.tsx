@@ -324,7 +324,7 @@ export function App() {
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
         browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' || tab === 'homework' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
-      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files, lines) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id, lines).then(() => uploadNewCardFiles(user.uid, id, files)); }} /> : null}
+      {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files, lines, callNow) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id, lines, callNow).then(() => { if (callNow) flash('Nexo called for this card'); return uploadNewCardFiles(user.uid, id, files); }); }} /> : null}
     </>
   );
 }

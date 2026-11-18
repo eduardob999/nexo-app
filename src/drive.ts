@@ -17,23 +17,66 @@ function readToken(): Token | null {
   } catch { return null; }
 }
 
-/** True while a Drive token from this session is still good, so a picker can be offered without a popup. */
-export function driveReady(): boolean { return readToken() !== null; }
+const LINK_KEY = 'nexo.drive.linked';
 
-/** Ask Google for permission to write files this app creates. Must run from a tap: browsers block popups otherwise. */
-export async function connectDrive(): Promise<void> {
-  const user = auth.currentUser;
-  if (!user) throw new Error('Not signed in');
-  const provider = new GoogleAuthProvider();
-  provider.addScope(SCOPE);
-  const result = await reauthenticateWithPopup(user, provider);
-  const token = GoogleAuthProvider.credentialFromResult(result)?.accessToken;
-  if (!token) throw new Error('Google did not give access to Drive');
-  try { localStorage.setItem(TOKEN_KEY, JSON.stringify({ value: token, until: Date.now() + 55 * 60_000 } satisfies Token)); } catch { /* private window */ }
+function isLinked(): boolean {
+  try { return localStorage.getItem(LINK_KEY) === '1'; } catch { return false; }
+}
+function setLinked(on: boolean): void {
+  try { if (on) localStorage.setItem(LINK_KEY, '1'); else localStorage.removeItem(LINK_KEY); } catch { /* private window */ }
+}
+
+/**
+ * True once Drive has been connected on this device, even when the hour-long token has lapsed, so the attach
+ * buttons stay on screen and a new token is fetched when it is needed. It turns false again only when a
+ * refresh fails, which is when the Connect button has to come back.
+ */
+export function driveReady(): boolean { return readToken() !== null || isLinked(); }
+
+let inflight: Promise<string> | null = null;
+
+/**
+ * One Google popup for a fresh token. Google keeps the grant, and the account hint skips the account picker, so
+ * after the first consent this opens and closes by itself. Needs a tap or a click in progress: browsers block popups otherwise.
+ * Concurrent callers share the same popup.
+ */
+function refreshToken(): Promise<string> {
+  if (inflight) return inflight;
+  inflight = (async () => {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Not signed in');
+    const provider = new GoogleAuthProvider();
+    provider.addScope(SCOPE);
+    if (user.email) provider.setCustomParameters({ login_hint: user.email });
+    const result = await reauthenticateWithPopup(user, provider);
+    const token = GoogleAuthProvider.credentialFromResult(result)?.accessToken;
+    if (!token) throw new Error('Google did not give access to Drive');
+    try { localStorage.setItem(TOKEN_KEY, JSON.stringify({ value: token, until: Date.now() + 55 * 60_000 } satisfies Token)); } catch { /* private window */ }
+    setLinked(true);
+    return token;
+  })().finally(() => { inflight = null; });
+  return inflight;
+}
+
+/** The Connect Google Drive button. */
+export async function connectDrive(): Promise<void> { await refreshToken(); }
+
+/** Start getting a new token now, from inside a tap, so the upload that follows finds it ready. Never throws. */
+export function warmDrive(): void {
+  if (isLinked() && readToken() === null) refreshToken().catch(() => setLinked(false));
+}
+
+/** A usable token: the stored one, or a fresh one when Drive was connected before. */
+async function driveToken(): Promise<string> {
+  const t = readToken();
+  if (t) return t.value;
+  if (!isLinked()) throw new Error('Connect Google Drive first');
+  try { return await refreshToken(); } catch { setLinked(false); throw new Error('Google needs one tap: use Connect Google Drive'); }
 }
 
 async function api(url: string, init: RequestInit, token: string): Promise<Response> {
   const res = await fetch(url, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${token}` } });
+  if (res.status === 401) { try { localStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ } }
   if (!res.ok) throw new Error(`Drive said ${res.status}`);
   return res;
 }
@@ -72,14 +115,13 @@ export interface Uploaded { id: string; name: string; type: string; size: number
 
 /** Upload one file into the Nexo folder of his Drive. Throws if the token is missing or Drive refuses. */
 export async function uploadToDrive(file: File): Promise<Uploaded> {
-  const t = readToken();
-  if (!t) throw new Error('Connect Google Drive first');
-  const folder = await folderId(t.value);
+  const token = await driveToken();
+  const folder = await folderId(token);
   const boundary = `nexo${Math.random().toString(36).slice(2)}`;
   const meta = JSON.stringify({ name: file.name || 'attachment', parents: [folder] });
   const body = new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`, file, `\r\n--${boundary}--`]);
   const res = (await (await api('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,size,webViewLink', {
     method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body,
-  }, t.value)).json()) as { id: string; name: string; mimeType: string; size?: string; webViewLink?: string };
+  }, token)).json()) as { id: string; name: string; mimeType: string; size?: string; webViewLink?: string };
   return { id: `f${res.id.slice(0, 10)}`, name: res.name, type: res.mimeType, size: Number(res.size ?? file.size), driveId: res.id, viewUrl: res.webViewLink ?? `https://drive.google.com/file/d/${res.id}/view` };
 }

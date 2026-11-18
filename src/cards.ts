@@ -120,7 +120,7 @@ export function newCardId(now = new Date()): string {
  * one made without a date lands on today; the entry count and last entry are
  * written with it so a list never needs the entries subcollection.
  */
-export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null, prio: 'high' | 'normal' | 'low' = 'normal', cardId?: string, lines: string[] = []): Promise<void> {
+export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?: string | null, prio: 'high' | 'normal' | 'low' = 'normal', cardId?: string, lines: string[] = [], callNow = false): Promise<void> {
   const now = new Date();
   const ts = now.toISOString();
   const id = cardId ?? newCardId(now);
@@ -136,6 +136,9 @@ export function addCard(uid: string, text: string, forWho: 'you' | 'nexo', due?:
   });
   batch.set(doc(db, ...root(uid), 'cards', id, 'entries', entryId), entry);
   intent(batch, uid, { type: 'add', cardId: id, text, for: forWho, due: when, ts, entryId, prio, ...(items.length ? { items: items.map(({ id: iid, text: t }) => ({ id: iid, text: t })) } : {}) });
+  // "Add and call Nexo": the wake goes in the same batch as the card, marked as a lane call so the loop answers
+  // his unanswered cards only (no mail check, no calendar sweep) instead of running a full tick.
+  if (callNow) batch.set(doc(db, ...root(uid), 'meta', 'wake'), { at: serverTimestamp(), lane: true, cardId: id });
   return batch.commit();
 }
 
