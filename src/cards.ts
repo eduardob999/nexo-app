@@ -500,6 +500,17 @@ export function tickBring(uid: string, card: Card, index: number, got: boolean):
   return batch.commit();
 }
 
+/**
+ * Choose the train journey he took or will take on a trip card. Only plan.<side>.selected is written, by dotted path, so the rest of
+ * the plan stays as it is; null goes back to the planned one. The intent carries the choice into the loop's copy of the card.
+ */
+export function selectTrip(uid: string, card: Card, side: 'out' | 'back', id: string | null): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, ...root(uid), 'cards', card.id), { [`plan.${side}.selected`]: id === null ? deleteField() : id });
+  intent(batch, uid, { type: 'tripselect', cardId: card.id, side, id });
+  return batch.commit();
+}
+
 export function tickItem(uid: string, card: Card, itemId: string, done: boolean): Promise<void> {
   const items = (card.items ?? []).map((x) => (x.id === itemId ? { ...x, done } : x));
   const batch = writeBatch(db);

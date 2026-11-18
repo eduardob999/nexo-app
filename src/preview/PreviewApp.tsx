@@ -20,7 +20,7 @@ import { Chat } from '../Chat';
 import type { ChatMsg } from '../chatlogic';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
-import type { Card, Draft, Entry, NexoStatus } from '../types';
+import type { Card, Draft, Entry, NexoStatus, TrainOption, TripStep } from '../types';
 import type { TodayInfo } from '../strip';
 
 /** Invented cards, so the screens can be rendered without signing in or touching real data. */
@@ -268,12 +268,21 @@ export function PreviewApp() {
       { id: 'c', text: 'Ask about the second seminar slot.', tags: ['research'], ts: '2026-11-01T10:00:00Z' },
       { id: 'd', text: 'Buy a thicker coat before December.', tags: [], ts: '2026-10-30T10:00:00Z' }]} /><TabBar current="browse" draftCount={0} /></>);
   }
-  if (which === 'trips') {
+  if (which === 'trips' || which === 'trips-journey' || which === 'trips-b') {
     const trip: Card = { id: 't1', status: 'open', for: 'you', type: 'TRIP', trip: true, title: 'Trip to the dojo Sat 7 Nov: leave 08:50', due: '2026-11-03T08:50:00+09:00', place: 'Gion',
       plan: { from: 'Home', to: 'The dojo', why: 'Guide shift, ends about 11:00 (end time assumed).',
         out: { leave: '08:50', from: 'Home (Uji)', arrive: '09:45', to: 'The dojo, behind the shrine', options: [{ leave: '08:19', arrive: '08:49', txt: '京阪宇治線, change at 中書島, 京阪本線特急' }, { leave: '08:31', arrive: '09:00', txt: '京阪宇治線, change at 中書島, 京阪本線特急' }, { leave: '08:43', arrive: '09:13', txt: '京阪宇治線, change at 中書島, 京阪本線特急', pick: true }, { leave: '08:55', arrive: '09:25', txt: '京阪宇治線, change at 中書島, 京阪本線特急' }, { leave: '09:07', arrive: '09:38', txt: '京阪宇治線, change at 中書島, 京阪本線特急', late: true }], legs: [{ t: '08:50', txt: 'Keihan Uji line, change at Chushojima to an express', dur: 'about 45 min' }, { t: '09:45', txt: 'Gion-Shijo, exit 6, walk about 8 min' }] },
         back: { leave: '11:00', arrive: 'about 12:00', txt: 'Keihan back to Uji.', options: [{ leave: '10:54', arrive: '11:24', txt: '京阪本線特急, change at 中書島, 京阪宇治線' }, { leave: '11:06', arrive: '11:36', txt: '京阪本線特急, change at 中書島, 京阪宇治線', pick: true }, { leave: '11:18', arrive: '11:48', txt: '京阪本線特急, change at 中書島, 京阪宇治線' }] }, know: ['Arrive 15 min before the start.'], est: 'Trains and walk are estimates.' } };
-    return (<><Trips cards={[trip, { ...trip, id: 't2', title: 'Later trip', due: '2026-11-20T10:00:00+09:00' }]} now={NOW} done={[{ ...trip, id: 'p1', status: 'done', title: 'Trip to Osaka for the visa office', due: '2026-10-28T09:00:00+09:00' }]} /><TabBar current="browse" draftCount={0} /></>);
+    const mk = (id: string, start: string, board: string, arrive: string, extra: Partial<TrainOption> = {}): TrainOption => ({ id, start, leave: start, arrive, txt: `Keihan from 黄檗 ${board}`, ...extra, steps: ([
+      { kind: 'bike', from: 'Uji campus, lab', to: '黄檗', start, end: board, min: 10, txt: 'Bike from the lab to 黄檗 and park' },
+      { kind: 'train', from: '黄檗', to: '中書島', board, alight: '17:07', line: '京阪宇治線', toward: '中書島', platform: '1' },
+      { kind: 'change', at: '中書島', wait_min: 4, from_platform: '1', to_platform: '2' },
+      { kind: 'train', from: '中書島', to: '祇園四条', board: '17:11', alight: arrive, line: '京阪本線 特急', toward: '出町柳', platform: null },
+      { kind: 'walk', from: '祇園四条', to: 'the dojo', min: 8, txt: 'Walk about 8 min to the dojo, exit 6' }] as TripStep[]) });
+    const journeys: Card = { id: 't0', status: 'open', for: 'you', type: 'TRIP', trip: true, title: 'Trip to the dojo: leave the lab 16:49', due: '2026-11-03T16:49:00+09:00', place: 'Gion',
+      plan: { from: 'Uji campus (lab)', to: 'The dojo', why: 'Guide shift 18:00.', out: { arrive: '17:25', to: '祇園四条', options: [mk('a', '16:38', '16:48', '17:23'), mk('b', '16:49', '16:59', '17:25', { pick: true }), mk('c', '17:01', '17:11', '17:39', { late: true })], ...(which === 'trips-b' ? { selected: 'a' } : {}) },
+        back: { options: [mk('r1', '18:46', '18:56', '19:21'), mk('r2', '19:01', '19:11', '19:32', { pick: true })] }, know: ['Arrive 15 min before the start.'], est: 'Lab times are the train time minus about 10 min.' } };
+    return (<><Trips cards={which === 'trips-journey' || which === 'trips-b' ? [journeys] : [trip, { ...trip, id: 't2', title: 'Later trip', due: '2026-11-20T10:00:00+09:00' }]} now={NOW} done={[{ ...trip, id: 'p1', status: 'done', title: 'Trip to Osaka for the visa office', due: '2026-10-28T09:00:00+09:00' }]} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which === 'shelf') {
     return (<><Shelf

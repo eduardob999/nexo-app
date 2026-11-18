@@ -343,11 +343,24 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .tkh { margin: 6px 0 0; font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
 .tkline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; } .tkline li { display: grid; grid-template-columns: 52px 12px 1fr; gap: 8px; align-items: baseline; font-size: 15px; }
 .tkt { font: 600 13px var(--mono); color: var(--muted); } .tkdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); align-self: center; } .tkline i { color: var(--muted); font-size: 13px; }
-.tkopts { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.tkopt { display: grid; grid-template-columns: 1fr auto; grid-template-areas: 't p' 'i i'; align-items: baseline; padding: 4px 8px; border-radius: 8px; font-size: 15px; color: var(--ink-2, inherit); }
-.tkopt .tkot { grid-area: t; font-family: var(--mono); white-space: nowrap; } .tkopt .tkoi { grid-area: i; min-width: 0; overflow-wrap: anywhere; font-size: 13px; color: var(--muted); } .tkopt .tkoi em { font-style: normal; font-weight: 700; color: var(--accent); }
+.tkjourney { display: grid; gap: 8px; }
+.tkjh { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tkreset { font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: transparent; border: 1px solid var(--accent); border-radius: 999px; padding: 4px 10px; min-height: 32px; }
+.tksteps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.tkstep { display: grid; grid-template-columns: 50px 62px 1fr; gap: 8px; align-items: baseline; font-size: 15px; }
+.tkst { font: 700 16px var(--mono); }
+.tksl { font: 700 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.tkstep.change .tksl, .tkstep.walk .tksl, .tkstep.bike .tksl { color: var(--muted); }
+.tkstep.change .tkstx, .tkstep.walk .tkstx { color: var(--muted); }
+.tkstx { min-width: 0; overflow-wrap: anywhere; } .tkstx small { display: block; font-size: 12px; color: var(--muted); }
+.tkpickh { margin: 6px 0 0; font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tkopts { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.tkopt { display: grid; width: 100%; grid-template-columns: 1fr auto; grid-template-areas: 't p' 'i i'; align-items: baseline; text-align: left; padding: 8px 10px; min-height: 44px; border-radius: 10px; border: 1px solid transparent; background: transparent; font: inherit; font-size: 15px; color: var(--ink-2, inherit); cursor: pointer; }
+.tkopt .tkot { grid-area: t; font-family: var(--mono); white-space: nowrap; } .tkopt .tkos { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tkopt .tkoi { grid-area: i; min-width: 0; overflow-wrap: anywhere; font-size: 13px; color: var(--muted); } .tkopt .tkoi em { font-style: normal; font-weight: 700; color: var(--accent); }
 .tkopt.early, .tkopt.later { opacity: 0.72; }
-.tkopt.pick { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent); opacity: 1; font-weight: 600; } .tkopt.pick .tkoi { color: inherit; font-weight: 400; } .tkopt.pick .tkpick { color: var(--accent); }
+.tkopt.sel { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); opacity: 1; font-weight: 600; } .tkopt.sel .tkoi { color: inherit; font-weight: 400; }
+.tkopt.pick .tkpick { color: var(--accent); }
 .tkpick { grid-area: p; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .tkknow { margin: 0; padding-left: 18px; font-size: 15px; display: grid; gap: 4px; } .tkmap { margin: 0; } .tkmap a { color: var(--accent); }
 .memo-form { margin: 14px 8px 0; } .memo-list { padding: 4px 16px; } .memo-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }

@@ -26,6 +26,7 @@ interface Props {
   /** Easy-to-miss flag: true, false, or null for Auto. */
   onIncoming?: (value: boolean | null) => void;
   onBring?: (index: number, got: boolean) => void;
+  onTripSelect?: (side: 'out' | 'back', id: string | null) => void;
   onItem?: (itemId: string, done: boolean) => void;
   onAddItem?: (text: string) => void;
   onRemoveItem?: (itemId: string) => void;
@@ -55,7 +56,7 @@ function incomingState(card: Card): string {
 
 const GENERIC_REPLIES = ['Done', 'Not yet', 'Yes', 'No', "I'll do it"];
 
-export function Thread({ card, entries, pics = [], drafts, now, onBack, widget, onReply, onPriority = () => {}, onIncoming = () => {}, onBring = () => {}, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onReopen, onAttach }: Props) {
+export function Thread({ card, entries, pics = [], drafts, now, onBack, widget, onReply, onPriority = () => {}, onIncoming = () => {}, onBring = () => {}, onTripSelect, onItem = () => {}, onAddItem = () => {}, onRemoveItem, onDelete, onReopen, onAttach }: Props) {
   const [attaching, setAttaching] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
   const pageRef = useRef<HTMLElement>(null);
@@ -164,7 +165,7 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, widget, 
           </div>
         ) : null;
       })()}
-      {card.plan ? <TripTicket plan={card.plan} /> : null}
+      {card.plan ? <TripTicket plan={card.plan} {...(onTripSelect ? { onSelect: onTripSelect } : {})} /> : null}
       <div className="cl-wrap"><Checklists card={card} onBring={onBring} onItem={onItem} onAdd={onAddItem} onRemove={onRemoveItem} /></div>
 
       <ol className="bubbles">

@@ -146,10 +146,25 @@ export interface Resource {
 }
 
 export interface Leg { t?: string; txt?: string; dur?: string }
-/** One train from a timetable lookup (nexo/trains.py). `pick` marks the one the card plans around; `late` arrives after the deadline. */
-export interface TrainOption { leave: string; arrive: string; txt?: string; pick?: boolean; late?: boolean }
-export interface PlanSide { leave?: string; arrive?: string; from?: string; to?: string; legs?: Leg[]; txt?: string; options?: TrainOption[] }
-
+/** One step of a journey: the bike or walk to the station, a train, or a change between trains. Platforms are shown only when the lookup gave one. */
+export interface TripStep {
+  kind: 'bike' | 'walk' | 'train' | 'change';
+  from?: string; to?: string; at?: string;
+  start?: string; end?: string; min?: number;
+  board?: string; alight?: string; line?: string; toward?: string; platform?: string | null;
+  wait_min?: number; from_platform?: string | null; to_platform?: string | null;
+  txt?: string;
+}
+/** One whole journey from a timetable lookup (nexo/trains.py). `pick` marks the one the card plans around; `late` arrives after the deadline. */
+export interface TrainOption {
+  /** Stable id of the itinerary; without one the app uses `leave-arrive`. */
+  id?: string;
+  /** When he starts moving (leaves the lab or the dojo). Older options only have `leave`, which means the same. */
+  start?: string;
+  leave: string; arrive: string; txt?: string; pick?: boolean; late?: boolean;
+  steps?: TripStep[];
+}
+export interface PlanSide { leave?: string; arrive?: string; from?: string; to?: string; legs?: Leg[]; txt?: string; options?: TrainOption[]; /** The itinerary he chose; absent means the planned one. */ selected?: string }
 /** A trip ticket: the way there, the way back, what to know. Times are HH:MM. */
 export interface Plan {
   from?: string;

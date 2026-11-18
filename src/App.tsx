@@ -6,7 +6,7 @@ import type { SleepRec } from './sleepmodel';
 import { SleepScreen } from './SleepScreen';
 import { makeThumb, uploadToDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, cardContext, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, selectTrip, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, cardContext, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { doneCutoff } from './shelf';
 import type { RestRec } from './restmodel';
 import { isFirebaseConfigured, reconnect } from './firebase';
@@ -64,7 +64,7 @@ function ThreadView({ uid, card, drafts }: { uid: string; card: Card; drafts: Dr
       widget={(card.type ?? '').toUpperCase() === 'ASSIGNMENT' ? <FudeCardWidget uid={uid} card={{ ...card, entries, files: pics.length ? pics : card.files }} /> : null}
       onBack={() => { window.location.hash = '#/'; }}
       onReply={(t) => { void addEntry(uid, card, t); flash('Reply sent to Nexo'); }}
-      onPriority={() => { void cyclePriority(uid, card); }} onIncoming={(v) => { void setIncoming(uid, card, v); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} onRemoveItem={(id) => { void removeItem(uid, card, id); }}
+      onPriority={() => { void cyclePriority(uid, card); }} onIncoming={(v) => { void setIncoming(uid, card, v); }} onBring={(i, g) => { void tickBring(uid, card, i, g); }} onTripSelect={(side, id) => { void selectTrip(uid, card, side, id); }} onItem={(id, d) => { void tickItem(uid, card, id, d); }} onAddItem={(t) => { void addItem(uid, card, t); }} onRemoveItem={(id) => { void removeItem(uid, card, id); }}
       onReopen={() => { void reopenCard(uid, card.id); flash('Reopened'); }}
       onDelete={() => { void deleteCard(uid, card.id); window.location.hash = '#/'; flash('Card deleted'); }}
       onAttach={async (files) => { const done: { name: string; url: string }[] = []; for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(uid, { cardId: card.id }, up, thumb); done.push({ name: up.name, url: up.viewUrl }); } flash('Attached'); return done; }} />
@@ -273,7 +273,7 @@ export function App() {
       ) : tab === 'homework' ? (
         <FudeModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} host={{ markCardDone: (cardId) => markDone(user.uid, cardId), sendBackDraft: (draftId, text) => { const d = drafts.find((x) => x.id === draftId); if (d) { void editDraft(user.uid, d, text); flash('Text sent back to the draft'); window.location.hash = '#/drafts'; } } }} />
       ) : tab === 'trips' ? (
-        <Trips cards={cards} now={new Date()} done={doneCards} />
+        <Trips cards={cards} now={new Date()} done={doneCards} onSelect={(c, side, id) => { if (user) void selectTrip(user.uid, c, side, id); }} />
       ) : tab === 'shelf' ? (
         <Shelf done={doneCards} closed={closedRelays} resources={resources} onShowOlder={showOlderDone ? undefined : () => setShowOlderDone(true)}
           onAdd={(r) => { void addResource(user.uid, r); }} onArchive={(r, a) => { void archiveResource(user.uid, r, a); }}
