@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HEADER, headerFor, jaBudgetOf, LECTURE_STYLE, GENERAL_STYLE, styleFor, submitLang, decodeText, chosenContext, compileContext, currentStep, draftPrompt, factSheet, firstOpenStep, meBlock, meJaRule, researchPrompt, stepDone, type FlowDoc, type ContextItem } from './flow';
+import { ownInputNeeds, ownInputTitle, missingOwnInput, DEFAULT_HEADER, headerFor, jaBudgetOf, LECTURE_STYLE, GENERAL_STYLE, styleFor, submitLang, decodeText, chosenContext, compileContext, currentStep, draftPrompt, factSheet, firstOpenStep, meBlock, meJaRule, researchPrompt, stepDone, type FlowDoc, type ContextItem } from './flow';
 
 const item = (o: Partial<ContextItem>): ContextItem => ({ id: 'a', source: 'gmail', title: 'Nov 11 notes', text: 'x', on: true, ...o });
 const base: FlowDoc = { title: '高橋 report', text: '' };
@@ -135,3 +135,33 @@ describe('the lecture-report workflow', () => {
     expect(DEFAULT_HEADER).toContain('氏名：Eduardo Bogado');
   });
 });
+
+describe('own input at step 2 and the length gate at step 9', () => {
+  const req = 'Report.\n\nRequirements checklist:\n1. What I learned in the class.\n2. What I thought from it.\n3. My impressions of the class.\n4. 1,000 characters or fewer IN TOTAL (1,000字以内).';
+  it('finds the requirement lines that need something only he has', () => {
+    expect(ownInputNeeds(req)).toEqual(['What I thought from it.', 'My impressions of the class.']);
+    expect(ownInputNeeds('Summarise the paper.')).toEqual([]);
+    expect(ownInputNeeds(undefined)).toEqual([]);
+  });
+  it('the context step stays open until each need has his own words', () => {
+    const d: FlowDoc = { ...base, requirements: req, flow: { contextItems: [item({ id: 'a' })] } };
+    expect(stepDone(d, 2)).toBe(false);
+    expect(missingOwnInput(d)).toHaveLength(2);
+    const items = [item({ id: 'a' }), ...ownInputNeeds(req).map((n, k) => item({ id: `o${k}`, source: 'paste', title: ownInputTitle(n), text: 'my words' }))];
+    expect(stepDone({ ...d, flow: { contextItems: items } }, 2)).toBe(true);
+    expect(stepDone({ ...d, flow: { contextItems: [], contextSkipped: true } }, 2)).toBe(true);
+  });
+  it('the draft prompt lists the needs and forbids inventing them', () => {
+    const p = draftPrompt({ title: 't', request: req, context: '', me: ME, ownNeeds: ownInputNeeds(req) });
+    expect(p).toContain('NEEDS FROM ME');
+    expect(p).toContain('My impressions of the class.');
+    expect(p).toContain('write NEED:');
+  });
+  it('step 9 is not done while the Japanese is over the limit', () => {
+    const d: FlowDoc = { ...base, requirements: '全体で1,000字以内にまとめて', translationCheck: { status: 'ready', japanese: 'x' }, translationDraft: 'あ'.repeat(1022) };
+    expect(stepDone(d, 9)).toBe(false);
+    expect(stepDone({ ...d, translationDraft: 'あ'.repeat(955) }, 9)).toBe(true);
+    expect(stepDone({ ...d, requirements: 'no limit named' , translationDraft: 'あ'.repeat(5000) }, 9)).toBe(true);
+  });
+});
+

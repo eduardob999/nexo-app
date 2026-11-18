@@ -11,7 +11,7 @@ import { AutoReview } from './autoreview';
 import { translationPrompt } from './translation';
 import { STATUS_LABEL, tally } from './assignment';
 import { clampStep, compileContext, firstOpenStep, headerFor, isFlow, jaBudgetOf, LAST_STEP, meJaRule, storedStep } from './flow';
-import { AnswerStep, CompareBox, ContextStep, EditsBox, HeaderBox, NaturalizeStep, PromptStep, RequestStep, SkipTranslation, StepBar, StepHead, StepNav, SubmitStep, type FlowApi } from './Flow';
+import { AnswerStep, CompareBox, ContextStep, EditsBox, HeaderBox, JaRequirementBox, SourcesBox, NaturalizeStep, PromptStep, RequestStep, SkipTranslation, StepBar, StepHead, StepNav, SubmitStep, type FlowApi } from './Flow';
 import { lengthVerdict } from './lengths';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
@@ -356,10 +356,10 @@ function AssignmentPanel({ doc, text, onSaveReq, onCheck, onClear, hideRequest }
       {items.length ? (
         <ul className="fude-notes" aria-label="Assignment requirements">
           {items.map((i, n) => (
-            <li key={n} className={`sev-${i.status === 'met' ? 'info' : i.status === 'partial' ? 'warn' : 'error'}`}>
-              <p><b>{STATUS_LABEL[i.status]}</b> {i.req}</p>
+            <li key={n} className={`sev-${i.status === 'met' || i.deferred ? 'info' : i.status === 'partial' ? 'warn' : 'error'}`}>
+              <p><b>{i.deferred ? 'After translation' : STATUS_LABEL[i.status]}</b> {i.req}</p>
               {i.evidence ? <p className="mut">“{i.evidence}”</p> : null}
-              {i.gap ? <p>{i.gap}</p> : null}
+              {i.deferred ? <p className="mut">Judged on the Japanese at step 9.</p> : i.gap ? <p>{i.gap}</p> : null}
             </li>
           ))}
         </ul>
@@ -574,6 +574,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
       ) : null}
       {flowOn && flowApi && show6 ? <EditsBox doc={doc} api={flowApi} text={text} /> : null}
       {onAssignmentCheck && show6 ? <AssignmentPanel hideRequest={flowOn} doc={doc} text={text} onSaveReq={onRequirements} onCheck={() => onAssignmentCheck(doc, text)} onClear={() => onClearAssignmentCheck?.(doc)} /> : null}
+      {flowOn && flowApi && show6 ? <SourcesBox doc={doc} api={flowApi} text={text} /> : null}
       {show6 && onReview ? (
         <div className="fude-review">
           {doc.review?.status === 'requested' || doc.review?.status === 'working'
@@ -585,6 +586,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
       ) : null}
       {flowOn && flowApi && step === 8 && !doc.flow?.skipTranslation ? <HeaderBox doc={doc} api={flowApi} /> : null}
       {onTranslate && (!flowOn || step === 8 || step === 9) ? <TranslateWrap on={flowOn && !!flowApi} doc={doc} api={flowApi}><TranslatePanel extra={flowOn && flowApi ? { request: doc.requirements ?? '', jaRule: meJaRule(flowApi.me), context: compileContext(doc.flow), header: headerFor(doc.flow), jaBudget: jaBudgetOf(doc) } : undefined} part={flowOn ? (step === 8 ? 'prompt' : 'check') : 'both'} doc={doc} text={text} onAsk={() => onTranslate(doc, text)} onClear={() => onClearTranslate?.(doc)} onSaveJa={onSaveTranslation} onCheck={onCheckTranslation} onClearCheck={onClearTranslationCheck} /></TranslateWrap> : null}
+      {flowOn && flowApi && step === 9 && !doc.flow?.skipTranslation ? <JaRequirementBox doc={doc} api={flowApi} ja={doc.translationDraft ?? ''} /> : null}
       {flowOn && flowApi && step === 9 && !doc.flow?.skipTranslation ? <CompareBox doc={doc} api={flowApi} text={text} ja={doc.translationDraft ?? ''} onUseMerged={(m) => onSaveTranslation?.(doc, m)} /> : null}
       {show6 && notes.filter((n) => n.status === 'open').length ? (
         <ul className="panel fude-notes" aria-label="Reviewer notes">

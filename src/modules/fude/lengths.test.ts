@@ -17,8 +17,10 @@ describe('lengths', () => {
   });
   it('turns a Japanese range into an English word target that leaves room under the ceiling', () => {
     const t = englishWordTarget({ min: 1000, max: 2000 });
-    expect(t?.min).toBe(380);
-    expect(t?.max).toBe(730);
+    expect(t?.min).toBe(330);
+    expect(t?.max).toBe(640);
+    // the 寺尾 report: a 1,000 limit asks for about 320 English words, not the 360 that overshot by 22 characters
+    expect(englishWordTarget({ max: 1000 })?.max).toBe(320);
     expect(englishWordTarget(undefined)).toBeUndefined();
   });
   it('says plainly where a translation stands', () => {

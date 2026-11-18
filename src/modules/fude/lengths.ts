@@ -22,15 +22,23 @@ export function parseJaBudget(request: string | undefined): CharBudget | undefin
   return up ? { max: Number(up[1]) } : undefined;
 }
 
-/** Japanese characters per English word measured on this course's reports (734 words became 1951 characters, 792 became 2105). */
-export const JA_PER_EN_WORD = 2.66;
+/**
+ * Japanese characters per English word. 2.66 was measured on two earlier reports (734 words became 1951 characters, 792 became 2105).
+ * The 寺尾 report (2026-11-18) came out at 1,022 characters from 341 English words, 3.0 per word, and went over a 1,000 limit,
+ * so the figure is now the larger one: a target that lands under the limit on both kinds of text is better than one that is exact on one.
+ */
+export const JA_PER_EN_WORD = 3.0;
+
+/** Characters the Japanese headings take (【学んだこと】【考えたこと・感想】 is 17), kept out of the room the English may use. */
+export const HEADING_ALLOWANCE = 20;
 
 /** The English length that translates into the Japanese budget. Rounded to the nearest 10, with a little room under the ceiling. */
 export function englishWordTarget(b: CharBudget | undefined): { min?: number; max?: number } | undefined {
   if (!b || (b.min === undefined && b.max === undefined)) return undefined;
   const r = (n: number) => Math.round(n / 10) * 10;
-  return { ...(b.min !== undefined ? { min: r(b.min / JA_PER_EN_WORD) } : {}), ...(b.max !== undefined ? { max: r((b.max * 0.97) / JA_PER_EN_WORD) } : {}) };
+  return { ...(b.min !== undefined ? { min: r(b.min / JA_PER_EN_WORD) } : {}), ...(b.max !== undefined ? { max: r(((b.max - HEADING_ALLOWANCE) * 0.97) / JA_PER_EN_WORD) } : {}) };
 }
+
 
 export interface Verdict { status: 'under' | 'ok' | 'over' | 'none'; chars: number; message: string }
 
@@ -43,6 +51,7 @@ export function lengthVerdict(ja: string, b: CharBudget | undefined): Verdict {
   if (b.min !== undefined && chars < b.min) return { status: 'under', chars, message: `${n(chars)} characters: ${n(b.min - chars)} under the minimum of ${n(b.min)}.` };
   return { status: 'ok', chars, message: `${n(chars)} characters, inside ${n(b.min ?? 0)}–${n(b.max ?? chars)}.` };
 }
+
 
 /** The submission page's own counter includes the HTML it wraps around each paragraph, so it reads a little higher. */
 export const editorCounterNote = 'KULMS\'s editor shows a higher number because it counts its HTML tags (about 100 for ten paragraphs). The course counts your text.';

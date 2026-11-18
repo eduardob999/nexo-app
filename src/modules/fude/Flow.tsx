@@ -1,8 +1,9 @@
 /** The screens of the assignment flow (flow.ts). Each step is one card; the editor and the checks of step 6 and 7-8 stay in Screen.tsx. */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { FudeDoc } from './documents';
-import { decodeText, chosenContext, compileContext, DEFAULT_SOURCES, draftPrompt, factSheet, firstOpenStep, headerFor, jaBudgetOf, LAST_STEP, meBlock, researchPrompt, SOURCE_LABEL, STEPS, stepDone, styleFor, submitLang, type ContextItem, type ContextSources } from './flow';
+import { decodeText, chosenContext, compileContext, DEFAULT_SOURCES, draftPrompt, factSheet, firstOpenStep, headerFor, jaBudgetOf, LAST_STEP, meBlock, missingOwnInput, ownInputNeeds, ownInputTitle, researchPrompt, SOURCE_LABEL, STEPS, stepDone, styleFor, submitLang, type ContextItem, type ContextSources } from './flow';
 import { diffWords, changedWords } from './diff';
+import { CLAIM_LABEL, STATUS_LABEL, tally, unresolvedClaims } from './assignment';
 import { driftWarnings, EDIT_LABEL, listItems } from './edits';
 import { editorCounterNote, englishWordTarget, enWords, jaChars, lengthVerdict } from './lengths';
 import { NATURALIZE_HEAD, naturalizePrompt } from './naturalize';
@@ -23,6 +24,11 @@ export interface FlowApi {
   clearEdits: (doc: FudeDoc) => void;
   askCompare: (doc: FudeDoc, req: { english: string; a: string; b: string; labelA?: string; labelB?: string; budget?: { min?: number; max?: number } }) => void;
   clearCompare: (doc: FudeDoc) => void;
+  /** The requirement check on the Japanese that will be submitted, and the claims-against-sources check on the English. */
+  askAssignmentCheckJa: (doc: FudeDoc, japanese: string) => void;
+  clearAssignmentCheckJa: (doc: FudeDoc) => void;
+  askSourcesCheck: (doc: FudeDoc, text: string) => void;
+  clearSourcesCheck: (doc: FudeDoc) => void;
   canCloseCard: boolean;
 }
 
@@ -159,9 +165,31 @@ export function ContextStep({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
     if (text) setItems([...items, { id: `f${Date.now().toString(36)}`, source: 'file', title: f.name, text: text.slice(0, 60000), on: true }]);
   };
   const on = chosenContext(flow);
+  const needs = ownInputNeeds(doc.requirements);
+  const missing = missingOwnInput(doc);
+  const saveOwn = (need: string, text: string) => {
+    const title = ownInputTitle(need);
+    const rest = items.filter((i) => i.title !== title);
+    setItems(text.trim() ? [...rest, { id: `own${need.length}${need.charCodeAt(0)}`, source: 'paste', title, text: text.trim(), on: true }] : rest);
+  };
   const anySource = Object.values(sources).some(Boolean);
   return (
     <div className="fude-tools">
+      {needs.length ? (
+        <section className="panel fude-tool" aria-label="Needs you before drafting">
+          <header className="fude-tool-head"><h3>Needs you before drafting</h3><p>{missing.length ? `${missing.length} of ${needs.length} still empty. These parts need something only you have; the draft will not invent them.` : 'All filled. They go into the draft prompt as your own words.'}</p></header>
+          {needs.map((n) => {
+            const have = items.find((i) => i.title === ownInputTitle(n));
+            return (
+              <label key={n} className="flow-own">
+                <b>{n}</b>
+                <textarea className="hw-answer" rows={3} autoCorrect="off" defaultValue={have?.text ?? ''} placeholder="Your own words: what you thought, what you felt, how it relates to your work."
+                  onBlur={(e) => { if (e.target.value.trim() !== (have?.text ?? '')) saveOwn(n, e.target.value); }} />
+              </label>
+            );
+          })}
+        </section>
+      ) : null}
       <section className="panel fude-tool" aria-label="Find context">
         <header className="fude-tool-head"><h3>Look for context</h3><p>Pick where to look. Nexo reads only; nothing is changed or sent.</p></header>
         <div className="flow-sources">
@@ -214,7 +242,7 @@ export function ContextStep({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
 const promptInput = (doc: FudeDoc, me: string) => ({
   title: doc.title, request: doc.requirements ?? '', context: compileContext(doc.flow), research: doc.flow?.research ?? '',
   me: meBlock(me), due: dueText(doc.due), budget: doc.budget,
-  style: doc.flow?.style, opinion: doc.flow?.opinion, submitLang: submitLang(doc.flow), jaBudget: jaBudgetOf(doc),
+  style: doc.flow?.style, opinion: doc.flow?.opinion, submitLang: submitLang(doc.flow), jaBudget: jaBudgetOf(doc), ownNeeds: ownInputNeeds(doc.requirements),
 });
 
 /** Step 3 and 5: the two prompts. They are rebuilt from the saved fields every time, so they never go stale. */
@@ -286,15 +314,23 @@ export function SubmitStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; tex
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const flow = doc.flow ?? {};
-  const items = doc.assignmentCheck?.status === 'ready' && doc.assignmentCheck.text === text ? doc.assignmentCheck.items ?? [] : null;
-  const unmet = items ? items.filter((i) => i.status !== 'met').length : null;
   const ja = !flow.skipTranslation ? (doc.translationDraft ?? '').trim() : '';
+  // A report submitted in Japanese is judged on the Japanese; the English draft cannot meet a Japanese length or language requirement.
+  const checked = ja ? doc.assignmentCheckJa : doc.assignmentCheck;
+  const items = checked?.status === 'ready' && checked.text === (ja || text) ? checked.items ?? [] : null;
+  const unmet = items ? items.filter((i) => i.status !== 'met').length : null;
+  const sc = doc.sourcesCheck?.status === 'ready' && doc.sourcesCheck.text === text ? doc.sourcesCheck.items ?? [] : null;
+  const unresolved = sc ? unresolvedClaims(sc) : null;
+  const jb = jaBudgetOf(doc);
+  const jv = ja && jb ? lengthVerdict(ja, jb) : null;
+  const overLimit = jv?.status === 'over';
   const checks: [string, boolean][] = [
     ['Text written', !!text.trim()],
-    ['Checked against the assignment', !!items],
+    ['Checked against the assignment' + (ja ? ' (the Japanese)' : ''), !!items],
     ['Every requirement met', items ? unmet === 0 : false],
+    [unresolved === null ? 'Claims checked against sources' : unresolved === 0 ? 'Claims checked against sources' : `Claims checked against sources: ${unresolved} not fully supported`, unresolved === 0],
     ['Checked the university\'s generative-AI rules for this course (disclosure, limits)', !!flow.aiRulesChecked],
-    ...(!flow.skipTranslation ? [['Japanese pasted', !!ja] as [string, boolean], ['Japanese compared with the English', doc.translationCheck?.status === 'ready' && doc.translationCheck.japanese === ja] as [string, boolean], ...(jaBudgetOf(doc) ? [[`Japanese length ${lengthVerdict(ja, jaBudgetOf(doc)).message}`, lengthVerdict(ja, jaBudgetOf(doc)).status === 'ok'] as [string, boolean]] : [])] : []),
+    ...(!flow.skipTranslation ? [['Japanese pasted', !!ja] as [string, boolean], ['Japanese compared with the English', doc.translationCheck?.status === 'ready' && doc.translationCheck.japanese === ja] as [string, boolean], ...(jv ? [[`Japanese length ${jv.message}`, jv.status === 'ok'] as [string, boolean]] : [])] : []),
   ];
   const done = !!flow.submittedAt;
   const go = async () => {
@@ -308,7 +344,8 @@ export function SubmitStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; tex
         {checks.map(([label, ok]) => <li key={label} className={ok ? 'ok' : 'no'}><span aria-hidden="true">{ok ? '✓' : '○'}</span>{label}</li>)}
       </ul>
       {!flow.aiRulesChecked && !done ? <div className="fude-tool-actions"><button type="button" className="tool-chip" onClick={() => api.save(doc, { aiRulesChecked: true })}>I checked the generative-AI rules</button></div> : null}
-      {unmet ? <p className="fude-tool-warn">{unmet} requirement{unmet === 1 ? ' is' : 's are'} not fully met. Go back to step 6 to see which.</p> : null}
+      {unmet ? <p className="fude-tool-warn">{unmet} requirement{unmet === 1 ? ' is' : 's are'} not fully met. Go back to step {ja ? 9 : 6} to see which.</p> : null}
+      {overLimit && !done ? <p className="fude-tool-warn" role="alert">Cannot mark submitted: the Japanese is over the limit. {jv?.message}</p> : null}
       {done ? (
         <>
           <p className="fude-tool-warn">Submitted {new Date(flow.submittedAt as string).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. The final version is kept for future similar works.</p>
@@ -316,7 +353,7 @@ export function SubmitStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; tex
         </>
       ) : (
         <div className="fude-tool-actions">
-          <button type="button" className="flow-primary" disabled={busy || !text.trim()} onClick={() => { void go(); }}>{busy ? 'Saving…' : doc.cardId && api.canCloseCard ? 'Mark submitted and close the card' : 'Mark submitted'}</button>
+          <button type="button" className="flow-primary" disabled={busy || !text.trim() || overLimit} onClick={() => { void go(); }}>{busy ? 'Saving…' : doc.cardId && api.canCloseCard ? 'Mark submitted and close the card' : 'Mark submitted'}</button>
         </div>
       )}
       {err ? <p className="fude-tool-warn" role="alert">{err}</p> : null}
@@ -467,3 +504,66 @@ export function SkipTranslation({ doc, api, children }: { doc: FudeDoc; api: Flo
 }
 
 export { firstOpenStep };
+
+/** Step 9: the requirements judged on the Japanese that will be submitted, which is where length and language can actually be met. */
+export function JaRequirementBox({ doc, api, ja }: { doc: FudeDoc; api: FlowApi; ja: string }) {
+  const chk = doc.assignmentCheckJa;
+  const busy = chk?.status === 'requested' || chk?.status === 'working';
+  const items = chk?.status === 'ready' ? chk.items ?? [] : [];
+  const t = tally(items);
+  const outdated = chk?.status === 'ready' && chk.text !== ja.trim();
+  return (
+    <section className="panel fude-tool" aria-label="Requirements on the Japanese">
+      <header className="fude-tool-head"><h3>{chk?.status === 'ready' ? `The Japanese against the assignment: ${t.met} of ${t.total} done` : 'Check the Japanese against the assignment'}</h3><p>Length and language are judged here, on the text that is submitted.</p></header>
+      <div className="fude-tool-actions">
+        {busy ? <span className="mut" role="status">Checking the Japanese against the assignment…</span>
+          : <button type="button" className="tool-chip" disabled={!ja.trim() || !doc.requirements} onClick={() => api.askAssignmentCheckJa(doc, ja.trim())}>Check the Japanese</button>}
+        {chk ? <button type="button" className="tool-chip" onClick={() => api.clearAssignmentCheckJa(doc)}>Close results</button> : null}
+      </div>
+      {chk?.status === 'error' ? <p className="fude-tool-warn" role="alert">{chk.message}</p> : null}
+      {outdated ? <p className="fude-tool-warn">The Japanese changed after this check. Check again before you submit.</p> : null}
+      {items.length ? (
+        <ul className="fude-notes" aria-label="Requirements">
+          {items.map((i, n) => (
+            <li key={n} className={`sev-${i.status === 'met' ? 'info' : i.status === 'partial' ? 'warn' : 'error'}`}>
+              <p><b>{STATUS_LABEL[i.status]}</b> {i.req}</p>
+              {i.evidence ? <p className="mut">“{i.evidence}”</p> : null}
+              {i.gap ? <p>{i.gap}</p> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
+/** Step 6: every factual claim of the English against the fact sheet, with the quote that backs it. A claim with no quote is not supported. */
+export function SourcesBox({ doc, api, text }: { doc: FudeDoc; api: FlowApi; text: string }) {
+  const chk = doc.sourcesCheck;
+  const busy = chk?.status === 'requested' || chk?.status === 'working';
+  const items = chk?.status === 'ready' ? chk.items ?? [] : [];
+  const outdated = chk?.status === 'ready' && chk.text !== text;
+  return (
+    <details className="panel hw-context" open={!!chk || undefined}>
+      <summary>{chk?.status === 'ready' ? `Claims against sources: ${items.length - unresolvedClaims(items)} of ${items.length} supported` : 'Sources: check every claim against the fact sheet'}</summary>
+      <div className="fude-tool-actions">
+        {busy ? <span className="mut" role="status">Checking every claim against your sources…</span>
+          : <button type="button" className="tool-chip" disabled={!text.trim() || !factSheet(doc.flow).trim() && !(doc.facts ?? '').trim()} onClick={() => api.askSourcesCheck(doc, text)}>Check claims against sources</button>}
+        {chk ? <button type="button" className="tool-chip" onClick={() => api.clearSourcesCheck(doc)}>Close results</button> : null}
+      </div>
+      {chk?.status === 'error' ? <p className="fude-tool-warn" role="alert">{chk.message}</p> : null}
+      {outdated ? <p className="fude-tool-warn">You changed the text after this check. Check again before you submit.</p> : null}
+      {items.length ? (
+        <ul className="fude-notes" aria-label="Claims">
+          {items.map((i, n) => (
+            <li key={n} className={`sev-${i.status === 'supported' ? 'info' : i.status === 'weak' ? 'warn' : 'error'}`}>
+              <p><b>{CLAIM_LABEL[i.status]}</b> {i.claim}</p>
+              {i.quote ? <p className="mut" lang="ja">“{i.quote}”</p> : null}
+              {i.note ? <p>{i.note}</p> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </details>
+  );
+}

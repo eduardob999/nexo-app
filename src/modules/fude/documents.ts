@@ -1,7 +1,7 @@
 /** Whole-text documents: a report, an email, free writing. One text, one profile (profiles.ts). */
 import type { CardFile } from '../../types';
 import type { Budget } from './profiles';
-import type { AssignmentCheck } from './assignment';
+import type { AssignmentCheck, SourcesCheck } from './assignment';
 import type { TranslationCheck, TranslationRequest } from './translation';
 import type { ContextRequest, Flow } from './flow';
 import type { CompareRequest, EditRequest } from './edits';
@@ -59,6 +59,10 @@ export interface FudeDoc {
   /** Two Japanese translations compared with the English. */
   compareRequest?: CompareRequest;
   assignmentCheck?: AssignmentCheck;
+  /** The same check on the Japanese that will be submitted (step 9). */
+  assignmentCheckJa?: AssignmentCheck;
+  /** Each factual claim of the text against the fact sheet, with the quote that backs it. */
+  sourcesCheck?: SourcesCheck;
   translationDraft?: string;
   translationCheck?: TranslationCheck;
   /** A saved version to compare against: the Changes panel shows what differs from it, and he can revert any change. */

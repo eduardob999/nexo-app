@@ -3,7 +3,7 @@
  * A document with `flow` set uses the stepper (Flow.tsx); one without it keeps the plain editor screen.
  */
 import type { Budget } from './profiles';
-import { englishWordTarget, parseJaBudget } from './lengths';
+import { englishWordTarget, lengthVerdict, parseJaBudget } from './lengths';
 
 export interface StepDef { n: number; key: string; label: string; hint: string }
 export const STEPS: StepDef[] = [
@@ -79,6 +79,9 @@ export interface FlowDoc {
   translationDraft?: string;
   translationCheck?: { status: string; english?: string; japanese?: string };
   assignmentCheck?: { status: string; text?: string; items?: { status: string }[] };
+  /** The same check, run on the Japanese that will be submitted. */
+  assignmentCheckJa?: { status: string; text?: string; items?: { status: string; deferred?: boolean }[] };
+  sourcesCheck?: { status: string; text?: string; items?: { status: string }[] };
   review?: { status: string };
 }
 
@@ -109,19 +112,44 @@ export function factSheet(f: Flow | undefined): string {
 
 const hasText = (s: string | undefined): boolean => !!s && s.trim().length > 0;
 
+/**
+ * The lines of the requirements that need something only he has: his own view, impressions, research. Without them the
+ * draft either leaves the part out or invents it, so step 2 asks for them before any prompt is written.
+ */
+const OWN_INPUT = /your own|my own|impression|opinion|thought|感想|考え|意見|research|自分/i;
+export function ownInputNeeds(requirements: string | undefined): string[] {
+  const lines = (requirements ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const numbered = lines.filter((l) => /^\d+[.)]\s/.test(l));
+  const pool = (numbered.length ? numbered : lines).map((l) => l.replace(/^\d+[.)]\s*/, '').replace(/\*\*/g, '').trim());
+  const out: string[] = [];
+  for (const l of pool) if (OWN_INPUT.test(l) && !out.includes(l.slice(0, 90))) out.push(l.slice(0, 90));
+  return out;
+}
+/** The title of the context item that answers one of those needs. */
+export const ownInputTitle = (need: string): string => `My own input: ${need}`;
+/** The needs that have no context item with text yet. */
+export const missingOwnInput = (d: { requirements?: string; flow?: Flow | undefined }): string[] =>
+  ownInputNeeds(d.requirements).filter((n) => !(d.flow?.contextItems ?? []).some((i) => i.title === ownInputTitle(n) && i.text.trim()));
+
+/** True when the assignment names a character limit and the pasted Japanese is inside it, or when it names none. */
+export function japaneseLengthOk(d: { requirements?: string; translationDraft?: string }): boolean {
+  const b = jaBudgetOf(d);
+  return !b || lengthVerdict(d.translationDraft ?? '', b).status === 'ok';
+}
+
 /** Whether a step has what it needs. Used for the dots on the step bar and for the "next" nudge; never to block him. */
 export function stepDone(d: FlowDoc, n: number): boolean {
   const f = d.flow;
   switch (n) {
     case 1: return hasText(d.requirements);
-    case 2: return chosenContext(f).length > 0 || !!f?.contextSkipped;
+    case 2: return !!f?.contextSkipped || (chosenContext(f).length > 0 && missingOwnInput(d).length === 0);
     case 3: return hasText(f?.research);
     case 4: return hasText(f?.research);
     case 5: return hasText(d.text);
     case 6: return hasText(d.text) && d.assignmentCheck?.status === 'ready' && d.assignmentCheck.text === d.text;
     case 7: return !!f?.naturalizeDone;
     case 8: return !!f?.skipTranslation || d.translationRequest?.status === 'ready';
-    case 9: return !!f?.skipTranslation || d.translationCheck?.status === 'ready';
+    case 9: return !!f?.skipTranslation || (d.translationCheck?.status === 'ready' && japaneseLengthOk(d));
     case 10: return !!f?.submittedAt;
     default: return false;
   }
@@ -152,6 +180,8 @@ export interface PromptInput {
   submitLang?: 'ja' | 'en' | undefined;
   /** The character range the course sets for the submitted language. */
   jaBudget?: { min?: number; max?: number } | undefined;
+  /** Requirement lines that need his own input (ownInputNeeds), so the model asks instead of inventing. */
+  ownNeeds?: string[] | undefined;
 }
 
 /** The style that a lecture report needs, as he settled it on the 高橋 report (2026-11-17). Each line is a rule he gave. */
@@ -209,6 +239,7 @@ export function draftPrompt(i: PromptInput): string {
     (i.submitLang === 'ja' ? 'LANGUAGE\nThe lecture was in Japanese, so the report is submitted in Japanese. You write the English version, which I will translate afterwards, so write English that translates cleanly: no idioms, no wordplay, and keep each sentence a single clear unit.' + hr : '') +
     'STYLE\n' + styleFor(i.style, i.request).split('\n').map((l) => `- ${l}`).join('\n') + '\n' +
     (i.jaBudget && englishTarget(i.jaBudget) ? `- Length: ${englishTarget(i.jaBudget)} in English, so that the Japanese lands inside the course's limit of ${i.jaBudget.min ?? 0} to ${i.jaBudget.max ?? ''} characters; state the word count of each part at the end.\n` : budgetLine(i.budget) ? `- ${budgetLine(i.budget)}\n` : '') +
+    (i.ownNeeds?.length ? hr + 'NEEDS FROM ME (these parts need something only I have)\n' + i.ownNeeds.map((n) => `- ${n}`).join('\n') + '\nUse only what is in the context for these; if it is absent, write NEED: and say what you need instead of inventing it.\n' : '') +
     (i.opinion?.trim() ? hr + `MY OPINION NOTES (my own views, for the part that asks for my opinion: use them, do not contradict them and do not add views of your own)\n${i.opinion.trim()}\n` : (/opinion|考察|own view|your own/i.test(i.request) ? hr + 'MY OPINION NOTES\n(none yet: if the assignment asks for my opinion, write NEED: and ask me for it instead of inventing one)\n' : '')) +
     '\nAfter the draft, add a list headed CHECK: for each requirement, the sentence that answers it; then the word count of each part and anything you left out.\n'
   );

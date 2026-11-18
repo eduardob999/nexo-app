@@ -160,6 +160,23 @@ export function requestAssignmentCheck(uid: string, id: string, text: string): P
   return updateDoc(dref(uid, id), { assignmentCheck: { status: 'requested', text } });
 }
 
+export function requestAssignmentCheckJa(uid: string, id: string, text: string): Promise<void> {
+  return updateDoc(dref(uid, id), { assignmentCheckJa: { status: 'requested', text } });
+}
+
+export function clearAssignmentCheckJa(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { assignmentCheckJa: deleteField() });
+}
+
+/** Ask the helper to list the factual claims of the text and the quote from the fact sheet that backs each. */
+export function requestSourcesCheck(uid: string, id: string, text: string): Promise<void> {
+  return updateDoc(dref(uid, id), { sourcesCheck: { status: 'requested', text } });
+}
+
+export function clearSourcesCheck(uid: string, id: string): Promise<void> {
+  return updateDoc(dref(uid, id), { sourcesCheck: deleteField() });
+}
+
 export function clearAssignmentCheck(uid: string, id: string): Promise<void> {
   return updateDoc(dref(uid, id), { assignmentCheck: deleteField() });
 }

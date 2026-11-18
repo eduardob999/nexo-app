@@ -5,7 +5,7 @@ import { newDoc, type FudeDoc, type Note } from './documents';
 import { newSet, type ChatMsg, type ExportRec, type HomeworkSet } from './model';
 import { Homework } from './Screen';
 import type { FlowApi } from './Flow';
-import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setDocBase, saveFlow, requestEdits, clearEdits, requestCompare, clearCompare, requestContext, clearContextRequest, saveSubmission, reopenSubmission, watchMe, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
+import { confirmProposal, createDocument, createSet, requestCheck, requestExport, requestReview, requestSelection, clearSelection, sendChat, watchChat, watchExports, saveContext, saveDocFacts, requestTranslation, clearTranslation, saveTranslationDraft, saveDocRequirements, requestAssignmentCheck, clearAssignmentCheck, requestAssignmentCheckJa, clearAssignmentCheckJa, requestSourcesCheck, clearSourcesCheck, requestTranslationCheck, clearTranslationCheck, saveDocText, setDocMode, setDocBase, saveFlow, requestEdits, clearEdits, requestCompare, clearCompare, requestContext, clearContextRequest, saveSubmission, reopenSubmission, watchMe, setNoteStatus, watchDocuments, watchNotes, dismissProposal, requestTranscription, saveAnswer, saveItems, savePhoto, watchHomework, watchThumbs } from './store';
 
 export { fudeManifest } from './manifest';
 export { openForCard, openForDraft } from './api';
@@ -50,6 +50,10 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
     clearEdits: (d) => { void clearEdits(uid, d.id); },
     askCompare: (d, req) => { void requestCompare(uid, d.id, req); },
     clearCompare: (d) => { void clearCompare(uid, d.id); },
+    askAssignmentCheckJa: (d, ja) => { void requestAssignmentCheckJa(uid, d.id, ja); },
+    clearAssignmentCheckJa: (d) => { void clearAssignmentCheckJa(uid, d.id); },
+    askSourcesCheck: (d, text) => { void requestSourcesCheck(uid, d.id, text); },
+    clearSourcesCheck: (d) => { void clearSourcesCheck(uid, d.id); },
   };
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
   useEffect(() => watchHomework(uid, setSets, (e) => console.warn('[fude]', e)), [uid]);
