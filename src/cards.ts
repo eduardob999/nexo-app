@@ -173,7 +173,7 @@ export function addEntry(uid: string, card: Card, text: string): Promise<void> {
   const batch = writeBatch(db);
   batch.set(doc(db, ...root(uid), 'cards', card.id, 'entries', entryId), entry);
   batch.update(doc(db, ...root(uid), 'cards', card.id), {
-    entryCount: increment(1), last: entry, ...(card.for === 'you' && card.status !== 'done' ? { for: 'nexo' } : {}),
+    entryCount: increment(1), last: entry, ...(card.for === 'you' && card.status !== 'done' && card.type !== 'ASSIGNMENT' ? { for: 'nexo' } : {}),
   });
   intent(batch, uid, { type: 'reply', cardId: card.id, text, ts, entryId });
   return batch.commit();
