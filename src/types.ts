@@ -146,7 +146,9 @@ export interface Resource {
 }
 
 export interface Leg { t?: string; txt?: string; dur?: string }
-export interface PlanSide { leave?: string; arrive?: string; from?: string; to?: string; legs?: Leg[]; txt?: string }
+/** One train from a timetable lookup (nexo/trains.py). `pick` marks the one the card plans around; `late` arrives after the deadline. */
+export interface TrainOption { leave: string; arrive: string; txt?: string; pick?: boolean; late?: boolean }
+export interface PlanSide { leave?: string; arrive?: string; from?: string; to?: string; legs?: Leg[]; txt?: string; options?: TrainOption[] }
 
 /** A trip ticket: the way there, the way back, what to know. Times are HH:MM. */
 export interface Plan {

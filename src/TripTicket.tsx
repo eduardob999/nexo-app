@@ -1,4 +1,5 @@
 import type { Leg, Plan, PlanSide } from './types';
+import { optionRows } from './tripOptions';
 
 function Legs({ side }: { side: PlanSide | null | undefined }) {
   const legs: Leg[] = side?.legs ?? [];
@@ -9,6 +10,26 @@ function Legs({ side }: { side: PlanSide | null | undefined }) {
         <li key={i}><span className="tkt">{l.t ?? ''}</span><span className="tkdot" aria-hidden="true" /><span>{l.txt}{l.dur ? <i> {l.dur}</i> : null}</span></li>
       ))}
     </ol>
+  );
+}
+
+/** Train options for one direction: some earlier, the one planned, some later. Nothing when the card has none. */
+function Options({ side, label }: { side: PlanSide | null | undefined; label: string }) {
+  const rows = optionRows(side?.options);
+  if (rows.length === 0) return null;
+  return (
+    <>
+      <p className="tkh">{label}</p>
+      <ul className="tkopts">
+        {rows.map((r) => (
+          <li key={`${r.leave}-${r.arrive}`} className={`tkopt ${r.kind}`}>
+            <span className="tkot"><b>{r.leave}</b> → {r.arrive}</span>
+            <span className="tkoi">{r.txt}{r.late ? <> <em>after the deadline</em></> : null}</span>
+            {r.kind === 'pick' ? <span className="tkpick">planned</span> : null}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -29,6 +50,8 @@ export function TripTicket({ plan }: { plan: Plan }) {
         <Cell label="Arrive" time={out.arrive} sub={out.to} />
         {back?.leave ? <Cell label="Back" time={back.arrive ?? back.leave} sub={`leave ${back.leave}`} /> : <Cell label="Back" sub={back?.txt ?? 'not planned'} />}
       </div>
+      <Options side={out} label="Trains there" />
+      <Options side={back} label="Trains back" />
       {out.legs?.length ? <><p className="tkh">Way there</p><Legs side={out} /></> : null}
       {back?.legs?.length ? <><p className="tkh">Way back</p><Legs side={back} /></> : null}
       {plan.know?.length ? <><p className="tkh">Know</p><ul className="tkknow">{plan.know.map((k) => <li key={k}>{k}</li>)}</ul></> : null}
