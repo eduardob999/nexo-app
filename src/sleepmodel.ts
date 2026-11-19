@@ -287,7 +287,7 @@ export function phaseOf(recs: SleepRec[], now: Date): SleepPhase {
     const since = now.getTime() - new Date(latest.wake).getTime();
     if (since >= 0 && since < 18 * 3_600_000) return { kind: 'rate', rec: latest };
   }
-  if (now.getHours() >= 18) return { kind: 'evening' };
+  if (now.getHours() >= 18 || now.getHours() < 5) return { kind: 'evening' };
   return { kind: 'none' };
 }
 

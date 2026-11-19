@@ -43,9 +43,10 @@ function EditTimes({ rec, onSave, onClose }: { rec: SleepRec; onSave: (t: { bed:
  */
 export function WakeSuggestion({ cards, now, wake, onRecord, onAnswer, sleep = [], onGoToBed, onUndoBed, onImUp, onRate, onEditTimes, onPlan, startOpen }: Props) {
   const prefs = fullPrefs(wake?.prefs);
-  const tomorrow = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  // After midnight the night still belongs to yesterday, so the wake it plans for is today's.
+  const tomorrow = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + (now.getHours() < 12 ? 0 : 1)));
   const phase = phaseOf(sleep, now);
-  const evening = now.getHours() >= 18;
+  const evening = now.getHours() >= 18 || now.getHours() < 5;
   const s = suggestWake(cards, now, prefs);
   const rec: WakeRecord = { minutes: s.minutes, basis: s.basis, lead: s.lead, ...(s.first ? { first: s.first.title } : {}) };
   const saved = wake?.log?.[tomorrow];
