@@ -1,4 +1,5 @@
 import { AddSheet } from '../AddSheet';
+import { ShareSheet } from '../ShareSheet';
 import { Browse } from '../Browse';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
@@ -346,6 +347,10 @@ export function PreviewApp() {
   if (which === 'add-photos') {
     const mk = (name: string, c: string) => new File([`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="${c}"/><rect x="22" y="14" width="52" height="68" fill="#fff"/></svg>`], name, { type: 'image/svg+xml' });
     return (<><Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><AddSheet onAdd={() => {}} onClose={() => {}} initialFiles={[mk('receipt-1.svg', '#b9c4d6'), mk('receipt-2.svg', '#c9d6b9')]} /></>);
+  }
+  if (which === 'share') {
+    const pic = new File(['x'], 'IMG_2041.jpg', { type: 'image/jpeg' });
+    return (<><Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><ShareSheet shared={{ text: 'Menu https://example.org/menu', files: [pic, pic] }} cards={FIXTURES} busy="" onNew={() => {}} onAttach={() => {}} onClose={() => {}} /></>);
   }
   if (which === 'add') {
     return (<><Today cards={FIXTURES} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} /><AddSheet onAdd={() => {}} onClose={() => {}} /></>);

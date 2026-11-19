@@ -782,3 +782,11 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .fude-ins { color: var(--ok, #2c7a4b); text-decoration: none; background: rgba(44, 122, 75, .12); padding: 0 2px; }
 
 .reply-input.chat-ta { height: auto; min-height: 40px; max-height: 40vh; padding: 9px 16px; line-height: 1.4; resize: none; field-sizing: content; }
+
+.share-sheet { max-height: 85vh; grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto; }
+.share-what { margin: 0; font-size: 15px; color: var(--muted); overflow-wrap: anywhere; }
+.share-new { background: var(--ink); color: var(--surface); border-color: var(--ink); justify-self: stretch; }
+.share-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; display: grid; gap: 4px; }
+.share-list button { all: unset; box-sizing: border-box; width: 100%; min-height: 48px; padding: 8px 12px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; font-size: 15px; }
+.share-list button:active { background: var(--bg); }
+.share-list small { color: var(--muted); font-size: 12px; }

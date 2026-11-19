@@ -112,9 +112,15 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  if (request.method !== 'GET') return;
-
   const url = new URL(request.url);
+
+  // The Android share sheet posts here (see share_target in the manifest).
+  if (request.method === 'POST' && url.origin === self.location.origin && url.pathname.endsWith('/share-target')) {
+    event.respondWith(handleShare(event));
+    return;
+  }
+
+  if (request.method !== 'GET') return;
 
   // Everything cross-origin — Firestore, Identity Toolkit, Google avatars —
   // goes straight to the network.
@@ -188,6 +194,32 @@ async function handleAsset(event) {
   }
 
   return response;
+}
+
+/**
+ * A share from another app: keep what arrived in its own cache, then send the page to the app, which asks where it goes.
+ * The cache holds `meta` (title, text, url, file names) and `file/<n>` per file. The page empties it once handled.
+ */
+const SHARE_CACHE = 'nexo-share';
+async function handleShare(event) {
+  try {
+    const form = await event.request.formData();
+    const cache = await caches.open(SHARE_CACHE);
+    for (const key of await cache.keys()) await cache.delete(key);
+    const files = form.getAll('files').filter((f) => typeof f !== 'string');
+    const names = [];
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      names.push({ name: f.name || `shared-${i + 1}`, type: f.type || 'application/octet-stream', lastModified: f.lastModified || Date.now() });
+      await cache.put(scoped(`share-file/${i}`), new Response(f, { headers: { 'Content-Type': f.type || 'application/octet-stream' } }));
+    }
+    const str = (k) => (typeof form.get(k) === 'string' ? form.get(k) : '');
+    const meta = { title: str('title'), text: str('text'), url: str('url'), files: names, at: Date.now() };
+    await cache.put(scoped('share-meta'), new Response(JSON.stringify(meta), { headers: { 'Content-Type': 'application/json' } }));
+  } catch (e) {
+    console.warn('[sw] share failed', e);
+  }
+  return Response.redirect(scoped('?share=1'), 303);
 }
 
 /** Normalise and store, as one thing that can be handed to `waitUntil`. */

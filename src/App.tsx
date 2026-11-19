@@ -4,7 +4,7 @@ import { AddSheet } from './AddSheet';
 import type { WakeDoc } from './alarm';
 import type { SleepRec } from './sleepmodel';
 import { SleepScreen } from './SleepScreen';
-import { makeThumb, uploadToDrive } from './drive';
+import { makeThumb, uploadToDrive, warmDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
 import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, selectTrip, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, cardContext, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { doneCutoff } from './shelf';
@@ -28,6 +28,8 @@ import { ToastHost } from './Toast';
 import { UpdateBar } from './UpdateBar';
 import { flash } from './toast';
 import { uploadFailText } from './addfiles';
+import { ShareSheet } from './ShareSheet';
+import { isShareLoad, takeShared, type Shared } from './share';
 import { Trips } from './Trips';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
@@ -86,6 +88,10 @@ export function App() {
   const [fromCache, setFromCache] = useState(true);
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
+  /** What another app shared in; the picker shows while it is set. `addingShared` is the same thing on its way into a new card. */
+  const [shared, setShared] = useState<Shared | null>(null);
+  const [addingShared, setAddingShared] = useState<Shared | null>(null);
+  const [shareBusy, setShareBusy] = useState('');
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [nexo, setNexo] = useState<NexoStatus | null | undefined>(undefined);
   const [relays, setRelays] = useState<Relay[]>([]);
@@ -121,6 +127,13 @@ export function App() {
     void completeRedirectSignIn();
     return watchAuthState(setUser);
   }, []);
+
+  useEffect(() => {
+    if (!user || !isShareLoad(window.location.search)) return;
+    // Taken once: the stash is emptied on reading and the address loses ?share=1, so a reload does not offer it again.
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    void takeShared().then((s) => { if (s && (s.files.length > 0 || s.text)) setShared(s); else flash('Nothing to share arrived', 'warn'); }, () => flash('Could not read what was shared', 'warn'));
+  }, [user]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -324,6 +337,25 @@ export function App() {
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
         browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' || tab === 'homework' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+      {shared && !addingShared ? (
+        <ShareSheet shared={shared} cards={cards} busy={shareBusy} onClose={() => setShared(null)}
+          onNew={() => { setAddingShared(shared); setShared(null); }}
+          onAttach={(card) => {
+            if (shared.files.length > 0) warmDrive();
+            setShareBusy(shared.files.length > 0 ? 'Uploading' : 'Attaching');
+            void (async () => {
+              try {
+                for (const f of shared.files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(user.uid, { cardId: card.id }, up, thumb); }
+                if (shared.text) await addEntry(user.uid, card, shared.text);
+                flash(`Attached to ${card.title ?? 'the card'}`);
+                setShared(null);
+                window.location.hash = `#/card/${card.id}`;
+              } catch (e) { flash(uploadFailText(e), 'warn'); }
+              setShareBusy('');
+            })();
+          }} />
+      ) : null}
+      {addingShared ? <AddSheet initialFiles={addingShared.files} initialText={addingShared.text} onClose={() => setAddingShared(null)} onAdd={(t, w, due, pr, files, lines, callNow) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id, lines, callNow).then(() => { if (callNow) flash('Nexo called for this card'); return uploadNewCardFiles(user.uid, id, files); }); }} /> : null}
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files, lines, callNow) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id, lines, callNow).then(() => { if (callNow) flash('Nexo called for this card'); return uploadNewCardFiles(user.uid, id, files); }); }} /> : null}
     </>
   );

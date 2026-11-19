@@ -12,6 +12,8 @@ interface Props {
   onAdd: (title: string, forWho: 'you' | 'nexo', due: string | null, prio: 'high' | 'normal' | 'low', files: File[], lines: string[], callNow: boolean) => void;
   /** Preview only: files already chosen. */
   initialFiles?: File[];
+  /** Text shared in from another app, put in the box when nothing is half-typed. */
+  initialText?: string;
   onClose: () => void;
 }
 
@@ -28,8 +30,10 @@ function Mirror({ text, tokens }: { text: string; tokens: { start: number; end: 
   return <div className="mirror" aria-hidden="true">{out}</div>;
 }
 
-export function AddSheet({ onAdd, onClose, initialFiles = [] }: Props) {
+export function AddSheet({ onAdd, onClose, initialFiles = [], initialText = '' }: Props) {
   const [text, setText] = usePersisted('add');
+  useEffect(() => { if (initialText) setText(initialText); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [forWho, setForWho] = useState<'you' | 'nexo'>('nexo');
   const [prio, setPrio] = useState<'high' | 'normal' | 'low'>('high');
   const [files, setFiles] = useState<File[]>(initialFiles);
