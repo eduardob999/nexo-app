@@ -26,6 +26,20 @@ describe('share landing', () => {
     expect(shareTargets(cards, '  ')).toHaveLength(2);
     expect(shareTargets(cards, 'dent').map((x) => x.id)).toEqual(['b']);
   });
+  it('lists cards in the Today order: his board band by band, then the rest', () => {
+    const now = new Date('2026-11-19T10:00:00+09:00');
+    const cards: Card[] = [
+      { id: 'later', status: 'open', for: 'you', title: 'Renew card', due: '2026-12-20' },
+      { id: 'nexo', status: 'open', for: 'nexo', title: 'Nexo work', due: '2026-12-01' },
+      { id: 'today', status: 'open', for: 'you', title: 'Pay rent', due: '2026-11-19T18:00:00+09:00' },
+      { id: 'prep', status: 'open', for: 'you', title: 'Dentist', due: '2026-11-22T10:00:00+09:00' },
+      { id: 'urgent', status: 'open', for: 'you', title: 'Call office', prio: 'high', due: '2026-11-19T17:00:00+09:00' },
+      { id: 'asg', status: 'open', for: 'you', type: 'ASSIGNMENT', title: 'Report', due: '2026-11-30T12:00:00+09:00' },
+      { id: 'q', status: 'open', for: 'you', type: 'QUESTION', title: 'Which day?', ask: 'Thu or Fri?' },
+    ];
+    expect(shareTargets(cards, '', now).map((x) => x.id)).toEqual(['asg', 'q', 'urgent', 'today', 'prep', 'nexo', 'later']);
+    expect(shareTargets(cards, 'r', now).map((x) => x.id)).toEqual(['asg', 'today', 'nexo', 'later']);
+  });
   it('summarises', () => {
     const f = new File(['x'], 'a.png');
     expect(shareSummary({ text: '', files: [f, f] })).toBe('2 files');

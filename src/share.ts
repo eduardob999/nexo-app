@@ -1,5 +1,6 @@
 import type { Card } from './types';
 import { searchCards } from './search';
+import { bandOf, onTodayBoard, sortQueue } from './urgency';
 
 /** What another app handed over: the service worker keeps it in the `nexo-share` cache until the page has dealt with it. */
 export interface SharedMeta {
@@ -28,9 +29,16 @@ export function isShareLoad(search: string): boolean {
   return new URLSearchParams(search).get('share') === '1';
 }
 
-/** Cards offered in the picker: all when the box is empty, otherwise the ones matching every word. */
-export function shareTargets(cards: Card[], query: string): Card[] {
-  return query.trim() ? searchCards(cards, query) : cards;
+/**
+ * Cards offered in the picker: all when the box is empty, otherwise the ones matching every word.
+ * In the Today tab's order, so the card he has to reply to is where he already looks for it: his
+ * Today board first, band by band, then everything else in the same queue order. The picker used
+ * to list cards as they came from Firestore, "disordered and nothing like" Today (2026-11-19, nmwn6gykt872).
+ */
+export function shareTargets(cards: Card[], query: string, now: Date = new Date()): Card[] {
+  const found = query.trim() ? searchCards(cards, query) : cards;
+  const onBoard = (c: Card) => onTodayBoard(c, now) && bandOf(c, now) !== 'other';
+  return [...sortQueue(found.filter(onBoard), now), ...sortQueue(found.filter((c) => !onBoard(c)), now)];
 }
 
 /** A line saying what is being shared, for the top of the picker. */

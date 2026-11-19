@@ -35,7 +35,9 @@ export function AddSheet({ onAdd, onClose, initialFiles = [], initialText = '' }
   useEffect(() => { if (initialText) setText(initialText); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [forWho, setForWho] = useState<'you' | 'nexo'>('nexo');
-  const [prio, setPrio] = useState<'high' | 'normal' | 'low'>('high');
+  // Soon, not Now: a card he types or shares in is usually something to know or do later, and 'high' put
+  // every shared file in the Urgent band (his words, 2026-11-19, nmwmutysss6t). Now is kept for when he picks it.
+  const [prio, setPrio] = useState<'high' | 'normal' | 'low'>('normal');
   const [files, setFiles] = useState<File[]>(initialFiles);
   const [drive, setDrive] = useState(driveReady());
   const [msg, setMsg] = useState('');
