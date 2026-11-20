@@ -21,6 +21,20 @@ export interface BusyDoc { events: Record<string, Interval[]>; at: number }
 export interface SurveyDoc { answers: Record<string, number>; at: number }
 export interface AwayDoc { until: number }
 
+/** Security rules read the household a moment after it is written, so a write or read made at once can be refused for a split second.
+ * Found by testing the live rules with throwaway users: same call, 1.5 seconds later, allowed. Retry only that error. */
+export async function retryDenied<T>(fn: () => Promise<T>, tries = 6, ms = 600): Promise<T> {
+  let last: unknown;
+  for (let i = 0; i < tries; i++) {
+    try { return await fn(); } catch (e) {
+      last = e;
+      if ((e as { code?: string }).code !== 'permission-denied') throw e;
+      await new Promise((r) => setTimeout(r, ms));
+    }
+  }
+  throw last;
+}
+
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 // ---- which household is this person in
@@ -32,10 +46,12 @@ export async function createHousehold(uid: string, name: string, myName: string,
   const hid = newId();
   const now = Date.now();
   await setDoc(house(hid), clean({ name, members: { [uid]: 'owner' }, names: { [uid]: myName }, langs: { [uid]: lang }, createdAt: now } satisfies HouseholdDoc));
-  const batch = writeBatch(db);
-  for (const t of SEED) batch.set(doc(sub(hid, 'tasks'), t.id), clean(t));
-  batch.set(doc(sub(hid, 'settings'), 'main'), clean(DEFAULT_SETTINGS));
-  await batch.commit();
+  await retryDenied(async () => {
+    const batch = writeBatch(db);
+    for (const t of SEED) batch.set(doc(sub(hid, 'tasks'), t.id), clean(t));
+    batch.set(doc(sub(hid, 'settings'), 'main'), clean(DEFAULT_SETTINGS));
+    await batch.commit();
+  });
   await setDoc(doc(db, 'users', uid, 'meta', 'household'), { id: hid });
   return hid;
 }
@@ -48,6 +64,7 @@ export function invite(hid: string, email: string, by: string): Promise<void> {
 /** The invited person adds only their own uid. The rules check the invite and the role. */
 export async function join(uid: string, hid: string, myName: string, lang: 'en' | 'es' | 'ja'): Promise<void> {
   await updateDoc(house(hid), { [`members.${uid}`]: 'member', [`names.${uid}`]: myName, [`langs.${uid}`]: lang });
+  await retryDenied(() => getDoc(house(hid)));      // wait until the new membership is readable before the screens start listening
   await setDoc(doc(db, 'users', uid, 'meta', 'household'), { id: hid });
 }
 
