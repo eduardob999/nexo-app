@@ -40,7 +40,7 @@ export function KajiView({ data, actions, lang, onLang, link, tab: forced }: { d
         {TABS.map((k) => <button key={k} role="tab" aria-pressed={tab === k} onClick={() => setTab(k)} style={{ textTransform: 'none' }}>{t(lang, k)}</button>)}
       </div>
       {tab === 'today' ? <TodayScreen data={data} actions={actions} lang={lang} /> : null}
-      {tab === 'week' ? <WeekScreen data={data} lang={lang} /> : null}
+      {tab === 'week' ? <WeekScreen data={data} lang={lang} actions={actions} /> : null}
       {tab === 'balance' ? <BalanceScreen data={data} lang={lang} /> : null}
       {tab === 'chores' ? <ChoresScreen data={data} actions={actions} lang={lang} /> : null}
       {tab === 'more' ? <SettingsScreen data={data} actions={actions} lang={lang} onLang={onLang} link={link} /> : null}
@@ -98,6 +98,7 @@ function useKaji(uid: string): { hid: string | null | undefined; data: KajiData 
       logDone: async (taskId, minutes, r, o) => { await logEvent(hid, { taskId, uid, kind: 'done', at: Date.now(), minutes, planned: o?.planned ?? false, ...(o?.start !== undefined ? { start: o.start } : {}), ...(r.effort ? { effort: r.effort } : {}), ...(r.dislike ? { dislike: r.dislike } : {}), ...(r.enjoyment ? { enjoyment: r.enjoyment } : {}) }); },
       undo: async () => {},
       notToday: async (item) => addNotToday(hid, uid, item.taskId, dayKey(item.start)),
+      move: async (item, to, start) => savePlan(hid, uid, existing.current.map((x) => (x.id === item.id ? { ...x, uid: to, start, end: start + (item.end - item.start), pinned: true } : x))),
       askSwap: async (item, to) => proposeSwap(hid, item, to),
       answerSwap: async (s, accept) => {
         await answerSwap(hid, s.id, accept ? 'accepted' : 'declined');

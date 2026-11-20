@@ -23,6 +23,7 @@ const en: Dict = {
   allowed: 'Who can do it', everyone: 'Anyone', weightOverride: 'Fixed weight (tama)', history: 'Changes', settings: 'Settings',
   share: 'Share of the work', buffer: 'Space around events (min)', freeze: 'Chores this close never move (min)', slot: 'Daily chore time', quiet: 'Quiet hours', burden: 'How much a chore you mind counts',
   adhoc: 'Not scheduled, logged when done', tidy: 'Tidy up',
+  move: 'Move', moveTitle: 'Move to a free slot', noSlots: 'No free slot in the next five days.', moved: 'Moved and pinned', pinned: 'Pinned',
 };
 const es: Dict = {
   kaji: 'Kaji', kajiSub: 'Las tareas del hogar, repartidas con justicia',
@@ -46,6 +47,7 @@ const es: Dict = {
   allowed: 'Quién puede hacerla', everyone: 'Cualquiera', weightOverride: 'Peso fijo (tama)', history: 'Cambios', settings: 'Ajustes',
   share: 'Parte del trabajo', buffer: 'Espacio alrededor de los eventos (min)', freeze: 'Tareas tan cercanas no se mueven (min)', slot: 'Hora diaria de tareas', quiet: 'Horas de silencio', burden: 'Cuánto pesa una tarea que te molesta',
   adhoc: 'Sin horario, se anota al hacerla', tidy: 'Ordenar',
+  move: 'Mover', moveTitle: 'Mover a un hueco libre', noSlots: 'No hay hueco libre en los próximos cinco días.', moved: 'Movida y fijada', pinned: 'Fijada',
 };
 const ja: Dict = {
   kaji: '家事', kajiSub: '家事を公平に分け合う',
@@ -69,6 +71,7 @@ const ja: Dict = {
   allowed: '担当できる人', everyone: '誰でも', weightOverride: '固定の重み（玉）', history: '変更履歴', settings: '設定',
   share: '分担の割合', buffer: '予定の前後の余白（分）', freeze: 'この時間内の家事は動かさない（分）', slot: '毎日の家事の時間', quiet: '静かな時間', burden: '嫌な家事の重み',
   adhoc: '予定なし、やったら記録', tidy: '片付け',
+  move: '移動', moveTitle: '空いている時間に移動', noSlots: '今後5日間に空きがありません。', moved: '移動して固定しました', pinned: '固定',
 };
 export const DICT: Record<Lang, Dict> = { en, es, ja };
 

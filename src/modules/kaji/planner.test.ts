@@ -3,7 +3,7 @@ import { balance } from './burden';
 import { SEED } from './catalog';
 import { estimateFor } from './adapt';
 import { DEFAULT_SETTINGS as S, type Interval, type LogEvent, type Member, type PlannedItem } from './model';
-import { findCollisions, plan, type PlanInput } from './planner';
+import { candidateSlots, findCollisions, plan, type PlanInput } from './planner';
 import { atHm, dayKey, dayStart, DAY, MIN } from './time';
 
 const A: Member = { uid: 'a', name: 'Eduardo', lang: 'es', role: 'owner' };
@@ -122,6 +122,29 @@ describe('stability and minimum change', () => {
   it('is deterministic', () => {
     const a = plan(input()), b = plan(input());
     expect(a.items).toEqual(b.items);
+  });
+});
+
+describe('moving one chore', () => {
+  it('offers only free slots, never its own, never on an event, and one per person per hour', () => {
+    const busy = { a: [ev(1, '18:00', '21:00')], b: [ev(1, '17:30', '21:30')] };
+    const first = plan(input({ busy }));
+    const item = first.items.find((i) => i.taskId === 'aspirar')!;
+    const slots = candidateSlots(input({ busy, existing: first.items }), item);
+    expect(slots.length).toBeGreaterThan(2);
+    for (const s of slots) {
+      expect(findCollisions([{ ...item, uid: s.uid, start: s.start, end: s.end }], busy, S.bufferMin).filter((c) => c.item.id === item.id && c.event.label === undefined)).toEqual([]);
+      expect(first.items.some((o) => o.id !== item.id && o.uid === s.uid && o.start < s.end && s.start < o.end)).toBe(false);
+    }
+    expect(slots.some((s) => s.uid === item.uid && s.start === item.start)).toBe(false);
+    expect(new Set(slots.map((s) => s.uid + Math.floor(s.start / 3_600_000))).size).toBe(slots.length);
+  });
+  it('respects who may do the chore and an away person', () => {
+    const tasks = SEED.map((t) => (t.id === 'poceta' ? { ...t, who: ['b'] } : t));
+    const first = plan(input({ tasks }));
+    const item = first.items.find((i) => i.taskId === 'poceta')!;
+    expect(candidateSlots(input({ tasks, existing: first.items }), item).every((s) => s.uid === 'b')).toBe(true);
+    expect(candidateSlots(input({ tasks, existing: first.items, awayUntil: { b: day(9) } }), item)).toEqual([]);
   });
 });
 

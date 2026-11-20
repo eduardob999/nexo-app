@@ -243,3 +243,42 @@ export function findCollisions(items: PlannedItem[], busy: Record<string, Interv
   for (const a of items) for (const b of items) if (a.id < b.id && a.uid === b.uid && overlaps(a.start, a.end, b.start, b.end)) out.push({ item: a, event: { start: b.start, end: b.end, label: b.id } });
   return out;
 }
+
+
+export interface Slot { uid: string; start: number; end: number }
+
+/**
+ * Places where one planned chore could go instead, for a "Move" sheet: free for that person (calendar, buffer, sleep, lunch, other
+ * chores), inside the chore's allowed hours, within five days, for either person who may do it. Closest to where it is now first, with
+ * at most one slot per person per hour so the list is a real choice and not twenty neighbours.
+ */
+export function candidateSlots(input: PlanInput, item: PlannedItem, limit = 8): Slot[] {
+  const { now, tasks, members, settings: s } = input;
+  const tz = input.tz ?? JST;
+  const task = tasks.find((t) => t.id === item.taskId);
+  if (!task) return [];
+  const buffer = s.bufferMin * MIN, travel = (input.travelMin ?? 45) * MIN;
+  const len = item.end - item.start;
+  const others = input.existing.filter((e) => e.id !== item.id);
+  const out: Slot[] = [];
+  for (const m of members) {
+    if (task.who && task.who.length && !task.who.includes(m.uid)) continue;
+    const away = input.awayUntil?.[m.uid] ?? 0;
+    const block: Interval[] = (input.busy[m.uid] ?? []).map((e) => ({ start: e.start - buffer - (e.place && !HOME.test(e.place.trim()) ? travel : 0), end: e.end + buffer + (e.place && !HOME.test(e.place.trim()) ? travel : 0) }));
+    for (let d = dayStart(now, tz) - DAY; d <= dayStart(now, tz) + 6 * DAY; d += DAY) {
+      block.push({ start: atHm(d, s.sleep.from), end: atHm(d + DAY, s.sleep.to) }, { start: atHm(d, s.lunch.from), end: atHm(d, s.lunch.to) });
+    }
+    for (let day = dayStart(now, tz); day < dayStart(now, tz) + 5 * DAY; day += DAY) {
+      const r = regionFor(task, day, s, tz);
+      for (let start = Math.ceil(Math.max(r.from, now + 15 * MIN) / GRID) * GRID; start + len <= r.to; start += GRID) {
+        const end = start + len;
+        if (start === item.start && m.uid === item.uid) continue;
+        if (away > start || block.some((b) => overlaps(start, end, b.start, b.end)) || others.some((o) => o.uid === m.uid && overlaps(start, end, o.start, o.end))) continue;
+        out.push({ uid: m.uid, start, end });
+      }
+    }
+  }
+  out.sort((a, b) => Math.abs(a.start - item.start) - Math.abs(b.start - item.start) || (a.uid < b.uid ? -1 : 1));
+  const seen = new Set<string>();
+  return out.filter((o) => { const k = o.uid + Math.floor(o.start / (60 * MIN)); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, limit);
+}

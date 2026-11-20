@@ -27,6 +27,7 @@ export interface KajiActions {
   logDone: (taskId: string, minutes: number, ratings: Ratings, opts?: { start?: number; planned?: boolean }) => Promise<void>;
   undo: (eventId: string) => Promise<void>;
   notToday: (item: PlannedItem) => Promise<void>;
+  move: (item: PlannedItem, uid: string, start: number) => Promise<void>;
   askSwap: (item: PlannedItem, toUid: string) => Promise<void>;
   answerSwap: (swap: Swap, accept: boolean) => Promise<void>;
   saveTask: (task: TaskType, before?: TaskType) => Promise<void>;
