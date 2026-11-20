@@ -10,7 +10,7 @@ import { DEFAULT_SETTINGS, type Interval, type Lang, type LogEvent, type Planned
 import { plan as makePlan, type Unplaced } from './planner';
 import { SettingsScreen } from './SettingsScreen';
 import { Setup } from './Setup';
-import { addNotToday, answerSwap, clearAway, createHousehold, invite, join, logEvent, members as membersOf, proposeSwap, sendAsk, saveSettings, saveSurvey, savePlan, saveTask, setAway,
+import { addNotToday, answerSwap, clearAway, createHousehold, invite, join, logEvent, members as membersOf, proposeSwap, rateEvent, sendAsk, saveSettings, saveSurvey, savePlan, saveTask, setAway,
   watchAway, watchBusy, watchHousehold, watchLog, watchMyHousehold, watchNotToday, watchPlan, watchSettings, watchSurvey, watchSwaps, watchTasks,
   type BusyDoc, type HouseholdDoc, type NotToday, type PlanDoc, type Swap } from './store';
 import { dayKey, MIN, weekday } from './time';
@@ -99,7 +99,8 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
   const actions = useMemo<KajiActions | null>(() => {
     if (!hid) return null;
     return {
-      logDone: async (taskId, minutes, r, o) => { await logEvent(hid, { taskId, uid, kind: 'done', at: Date.now(), minutes, planned: o?.planned ?? false, ...(o?.start !== undefined ? { start: o.start } : {}), ...(r.effort ? { effort: r.effort } : {}), ...(r.dislike ? { dislike: r.dislike } : {}), ...(r.enjoyment ? { enjoyment: r.enjoyment } : {}) }); },
+      logDone: async (taskId, minutes, r, o) => { await logEvent(hid, { taskId, uid, kind: 'done', at: Date.now(), minutes, planned: o?.planned ?? false, ...(o?.start !== undefined ? { start: o.start } : {}), ...(r.effort ? { effort: r.effort } : {}), ...(r.dislike ? { dislike: r.dislike } : {}), ...(r.enjoyment ? { enjoyment: r.enjoyment } : {}), ...(r.note?.trim() ? { note: r.note.trim().slice(0, 500) } : {}) }); },
+      rate: async (id, r) => rateEvent(hid, id, r),
       undo: async () => {},
       notToday: async (item) => addNotToday(hid, uid, item.taskId, dayKey(item.start)),
       move: async (item, to, start) => savePlan(hid, uid, existing.current.map((x) => (x.id === item.id ? { ...x, uid: to, start, end: start + (item.end - item.start), pinned: true } : x))),

@@ -28,3 +28,10 @@ export function taskName(t: TaskType | undefined, lang: 'en' | 'es' | 'ja', id =
 /** Two colours, one per person, readable on light and dark. */
 export const MEMBER_COLORS = ['#3b6fe0', '#d0508a', '#2f9e8f', '#c98a2c'];
 export const memberColor = (index: number): string => MEMBER_COLORS[index % MEMBER_COLORS.length] as string;
+
+/** What this person finished in the last two days, newest first, with whether it has any rating yet: the list that lets her rate later. */
+export function recentDone(log: LogEvent[], uid: string, now: number, limit = 6): { event: LogEvent; rated: boolean }[] {
+  return log.filter((e) => e.uid === uid && e.kind === 'done' && e.at <= now + 60_000 && e.at >= now - 2 * 86_400_000)
+    .sort((a, b) => b.at - a.at).slice(0, limit)
+    .map((event) => ({ event, rated: typeof event.effort === 'number' || typeof event.dislike === 'number' || typeof event.enjoyment === 'number' || Boolean(event.note) }));
+}

@@ -107,7 +107,7 @@ function Survey({ lang, data, onSave, onClose }: { lang: Lang; data: KajiData; o
             <span>{x.icon} {taskName(x, lang)}</span>
             <div className="faces kaji-mini" role="radiogroup" aria-label={taskName(x, lang)}>
               {faces(lang, 'facesMind').map((w, i) => (
-                <button type="button" key={w} role="radio" aria-checked={a[x.id] === i + 1} title={w} className={`face ${a[x.id] === i + 1 ? 'on' : ''}`} onClick={() => setA({ ...a, [x.id]: i + 1 })}><Face v={i + 1} size={22} /></button>
+                <button type="button" key={w} role="radio" aria-checked={a[x.id] === i + 1} title={w} className={`face ${a[x.id] === i + 1 ? 'on' : ''}`} onClick={() => setA({ ...a, [x.id]: i + 1 })}><Face v={5 - i} size={22} /></button>
               ))}
             </div>
           </div>

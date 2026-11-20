@@ -5,15 +5,15 @@ import type { Lang, TaskType } from './model';
 import type { Ratings } from './ui';
 
 /** Three faces, each optional, and one tap to skip them all. */
-export function RateSheet({ lang, task, onSave, onSkip }: { lang: Lang; task: TaskType; onSave: (r: Ratings) => void; onSkip: () => void }) {
-  const [r, setR] = useState<Ratings>({});
+export function RateSheet({ lang, task, onSave, onSkip, initial, later }: { lang: Lang; task: TaskType; onSave: (r: Ratings) => void; onSkip: () => void; initial?: Ratings; later?: boolean }) {
+  const [r, setR] = useState<Ratings>(initial ?? {});
   const row = (key: keyof Ratings, label: string, scale: 'facesHard' | 'facesMind' | 'facesLike') => (
     <div>
       <p className="mut sheet-sub">{label}</p>
       <div className="faces" role="radiogroup" aria-label={label}>
         {faces(lang, scale).map((w, i) => (
           <button type="button" key={w} role="radio" aria-checked={r[key] === i + 1} className={`face ${r[key] === i + 1 ? 'on' : ''}`}
-            onClick={() => setR({ ...r, [key]: r[key] === i + 1 ? undefined : i + 1 } as Ratings)}><Face v={i + 1} /><small>{w}</small></button>
+            onClick={() => setR({ ...r, [key]: r[key] === i + 1 ? undefined : i + 1 } as Ratings)}><Face v={scale === 'facesLike' ? i + 1 : 5 - i} /><small>{w}</small></button>
         ))}
       </div>
     </div>
@@ -26,6 +26,8 @@ export function RateSheet({ lang, task, onSave, onSkip }: { lang: Lang; task: Ta
         {row('effort', t(lang, 'effort'), 'facesHard')}
         {row('dislike', t(lang, 'mind'), 'facesMind')}
         {row('enjoyment', t(lang, 'enjoy'), 'facesLike')}
+        <label className="kaji-field"><span>{t(lang, 'comment')}</span><textarea rows={2} maxLength={500} value={r.note ?? ''} placeholder={t(lang, 'commentHint')} onChange={(e) => setR({ ...r, note: e.target.value })} /></label>
+        {later ? null : <p className="mut sheet-sub">{t(lang, 'rateLater')}</p>}
         <div className="sheet-foot">
           <button type="button" className="chip-btn" onClick={onSkip}>{t(lang, 'skip')}</button>
           <button type="button" className="copy-main" onClick={() => onSave(r)}>{t(lang, 'save')}</button>
