@@ -24,6 +24,7 @@ const en: Dict = {
   share: 'Share of the work', buffer: 'Space around events (min)', freeze: 'Chores this close never move (min)', slot: 'Daily chore time', quiet: 'Quiet hours', burden: 'How much a chore you mind counts',
   adhoc: 'Not scheduled, logged when done', tidy: 'Tidy up',
   lists: 'Lists', newList: 'New list', addItem: 'Add an item, or paste several lines', clearDone: 'Clear done', noLists: 'No lists yet. Start with one of these.', listsAbout: 'Shared by both of you. Edits show up for the other person as they happen.',
+  money: 'Money', owesYou: 'owes you', youOwe: 'you owe', allEven: 'All even', addExpense: 'Add expense', settleUp: 'Settle up', paidBy: 'Paid by', forWho: 'For', forBoth: 'Both', forOnly: 'Only', what: 'What for', amount: 'Amount (yen)', thisMonth: 'This month', spent: 'spent', settled: 'Settled', youPaid: 'you paid', theyPaid: 'paid', deleteEntry: 'Delete', moneyAbout: 'Shared by both of you. Balances come from the entries, so deleting one fixes everything.',
   move: 'Move', moveTitle: 'Move to a free slot', noSlots: 'No free slot in the next five days.', moved: 'Moved and pinned', pinned: 'Pinned',
 };
 const es: Dict = {
@@ -49,6 +50,7 @@ const es: Dict = {
   share: 'Parte del trabajo', buffer: 'Espacio alrededor de los eventos (min)', freeze: 'Tareas tan cercanas no se mueven (min)', slot: 'Hora diaria de tareas', quiet: 'Horas de silencio', burden: 'Cuánto pesa una tarea que te molesta',
   adhoc: 'Sin horario, se anota al hacerla', tidy: 'Ordenar',
   lists: 'Listas', newList: 'Nueva lista', addItem: 'Añade algo, o pega varias líneas', clearDone: 'Quitar lo hecho', noLists: 'Aún no hay listas. Empieza con una de estas.', listsAbout: 'Compartidas entre los dos. Los cambios le llegan a la otra persona al momento.',
+  money: 'Dinero', owesYou: 'te debe', youOwe: 'le debes', allEven: 'Cuentas claras', addExpense: 'Añadir gasto', settleUp: 'Saldar', paidBy: 'Pagó', forWho: 'Para', forBoth: 'Los dos', forOnly: 'Solo', what: 'En qué', amount: 'Monto (yenes)', thisMonth: 'Este mes', spent: 'gastado', settled: 'Saldado', youPaid: 'pagaste', theyPaid: 'pagó', deleteEntry: 'Borrar', moneyAbout: 'Compartido entre los dos. Los saldos salen de las entradas, así que borrar una lo corrige todo.',
   move: 'Mover', moveTitle: 'Mover a un hueco libre', noSlots: 'No hay hueco libre en los próximos cinco días.', moved: 'Movida y fijada', pinned: 'Fijada',
 };
 const ja: Dict = {
@@ -74,6 +76,7 @@ const ja: Dict = {
   share: '分担の割合', buffer: '予定の前後の余白（分）', freeze: 'この時間内の家事は動かさない（分）', slot: '毎日の家事の時間', quiet: '静かな時間', burden: '嫌な家事の重み',
   adhoc: '予定なし、やったら記録', tidy: '片付け',
   lists: 'リスト', newList: '新しいリスト', addItem: '項目を追加（複数行の貼り付けも可）', clearDone: '済みを消す', noLists: 'まだリストがありません。まずはこれから。', listsAbout: '二人で共有。変更は相手にすぐ表示されます。',
+  money: 'お金', owesYou: 'あなたに借り', youOwe: 'あなたの借り', allEven: '清算済み', addExpense: '支出を追加', settleUp: '清算', paidBy: '支払った人', forWho: '対象', forBoth: '二人', forOnly: 'のみ', what: '何のため', amount: '金額（円）', thisMonth: '今月', spent: '支出', settled: '清算', youPaid: 'あなたが支払い', theyPaid: 'が支払い', deleteEntry: '削除', moneyAbout: '二人で共有。残高は記録から計算されるので、削除すれば全体が直ります。',
   move: '移動', moveTitle: '空いている時間に移動', noSlots: '今後5日間に空きがありません。', moved: '移動して固定しました', pinned: '固定',
 };
 export const DICT: Record<Lang, Dict> = { en, es, ja };

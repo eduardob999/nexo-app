@@ -1,6 +1,7 @@
 import { collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { SEED } from './catalog';
+import type { LedgerEntry } from './ledger';
 import type { Interval, LogEvent, Member, PlannedItem, Settings, TaskType } from './model';
 import { DEFAULT_SETTINGS } from './model';
 import { DAY } from './time';
@@ -163,3 +164,13 @@ export const addItem = (hid: string, by: string, listId: string, text: string) =
 export const tickItem = (hid: string, by: string, id: string, done: boolean) =>
   updateDoc(doc(sub(hid, 'listitems'), id), done ? { done: true, doneBy: by, doneAt: Date.now() } : { done: false, doneBy: '', doneAt: 0 });
 export const removeItem = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'listitems'), id));
+
+// ---- money ledger
+export function watchLedger(hid: string, on: (e: LedgerEntry[]) => void): () => void {
+  return onSnapshot(sub(hid, 'ledger'), (s) => on(s.docs.map((d) => d.data() as LedgerEntry).sort((a, b) => b.at - a.at)), () => on([]));
+}
+export function addLedger(hid: string, e: Omit<LedgerEntry, 'id'>): Promise<void> {
+  const id = newId();
+  return setDoc(doc(sub(hid, 'ledger'), id), clean({ ...e, id }));
+}
+export const removeLedger = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'ledger'), id));
