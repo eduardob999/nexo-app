@@ -1,6 +1,8 @@
 import { AddSheet } from '../AddSheet';
 import { ShareSheet } from '../ShareSheet';
 import { Browse } from '../Browse';
+import { KajiView } from '../modules/kaji';
+import { kajiFixture } from '../modules/kaji/fixture';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
 import { Money } from '../Money';
@@ -108,6 +110,12 @@ export function PreviewApp() {
     { date: '2026-11-07', kind: 'light', wellbeing: 4, performance: null },
     { date: '2026-11-08', kind: 'full', wellbeing: null, performance: null },
   ];
+  if (which.startsWith('kaji')) {
+    const { data, actions } = kajiFixture();
+    const tab = (which.split('-')[1] ?? 'today') as 'today' | 'week' | 'balance' | 'chores' | 'more';
+    const lang = (which.split('-')[2] ?? 'en') as 'en' | 'es' | 'ja';
+    return (<><KajiView data={data} actions={actions} lang={lang} onLang={() => {}} link="https://example.test/#/kaji/join-h" tab={tab} /><TabBar current="browse" draftCount={0} /></>);
+  }
   if (which.startsWith('fude-flow-')) {
     // fude-flow-<step>: the assignment flow at that step, with the fixtures of a half-finished 高橋 report.
     const step = Number(which.slice('fude-flow-'.length)) || 1;

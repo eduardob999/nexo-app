@@ -14,6 +14,7 @@ export type Route =
   | { name: 'chat' }
   | { name: 'sleep' }
   | { name: 'homework'; id?: string }
+  | { name: 'kaji'; id?: string }
   | { name: 'card'; id: string };
 
 export function parseHash(hash: string): Route {
@@ -31,6 +32,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === 'chat') return { name: 'chat' };
   if (parts[0] === 'sleep') return { name: 'sleep' };
   if (parts[0] === 'homework') return parts[1] ? { name: 'homework', id: decodeURIComponent(parts[1]) } : { name: 'homework' };
+  if (parts[0] === 'kaji') return parts[1] ? { name: 'kaji', id: decodeURIComponent(parts[1]) } : { name: 'kaji' };
   return { name: 'today' };
 }
 

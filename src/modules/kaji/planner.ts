@@ -79,7 +79,7 @@ export function plan(input: PlanInput): PlanOutput {
   const weight = (task: TaskType) => weightOf(task, estimates[task.id]);
 
   // ---- 1. frozen: already started or starting inside the freeze window, kept exactly
-  const frozen = input.existing.filter((e) => e.frozen || (e.start <= now + s.freezeMin * MIN && e.end > now - 5 * MIN));
+  const frozen = input.existing.filter((e) => e.frozen || e.pinned || (e.start <= now + s.freezeMin * MIN && e.end > now - 5 * MIN));
   for (const f of frozen) {
     placed.push({ ...f, frozen: true });
     const t = tById.get(f.taskId);

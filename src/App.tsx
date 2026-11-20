@@ -16,6 +16,7 @@ import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
 import { FudeModule, FudeCardWidget, openForCard, openForDraft } from './modules/fude';
+import { KajiModule } from './modules/kaji';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
@@ -285,6 +286,8 @@ export function App() {
           }} />
       ) : tab === 'homework' ? (
         <FudeModule uid={user.uid} openId={route.name === 'homework' ? route.id : undefined} host={{ markCardDone: (cardId) => markDone(user.uid, cardId), sendBackDraft: (draftId, text) => { const d = drafts.find((x) => x.id === draftId); if (d) { void editDraft(user.uid, d, text); flash('Text sent back to the draft'); window.location.hash = '#/drafts'; } } }} />
+      ) : tab === 'kaji' ? (
+        <KajiModule uid={user.uid} openId={route.name === 'kaji' ? route.id : undefined} />
       ) : tab === 'trips' ? (
         <Trips cards={cards} now={new Date()} done={doneCards} onSelect={(c, side, id) => { if (user) void selectTrip(user.uid, c, side, id); }} />
       ) : tab === 'shelf' ? (
@@ -336,7 +339,7 @@ export function App() {
         </button>
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
-        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' || tab === 'homework' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' || tab === 'homework' || tab === 'kaji' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {shared && !addingShared ? (
         <ShareSheet shared={shared} cards={cards} busy={shareBusy} onClose={() => setShared(null)}
           onNew={() => { setAddingShared(shared); setShared(null); }}

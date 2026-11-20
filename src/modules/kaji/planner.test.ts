@@ -110,6 +110,15 @@ describe('stability and minimum change', () => {
     expect(again.moved.length).toBeLessThanOrEqual(8);
     expect(findCollisions(again.items, busy, S.bufferMin)).toEqual([]);
   });
+  it('keeps a pinned chore exactly where a person put it, even far ahead', () => {
+    const first = plan(input());
+    const far = first.items.find((i) => i.start > NOW + 4 * DAY && i.taskId === 'aspirar') ?? first.items.find((i) => i.start > NOW + 4 * DAY)!;
+    const other = far.uid === 'a' ? 'b' : 'a';
+    const pinned = { ...far, uid: other, pinned: true };
+    const again = plan(input({ existing: first.items.map((i) => (i.id === far.id ? pinned : i)) }));
+    const kept = again.items.find((i) => i.id === far.id)!;
+    expect([kept.uid, kept.start, kept.pinned]).toEqual([other, far.start, true]);
+  });
   it('is deterministic', () => {
     const a = plan(input()), b = plan(input());
     expect(a.items).toEqual(b.items);

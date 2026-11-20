@@ -105,5 +105,7 @@ export interface PlannedItem {
   start: number;
   end: number;
   frozen?: boolean;
+  /** Fixed by a person (an accepted swap or a drag): kept exactly until it is past. */
+  pinned?: boolean;
   reason?: string;
 }
