@@ -26,6 +26,8 @@ import { Thread } from './Thread';
 import { Chat } from './Chat';
 import type { ChatMsg } from './chatlogic';
 import { ToastHost } from './Toast';
+import { Sky } from './sky/Sky';
+import { useSky } from './sky/useSky';
 import { UpdateBar } from './UpdateBar';
 import { flash } from './toast';
 import { uploadFailText } from './addfiles';
@@ -115,6 +117,16 @@ export function App() {
   const [clock, setClock] = useState(() => Date.now());
   const route = useRoute();
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
+  const [prefersDark, setPrefersDark] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!mq) return undefined;
+    const on = () => setPrefersDark(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  const isDark = settings.theme === 'dark' || (settings.theme === 'auto' && prefersDark);
+  const sky = useSky(cards, undefined, settings.sky !== 'off');
   const changeSettings = (next: Settings) => { setSettings(next); saveSettings(next); applySettings(next); };
 
   useEffect(() => {
@@ -267,6 +279,7 @@ export function App() {
     <>
       <ToastHost />
       <UpdateBar />
+      {sky ? <Sky state={sky} dark={isDark} mode={settings.sky === 'full' ? 'full' : 'subtle'} /> : null}
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
       {tab === 'money' ? (
         <Money allocations={allocs} onAdd={(a) => { void addAlloc(user.uid, a); }} onToggle={(a) => { void toggleAlloc(user.uid, a); }}

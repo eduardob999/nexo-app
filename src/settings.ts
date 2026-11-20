@@ -2,10 +2,12 @@ export interface Settings {
   theme: 'auto' | 'light' | 'dark';
   compact: boolean;
   start: 'today' | 'upcoming';
+  /** The live background: off, a faint sky, or the full one. */
+  sky: 'off' | 'subtle' | 'full';
 }
 
 const KEY = 'nexo-settings';
-const DEFAULTS: Settings = { theme: 'auto', compact: false, start: 'today' };
+const DEFAULTS: Settings = { theme: 'auto', compact: false, start: 'today', sky: 'subtle' };
 
 /** Per-device display preferences only. Storage can be blocked or empty, so every access is guarded. */
 export function loadSettings(): Settings {
@@ -17,6 +19,7 @@ export function loadSettings(): Settings {
       theme: p.theme === 'light' || p.theme === 'dark' ? p.theme : 'auto',
       compact: p.compact === true,
       start: p.start === 'upcoming' ? 'upcoming' : 'today',
+      sky: p.sky === 'off' || p.sky === 'full' ? p.sky : 'subtle',
     };
   } catch {
     return { ...DEFAULTS };

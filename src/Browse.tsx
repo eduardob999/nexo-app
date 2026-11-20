@@ -79,6 +79,13 @@ export function Browse({ uid, nexoCount, draftCount, settings, onSettings, onSle
           <button className={`switch ${settings.compact ? 'on' : ''}`} role="switch" aria-checked={settings.compact} aria-label="Compact rows"
             onClick={() => onSettings({ ...settings, compact: !settings.compact })} />
         </div>
+        <div className="setting"><span>Sky</span>
+          <div className="seg" role="group" aria-label="Live background">
+            {(['off', 'subtle', 'full'] as const).map((t) => (
+              <button key={t} aria-pressed={settings.sky === t} onClick={() => onSettings({ ...settings, sky: t })}>{t}</button>
+            ))}
+          </div>
+        </div>
         <div className="setting"><span>Open on</span>
           <div className="seg" role="group" aria-label="Start screen">
             {(['today', 'upcoming'] as const).map((t) => (

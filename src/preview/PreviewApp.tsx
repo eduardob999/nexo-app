@@ -2,6 +2,8 @@ import { AddSheet } from '../AddSheet';
 import { ShareSheet } from '../ShareSheet';
 import { Browse } from '../Browse';
 import { KajiView } from '../modules/kaji';
+import { Sky } from '../sky/Sky';
+import { classify, skyState } from '../sky/sky';
 import { kajiFixture } from '../modules/kaji/fixture';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
@@ -110,6 +112,17 @@ export function PreviewApp() {
     { date: '2026-11-07', kind: 'light', wellbeing: 4, performance: null },
     { date: '2026-11-08', kind: 'full', wellbeing: null, performance: null },
   ];
+  if (which.startsWith('sky-')) {
+    // sky-<HHMM>-<weather>-<MMDD>-<mode>: the live background at that time, with the Kaji screen over it.
+    const [, hhmm = '1200', w = 'clear', md = '1120', mode = 'subtle'] = which.split('-');
+    const codes: Record<string, [number, number, number]> = { clear: [0, 5, 14], cloud: [3, 90, 12], rain: [61, 100, 9], snow: [73, 100, -1], storm: [95, 100, 18], fog: [45, 100, 8] };
+    const [code, cloud, temp] = codes[w] ?? codes.clear!;
+    const now = Date.parse(`2026-${md.slice(0, 2)}-${md.slice(2, 4)}T${hhmm.slice(0, 2)}:${hhmm.slice(2, 4)}:00+09:00`);
+    const st = skyState({ now, weather: classify(code, cloud, temp), events: [{ kind: 'dojo' }, { kind: 'assignment', due: now + 3 * 3_600_000 }, { kind: 'kyoto' }] });
+    const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const { data, actions } = kajiFixture();
+    return (<><Sky state={st} dark={dark} mode={mode === 'full' ? 'full' : 'subtle'} still /><KajiView data={data} actions={actions} lang="en" onLang={() => {}} link="" tab="today" /><TabBar current="browse" draftCount={0} /></>);
+  }
   if (which.startsWith('kaji')) {
     const { data, actions } = kajiFixture();
     const tab = (which.split('-')[1] ?? 'today') as 'today' | 'week' | 'balance' | 'chores' | 'more';
@@ -256,7 +269,7 @@ export function PreviewApp() {
     return (<><Upcoming cards={FIXTURES} now={NOW} onDone={() => {}} /><TabBar current="upcoming" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'browse') {
-    return (<><Browse uid="preview" nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
+    return (<><Browse uid="preview" nexoCount={1} draftCount={DRAFTS.length} settings={{ theme: 'auto', compact: false, start: 'today', sky: 'subtle' }} onSettings={() => {}} onSleep={() => {}} /><TabBar current="browse" draftCount={DRAFTS.length} /></>);
   }
   if (which === 'money') {
     const month = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }).slice(0, 7);

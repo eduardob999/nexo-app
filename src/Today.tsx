@@ -6,6 +6,7 @@ import { Nearby } from './Nearby';
 import { isNewCard } from './seen';
 import { untilLabel } from './sleep';
 import { TodayStrip } from './TodayStrip';
+import { SunArc } from './sky/SunArc';
 import { assignmentHeat } from './assignment';
 import { WakeSuggestion } from './WakeSuggestion';
 import type { SleepPlan, SleepRec } from './sleepmodel';
@@ -244,6 +245,7 @@ export function Today({ onFude, cards, now, fromCache, onDone, onLater, onJoin, 
       <NexoPanel status={nexo} calledAt={calledAt} titles={titles} />
       {lane === 'you' ? <Relays relays={relays} onAnswer={onAnswerRelay} onClose={onCloseRelay} /> : <Relays mode="answered" relays={answeredRelays} onAnswer={onAnswerRelay} onClose={onCloseRelay} />}
       {lane === 'you' ? <TodayStrip info={info} now={now} cards={cards} /> : null}
+      {lane === 'you' ? <SunArc now={now.getTime()} next={nextTimed(cards, now.getTime())} /> : null}
       {lane === 'you' ? <WakeSuggestion cards={cards} now={now} wake={wake} onRecord={onRecordWake} onAnswer={onAnswerWake} sleep={sleep} onGoToBed={sleepActions?.onGoToBed} onUndoBed={sleepActions?.onUndoBed} onImUp={sleepActions?.onImUp} onRate={sleepActions?.onRate} onEditTimes={sleepActions?.onEditTimes} onPlan={sleepActions?.onPlan} /> : null}
       {lane === 'you' && rest && onRateRest ? <RestCheckin recs={rest} now={now} onRate={onRateRest} /> : null}
       {/* Card nmw9woh8bpsx: closest combini, station, toilet, pharmacy. Its own button, nothing runs until pressed. */}
@@ -283,4 +285,16 @@ export function Today({ onFude, cards, now, fromCache, onDone, onLater, onJoin, 
       {hidden > 0 ? <a className="more-link" href="#/upcoming">{hidden} more in Upcoming</a> : null}
     </main>
   );
+}
+
+/** The next timed thing of his today, for the dot on the sun arc. */
+function nextTimed(cards: Card[], now: number): { at: number; label: string } | undefined {
+  let best: { at: number; label: string } | undefined;
+  for (const c of cards) {
+    if (c.status === 'done' || c.for !== 'you' || !c.due || c.due.length <= 10 || (c.type ?? '') === 'TRIP') continue;
+    const at = Date.parse(c.due);
+    if (Number.isNaN(at) || at <= now) continue;
+    if (!best || at < best.at) best = { at, label: c.title ?? c.id };
+  }
+  return best;
 }
