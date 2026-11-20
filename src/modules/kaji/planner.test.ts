@@ -125,6 +125,25 @@ describe('stability and minimum change', () => {
   });
 });
 
+describe('ids', () => {
+  const unique = (items: PlannedItem[]) => new Set(items.map((i) => i.id)).size === items.length;
+  it('are unique in a fresh plan and after many replans with changing calendars', () => {
+    let existing: PlannedItem[] = [];
+    for (let step = 0; step < 12; step++) {
+      const busy = { a: [ev(step % 6, '17:30', '19:00')], b: [ev((step + 2) % 6, '18:00', '20:30')] };
+      const now = NOW + step * 6 * 3_600_000;
+      const out = plan(input({ now, busy, existing }));
+      expect(unique(out.items)).toBe(true);
+      existing = out.items;
+    }
+  });
+  it('are unique when the previous plan carried duplicates from an older version', () => {
+    const first = plan(input());
+    const dup = first.items.map((i) => (i.taskId === 'cena' ? { ...i, id: 'cena@old' } : i));
+    expect(unique(plan(input({ existing: dup })).items)).toBe(true);
+  });
+});
+
 describe('moving one chore', () => {
   it('offers only free slots, never its own, never on an event, and one per person per hour', () => {
     const busy = { a: [ev(1, '18:00', '21:00')], b: [ev(1, '17:30', '21:30')] };

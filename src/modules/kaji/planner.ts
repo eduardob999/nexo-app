@@ -40,6 +40,9 @@ interface Occ { key: string; task: TaskType; ideal: number; earliest: number; la
 const GRID = 15 * MIN;
 const HOME = /^home$/i;
 
+/** Bump when the shape or meaning of a stored plan changes: the service re-plans any plan with another version. */
+export const PLAN_VERSION = 2;
+
 export function plan(input: PlanInput): PlanOutput {
   const { now, tasks, members, estimates, log, settings: s } = input;
   const tz = input.tz ?? JST;
@@ -156,7 +159,7 @@ export function plan(input: PlanInput): PlanOutput {
     const w = weight(task);
     const region = (day: number) => regionFor(task, day, s, tz);
     let best: { uid: string; start: number; score: number } | undefined;
-    const prev = sticky.filter((e) => e.taskId === task.id && !retained.has(e.id)).sort((a, b) => Math.abs(a.start - o.ideal) - Math.abs(b.start - o.ideal))[0];
+    const prev = sticky.filter((e) => e.taskId === task.id && !retained.has(e.id) && e.start >= o.earliest - DAY / 2 && e.start <= o.latest + DAY / 2).sort((a, b) => Math.abs(a.start - o.ideal) - Math.abs(b.start - o.ideal))[0];
     const parentItem = o.parent;
     for (let day = dayStart(o.earliest, tz); day <= o.latest; day += DAY) {
       const r = region(day);
@@ -192,7 +195,8 @@ export function plan(input: PlanInput): PlanOutput {
       unplaced.push({ taskId: task.id, ideal: o.ideal, reason: 'no free time for anyone before ' + dayKey(o.latest, tz) });
       return;
     }
-    const id = prev && prev.uid === best.uid && prev.start === best.start ? prev.id : prev ? prev.id : o.key;
+    let id = prev ? prev.id : o.key;
+    if (placed.some((x) => x.id === id)) id = `${o.key}~${best.start}`;      // ids are unique, always: the calendar keys its events on them
     if (prev) retained.add(prev.id);
     const item: PlannedItem = { id, taskId: task.id, uid: best.uid, start: best.start, end: best.start + o.minutes * MIN };
     placed.push(item);

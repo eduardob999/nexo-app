@@ -4,6 +4,7 @@ import { SEED } from './catalog';
 import type { LedgerEntry } from './ledger';
 import type { Interval, LogEvent, Member, PlannedItem, Settings, TaskType } from './model';
 import { DEFAULT_SETTINGS } from './model';
+import { PLAN_VERSION } from './planner';
 import { DAY } from './time';
 
 /** Everything Kaji keeps lives in `households/{hid}`, a space the people who live together share. Rules: members only. */
@@ -17,7 +18,7 @@ export function clean<T>(x: T): T {
 
 export interface HouseholdDoc { name: string; members: Record<string, 'owner' | 'member'>; createdAt: number; names?: Record<string, string>; langs?: Record<string, 'en' | 'es' | 'ja'> }
 export interface Swap { id: string; itemId: string; taskId: string; fromUid: string; toUid: string; state: 'open' | 'accepted' | 'declined'; at: number; start: number }
-export interface PlanDoc { items: PlannedItem[]; at: number; by: string }
+export interface PlanDoc { items: PlannedItem[]; at: number; by: string; v?: number }
 export interface BusyDoc { events: Record<string, Interval[]>; at: number }
 export interface SurveyDoc { answers: Record<string, number>; at: number }
 export interface AwayDoc { until: number }
@@ -122,7 +123,7 @@ export function logEvent(hid: string, ev: Omit<LogEvent, 'id'>): Promise<string>
 }
 export const undoLog = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'log'), id));
 export function savePlan(hid: string, by: string, items: PlannedItem[]): Promise<void> {
-  return setDoc(doc(sub(hid, 'plan'), 'current'), clean({ items, at: Date.now(), by } satisfies PlanDoc));
+  return setDoc(doc(sub(hid, 'plan'), 'current'), clean({ items, at: Date.now(), by, v: PLAN_VERSION } satisfies PlanDoc));
 }
 export interface NotToday { uid: string; taskId: string; day: string }
 export function watchNotToday(hid: string, on: (n: NotToday[]) => void): () => void {
