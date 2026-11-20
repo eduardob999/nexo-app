@@ -1,6 +1,7 @@
 import { useInstall } from './install';
 import { sleepOptions, untilLabel } from './sleep';
 import type { Settings } from './settings';
+import { Secrets } from './Secrets';
 import { Notifications } from './Notifications';
 import { MODULES } from './modules/registry';
 
@@ -64,6 +65,7 @@ export function Browse({ uid, nexoCount, draftCount, settings, onSettings, onSle
         </>
       ) : null}
       {uid ? <Notifications uid={uid} /> : null}
+      {uid ? <Secrets uid={uid} /> : null}
       <h2 className="group-title">Display</h2>
       <div className="panel settings">
         <div className="setting"><span>Theme</span>
