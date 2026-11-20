@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { historyLine } from './history';
+import { readingsOn, setReadings } from './readings';
+import { watchHistory, type HistoryEntry } from './store';
 import { InviteCard, LangPick } from './Setup';
 import { t } from './i18n';
 import type { Lang, Settings } from './model';
@@ -10,6 +13,9 @@ export function SettingsScreen({ data, actions, lang, onLang, link }: { data: Ka
   const other = data.members.find((m) => m.uid !== data.me);
   const myShare = Math.round(((s.targets?.[data.me] ?? 1) / ((s.targets?.[data.me] ?? 1) + (other ? s.targets?.[other.uid] ?? 1 : 0))) * 100) || 50;
   const [date, setDate] = useState('');
+  const [hist, setHist] = useState<HistoryEntry[]>([]);
+  const [furi, setFuri] = useState(() => readingsOn());
+  useEffect(() => (data.hid === 'h' ? undefined : watchHistory(data.hid, setHist)), [data.hid]);
   const awayUntil = data.away[data.me];
   const away = awayUntil && awayUntil > data.now;
   const save = (p: Partial<Settings>) => void actions.saveSettings({ ...s, ...p });
@@ -19,6 +25,7 @@ export function SettingsScreen({ data, actions, lang, onLang, link }: { data: Ka
     <>
       <div className="panel settings secret-form">
         <div className="setting"><span>{t(lang, 'language')}</span><LangPick value={lang} onChange={onLang} /></div>
+        {lang === 'ja' ? <div className="setting"><span>{t(lang, 'readings')}</span><button className={`switch ${furi ? 'on' : ''}`} role="switch" aria-checked={furi} aria-label={t(lang, 'readings')} onClick={() => { setReadings(!furi); setFuri(!furi); }} /></div> : null}
         {other ? (
           <label className="setting kaji-slider"><span>{t(lang, 'share')}: {data.members.find((m) => m.uid === data.me)?.name} {myShare}% / {other.name} {100 - myShare}%</span>
             <input type="range" min={20} max={80} step={5} value={myShare} onChange={(e) => { const v = Number(e.target.value); save({ targets: { [data.me]: v, [other.uid]: 100 - v } }); }} aria-label={t(lang, 'share')} /></label>
@@ -41,6 +48,16 @@ export function SettingsScreen({ data, actions, lang, onLang, link }: { data: Ka
           </>
         )}
       </div>
+      {hist.length ? (
+        <>
+          <h2 className="group-title">{t(lang, 'history')}</h2>
+          <ul className="kaji-list panel">
+            {hist.slice(0, 15).map((h) => (
+              <li key={h.id} className="kaji-item"><span className="kaji-main"><b style={{ fontWeight: 500 }}>{historyLine(h, data.tasks, data.members, lang)}</b><small className="mut">{new Date(h.at + 9 * 3_600_000).toISOString().slice(5, 16).replace('T', ' ')}</small></span></li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       {data.house.members[data.me] === 'owner' ? <InviteCard lang={lang} link={link} onInvite={actions.invite} /> : null}
     </>
   );

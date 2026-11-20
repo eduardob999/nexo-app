@@ -5,6 +5,7 @@ import type { Lang, PlannedItem, TaskType } from './model';
 import { HowLongSheet, LogSheet, RateSheet } from './Sheets';
 import { clockText, elapsedMin, loadTimer, recentAnswers, saveTimer, type Running } from './timer';
 import { clockLabel } from './time';
+import { readingFor, readingsOn } from './readings';
 import type { KajiActions, KajiData, Ratings } from './ui';
 import { memberColor, taskName, todayFor } from './view';
 
@@ -87,6 +88,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random }: { data:
               <li key={i.id} className="kaji-item">
                 <span className="kaji-ic">{task.icon}</span>
                 <span className="kaji-main"><b>{taskName(task, lang)}</b>
+                  {readingFor(task, lang, readingsOn()) ? <small className="kaji-rt">{readingFor(task, lang, readingsOn())}</small> : null}
                   <small className="mut">{clockLabel(i.start)} to {clockLabel(i.end)} · {task.mode === 'fixed' ? t(lang, 'fixedWindow') : `${Math.round((i.end - i.start) / 60000)} ${t(lang, 'minutes')}`}</small></span>
                 <span className="kaji-acts">
                   {task.mode === 'measured' && !on ? <button className="chip-btn" onClick={() => start(i)}>{t(lang, 'start')}</button> : null}

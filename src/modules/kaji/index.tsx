@@ -37,7 +37,7 @@ export function KajiView({ data, actions, lang, onLang, link, tab: forced, previ
   const [tab, setTab] = useState<Tab>(forced ?? 'today');
   return (
     <main className="screen kaji">
-      <header className="top"><div><span className="kicker">{t(lang, 'kaji').toUpperCase()} · 家事</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
+      <header className="top"><div><span className="kicker">KAJI · 家事</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
       <div className="seg kaji-tabs" role="tablist">
         {TABS.map((k) => <button key={k} role="tab" aria-pressed={tab === k} onClick={() => setTab(k)} style={{ textTransform: 'none' }}>{t(lang, k)}</button>)}
       </div>
@@ -132,7 +132,7 @@ export function KajiModule({ uid, openId }: ModuleProps) {
   if (!hid || !data || !actions) {
     return (
       <main className="screen kaji">
-        <header className="top"><div><span className="kicker">{t(lang, 'kaji').toUpperCase()} · 家事</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
+        <header className="top"><div><span className="kicker">KAJI · 家事</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
         <Setup lang={lang} onLang={changeLang} defaultName="" joinHid={hid ? null : joinHid}
           onCreate={async (name, me) => { await createHousehold(uid, name, me, lang); }}
           onJoin={async (h, me) => { await join(uid, h, me, lang); window.location.hash = '#/kaji'; }} />

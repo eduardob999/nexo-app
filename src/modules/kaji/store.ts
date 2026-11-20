@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, limit as limitTo, onSnapshot, orderBy, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { SEED } from './catalog';
 import type { LedgerEntry } from './ledger';
@@ -174,3 +174,9 @@ export function addLedger(hid: string, e: Omit<LedgerEntry, 'id'>): Promise<void
   return setDoc(doc(sub(hid, 'ledger'), id), clean({ ...e, id }));
 }
 export const removeLedger = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'ledger'), id));
+
+// ---- the change history, newest first
+export interface HistoryEntry { id?: string; by: string; what: string; at: number }
+export function watchHistory(hid: string, on: (h: HistoryEntry[]) => void, limit = 40): () => void {
+  return onSnapshot(query(sub(hid, 'history'), orderBy('at', 'desc'), limitTo(limit)), (s) => on(s.docs.map((d) => ({ id: d.id, ...(d.data() as HistoryEntry) }))), () => on([]));
+}

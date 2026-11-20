@@ -845,3 +845,5 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .kaji-addrow textarea, .kaji-addrow input { flex: 1; min-width: 0; border: 1px solid var(--edge); border-radius: 10px; background: transparent; color: var(--ink); font: inherit; padding: 9px 10px; resize: none; }
 .kaji-check-ring { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--edge); background: transparent; color: var(--bg); font-size: 15px; line-height: 1; flex: none; } .kaji-check-ring.on { background: var(--accent); border-color: var(--accent); }
 .kaji-listitem { flex-wrap: nowrap; }
+.kaji-rt { font-size: 11.5px; color: var(--muted); letter-spacing: .02em; }
+.kaji-tabs button { white-space: nowrap; font-size: 12px; padding: 0 1px; }
