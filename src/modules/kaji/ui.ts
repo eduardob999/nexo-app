@@ -35,4 +35,5 @@ export interface KajiActions {
   saveSurvey: (answers: Record<string, number>) => Promise<void>;
   setAway: (until: number | null) => Promise<void>;
   invite: (email: string) => Promise<void>;
+  ask: (kind: import('./asks').AskKind, text: string, when: number | null) => Promise<void>;
 }

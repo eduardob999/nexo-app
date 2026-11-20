@@ -37,6 +37,6 @@ export function kajiFixture(now = NOW): { data: KajiData; actions: KajiActions }
     members, tasks: SEED, log, survey, settings: DEFAULT_SETTINGS, away: {}, busy, plan: out.items, unplaced: out.unplaced, swaps: [], estimates, now,
   };
   const noop = async () => {};
-  return { data, actions: { logDone: noop, undo: noop, notToday: noop, move: noop, askSwap: noop, answerSwap: noop, saveTask: noop, saveSettings: noop, saveSurvey: noop, setAway: noop, invite: noop } };
+  return { data, actions: { logDone: noop, undo: noop, notToday: noop, move: noop, askSwap: noop, answerSwap: noop, saveTask: noop, saveSettings: noop, saveSurvey: noop, setAway: noop, invite: noop, ask: noop } };
 }
 export { MIN };

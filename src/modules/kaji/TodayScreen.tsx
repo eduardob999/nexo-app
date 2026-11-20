@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { askRates, maturity, drifted, shouldAsk } from './adapt';
 import { t } from './i18n';
 import type { Lang, PlannedItem, TaskType } from './model';
+import { AskButton } from './AskSheet';
 import { HowLongSheet, LogSheet, RateSheet } from './Sheets';
 import { clockText, elapsedMin, loadTimer, recentAnswers, saveTimer, type Running } from './timer';
 import { clockLabel } from './time';
@@ -11,7 +12,7 @@ import { memberColor, taskName, todayFor } from './view';
 
 type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | null;
 
-export function TodayScreen({ data, actions, lang, rand = Math.random }: { data: KajiData; actions: KajiActions; lang: Lang; rand?: () => number }) {
+export function TodayScreen({ data, actions, lang, rand = Math.random, askPreview }: { data: KajiData; actions: KajiActions; lang: Lang; rand?: () => number; askPreview?: import('./asks').Ask[] }) {
   const [running, setRunning] = useState<Running | null>(() => loadTimer());
   const [tick, setTick] = useState(() => Date.now());
   const [flow, setFlow] = useState<Flow>(null);
@@ -75,6 +76,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random }: { data:
           <span><button className="copy-main" onClick={() => void actions.answerSwap(s, true)}>{t(lang, 'accept')}</button> <button className="chip-btn" onClick={() => void actions.answerSwap(s, false)}>{t(lang, 'decline')}</button></span>
         </div>
       ))}
+      <AskButton data={data} lang={lang} actions={actions} {...(askPreview ? { preview: askPreview } : {})} />
       <h2 className="group-title">{t(lang, 'yourChores')}</h2>
       {mine.length === 0 ? (
         <div className="panel kaji-empty"><b>{t(lang, 'nothingToday')}</b><p className="mut">{t(lang, 'nothingTodayHelp')}</p></div>
@@ -89,7 +91,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random }: { data:
                 <span className="kaji-ic">{task.icon}</span>
                 <span className="kaji-main"><b>{taskName(task, lang)}</b>
                   {readingFor(task, lang, readingsOn()) ? <small className="kaji-rt">{readingFor(task, lang, readingsOn())}</small> : null}
-                  <small className="mut">{clockLabel(i.start)} to {clockLabel(i.end)} · {task.mode === 'fixed' ? t(lang, 'fixedWindow') : `${Math.round((i.end - i.start) / 60000)} ${t(lang, 'minutes')}`}</small></span>
+                  <small className="mut">{clockLabel(i.start)}–{clockLabel(i.end)} · {task.mode === 'fixed' ? t(lang, 'fixedWindow') : `${Math.round((i.end - i.start) / 60000)} ${t(lang, 'minutes')}`}</small></span>
                 <span className="kaji-acts">
                   {task.mode === 'measured' && !on ? <button className="chip-btn" onClick={() => start(i)}>{t(lang, 'start')}</button> : null}
                   <button className="copy-main" onClick={() => finish(task, i, on ? running?.start : undefined)}>{t(lang, 'done')}</button>

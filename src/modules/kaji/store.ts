@@ -181,3 +181,12 @@ export interface HistoryEntry { id?: string; by: string; what: string; at: numbe
 export function watchHistory(hid: string, on: (h: HistoryEntry[]) => void, limit = 40): () => void {
   return onSnapshot(query(sub(hid, 'history'), orderBy('at', 'desc'), limitTo(limit)), (s) => on(s.docs.map((d) => ({ id: d.id, ...(d.data() as HistoryEntry) }))), () => on([]));
 }
+
+// ---- requests from the other person to the owner (become cards on his board; nothing happens until he answers)
+export function watchAsks(hid: string, uid: string, on: (a: import('./asks').Ask[]) => void): () => void {
+  return onSnapshot(query(sub(hid, 'asks'), where('by', '==', uid)), (s) => on(s.docs.map((d) => d.data() as import('./asks').Ask).sort((a, b) => b.at - a.at)), () => on([]));
+}
+export function sendAsk(hid: string, a: Omit<import('./asks').Ask, 'id' | 'state' | 'at'>): Promise<void> {
+  const id = newId();
+  return setDoc(doc(sub(hid, 'asks'), id), clean({ ...a, id, at: Date.now(), state: 'new' }));
+}

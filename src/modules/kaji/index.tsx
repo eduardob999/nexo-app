@@ -10,7 +10,7 @@ import { DEFAULT_SETTINGS, type Interval, type Lang, type LogEvent, type Planned
 import { plan as makePlan, type Unplaced } from './planner';
 import { SettingsScreen } from './SettingsScreen';
 import { Setup } from './Setup';
-import { addNotToday, answerSwap, clearAway, createHousehold, invite, join, logEvent, members as membersOf, proposeSwap, saveSettings, saveSurvey, savePlan, saveTask, setAway,
+import { addNotToday, answerSwap, clearAway, createHousehold, invite, join, logEvent, members as membersOf, proposeSwap, sendAsk, saveSettings, saveSurvey, savePlan, saveTask, setAway,
   watchAway, watchBusy, watchHousehold, watchLog, watchMyHousehold, watchNotToday, watchPlan, watchSettings, watchSurvey, watchSwaps, watchTasks,
   type BusyDoc, type HouseholdDoc, type NotToday, type PlanDoc, type Swap } from './store';
 import { dayKey, MIN, weekday } from './time';
@@ -33,7 +33,7 @@ export function initialLang(): Lang {
 }
 
 /** The screens, with no Firebase in them: the live module and the preview both feed this. */
-export function KajiView({ data, actions, lang, onLang, link, tab: forced, previewLists, previewLedger }: { data: KajiData; actions: KajiActions; lang: Lang; onLang: (l: Lang) => void; link: string; tab?: Tab; previewLists?: { lists: import('./store').KList[]; items: import('./store').KItem[] }; previewLedger?: import('./ledger').LedgerEntry[] }) {
+export function KajiView({ data, actions, lang, onLang, link, tab: forced, previewLists, previewLedger, previewAsks }: { data: KajiData; actions: KajiActions; lang: Lang; onLang: (l: Lang) => void; link: string; tab?: Tab; previewLists?: { lists: import('./store').KList[]; items: import('./store').KItem[] }; previewLedger?: import('./ledger').LedgerEntry[]; previewAsks?: import('./asks').Ask[] }) {
   const [tab, setTab] = useState<Tab>(forced ?? 'today');
   return (
     <main className="screen kaji">
@@ -41,7 +41,7 @@ export function KajiView({ data, actions, lang, onLang, link, tab: forced, previ
       <div className="seg kaji-tabs" role="tablist">
         {TABS.map((k) => <button key={k} role="tab" aria-pressed={tab === k} onClick={() => setTab(k)} style={{ textTransform: 'none' }}>{t(lang, k)}</button>)}
       </div>
-      {tab === 'today' ? <TodayScreen data={data} actions={actions} lang={lang} /> : null}
+      {tab === 'today' ? <TodayScreen data={data} actions={actions} lang={lang} {...(previewAsks ? { askPreview: previewAsks } : {})} /> : null}
       {tab === 'week' ? <WeekScreen data={data} lang={lang} actions={actions} /> : null}
       {tab === 'balance' ? <BalanceScreen data={data} lang={lang} /> : null}
       {tab === 'chores' ? <ChoresScreen data={data} actions={actions} lang={lang} /> : null}
@@ -113,8 +113,9 @@ function useKaji(uid: string): { hid: string | null | undefined; data: KajiData 
       saveSurvey: async (a) => saveSurvey(hid, uid, a),
       setAway: async (until) => (until === null ? clearAway(hid, uid) : setAway(hid, uid, until)),
       invite: async (email) => invite(hid, email, uid),
+      ask: async (kind, text, when) => sendAsk(hid, { kind, text, when, by: uid, byName: membersOf(house).find((m) => m.uid === uid)?.name ?? '' }),
     };
-  }, [hid, uid, settings]);
+  }, [hid, uid, settings, house]);
 
   const data = useMemo<KajiData | null>(() => (hid && house && members.length ? {
     hid, me: uid, house, members, tasks, log, survey, settings, away, busy: busy?.events ?? {}, plan: computed.items, unplaced: computed.unplaced, swaps, estimates, now: slot * 5 * MIN,
