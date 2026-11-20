@@ -53,7 +53,7 @@ export function KajiView({ data, actions, lang, onLang, link, tab: forced, previ
 }
 
 /** Everything the planner needs, kept live, and the plan written back whenever it changes. */
-function useKaji(uid: string): { hid: string | null | undefined; data: KajiData | null; actions: KajiActions | null } {
+export function useKaji(uid: string): { hid: string | null | undefined; data: KajiData | null; actions: KajiActions | null } {
   const [hid, setHid] = useState<string | null | undefined>(undefined);
   const [house, setHouse] = useState<HouseholdDoc | null>(null);
   const [tasks, setTasks] = useState<TaskType[]>([]);

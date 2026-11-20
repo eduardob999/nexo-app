@@ -2,6 +2,7 @@ import { AddSheet } from '../AddSheet';
 import { ShareSheet } from '../ShareSheet';
 import { Browse } from '../Browse';
 import { KajiView } from '../modules/kaji';
+import { GuestView } from '../modules/kaji/GuestApp';
 import { Sky } from '../sky/Sky';
 import { classify, skyState } from '../sky/sky';
 import { kajiFixture } from '../modules/kaji/fixture';
@@ -122,6 +123,16 @@ export function PreviewApp() {
     const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const { data, actions } = kajiFixture();
     return (<><Sky state={st} dark={dark} mode={mode === 'full' ? 'full' : 'subtle'} still /><KajiView data={data} actions={actions} lang="en" onLang={() => {}} link="" tab="today" /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which.startsWith('guest')) {
+    // guest-<tab>-<lang>: the app a household member gets, as Carla.
+    const fx = kajiFixture();
+    const data = { ...fx.data, me: 'b' };
+    const [, tab = 'today', lang = 'es'] = which.split('-');
+    const lists = { lists: [{ id: 'l1', title: 'Compras', at: 1, by: 'a' }], items: [{ id: 'i1', listId: 'l1', text: 'Leche', done: false, by: 'a', at: 1 }, { id: 'i2', listId: 'l1', text: 'Arroz', done: true, by: 'b', at: 0, doneAt: 5 }] };
+    const ledger = [{ id: 'm1', at: Date.parse('2026-11-18T12:00:00+09:00'), by: 'a', paidBy: 'a', amount: 4280, text: 'Supermercado', kind: 'expense' as const }];
+    const asks = [{ id: 'q1', kind: 'plan' as const, text: 'Cena en Karasuma el sábado 28', when: 1, by: 'b', byName: 'Carla', at: 1, state: 'sent' as const }];
+    return <GuestView data={data} actions={fx.actions} lang={lang as 'en' | 'es' | 'ja'} onLang={() => {}} link="" tab={tab as 'today'} onSignOut={() => {}} previewLists={lists} previewLedger={ledger} previewAsks={asks} />;
   }
   if (which.startsWith('kaji')) {
     const fx = kajiFixture();

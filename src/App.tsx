@@ -17,6 +17,8 @@ import { Search } from './Search';
 import { Shelf } from './Shelf';
 import { FudeModule, FudeCardWidget, openForCard, openForDraft } from './modules/fude';
 import { KajiModule } from './modules/kaji';
+import { GuestApp } from './modules/kaji/GuestApp';
+import { useRole } from './role';
 import { applySettings, loadSettings, saveSettings, type Settings } from './settings';
 import { TabBar } from './TabBar';
 import { Browse } from './Browse';
@@ -85,7 +87,7 @@ async function uploadNewCardFiles(uid: string, cardId: string, files: File[]): P
   } catch (e) { flash(uploadFailText(e), 'warn'); }
 }
 
-export function App() {
+function OwnerApp() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [cards, setCards] = useState<Card[]>([]);
   const [fromCache, setFromCache] = useState(true);
@@ -375,4 +377,17 @@ export function App() {
       {adding ? <AddSheet onClose={() => setAdding(false)} onAdd={(t, w, due, pr, files, lines, callNow) => { const id = newCardId(); void addCard(user.uid, t, w, due, pr, id, lines, callNow).then(() => { if (callNow) flash('Nexo called for this card'); return uploadNewCardFiles(user.uid, id, files); }); }} /> : null}
     </>
   );
+}
+
+/**
+ * Which app this person gets. Someone who belongs to a household as a plain member gets the guest app (the house and nothing else);
+ * everyone else gets the full app. The answer is saved on the device so the right app opens at once the next time.
+ */
+export function App() {
+  const [uid, setUid] = useState<string | null | undefined>(undefined);
+  useEffect(() => watchAuthState((u) => setUid(u ? u.uid : null)), []);
+  const role = useRole(uid);
+  if (uid && role === 'unknown') return <main className="screen"><p className="empty">…</p></main>;
+  if (uid && role === 'guest') return <GuestApp uid={uid} />;
+  return <OwnerApp />;
 }

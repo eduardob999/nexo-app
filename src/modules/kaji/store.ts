@@ -190,3 +190,11 @@ export function sendAsk(hid: string, a: Omit<import('./asks').Ask, 'id' | 'state
   const id = newId();
   return setDoc(doc(sub(hid, 'asks'), id), clean({ ...a, id, at: Date.now(), state: 'new' }));
 }
+
+/** Like watchMyHousehold and watchHousehold, but a failed read is reported as a failure and not as "no household", so a guest is never mistaken for the owner. */
+export function watchMyHouseholdStrict(uid: string, on: (hid: string | null) => void, onError: () => void): () => void {
+  return onSnapshot(doc(db, 'users', uid, 'meta', 'household'), (s) => on((s.data() as { id?: string } | undefined)?.id ?? null), onError);
+}
+export function watchHouseholdStrict(hid: string, on: (h: HouseholdDoc | null) => void, onError: () => void): () => void {
+  return onSnapshot(house(hid), (s) => on(s.exists() ? (s.data() as HouseholdDoc) : null), onError);
+}
