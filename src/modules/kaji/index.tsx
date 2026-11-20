@@ -3,6 +3,7 @@ import type { ModuleProps } from '../types';
 import { estimateFor } from './adapt';
 import { BalanceScreen } from './BalanceScreen';
 import { ChoresScreen } from './ChoresScreen';
+import { ListsScreen } from './ListsScreen';
 import { t } from './i18n';
 import { DEFAULT_SETTINGS, type Interval, type Lang, type LogEvent, type PlannedItem, type Settings, type TaskType } from './model';
 import { plan as makePlan, type Unplaced } from './planner';
@@ -18,8 +19,8 @@ import { WeekScreen } from './WeekScreen';
 
 export { kajiManifest } from './manifest';
 
-type Tab = 'today' | 'week' | 'balance' | 'chores' | 'more';
-const TABS: Tab[] = ['today', 'week', 'balance', 'chores', 'more'];
+type Tab = 'today' | 'week' | 'balance' | 'chores' | 'lists' | 'more';
+const TABS: Tab[] = ['today', 'week', 'balance', 'chores', 'lists', 'more'];
 
 export function initialLang(): Lang {
   try {
@@ -31,7 +32,7 @@ export function initialLang(): Lang {
 }
 
 /** The screens, with no Firebase in them: the live module and the preview both feed this. */
-export function KajiView({ data, actions, lang, onLang, link, tab: forced }: { data: KajiData; actions: KajiActions; lang: Lang; onLang: (l: Lang) => void; link: string; tab?: Tab }) {
+export function KajiView({ data, actions, lang, onLang, link, tab: forced, previewLists }: { data: KajiData; actions: KajiActions; lang: Lang; onLang: (l: Lang) => void; link: string; tab?: Tab; previewLists?: { lists: import('./store').KList[]; items: import('./store').KItem[] } }) {
   const [tab, setTab] = useState<Tab>(forced ?? 'today');
   return (
     <main className="screen kaji">
@@ -43,6 +44,7 @@ export function KajiView({ data, actions, lang, onLang, link, tab: forced }: { d
       {tab === 'week' ? <WeekScreen data={data} lang={lang} actions={actions} /> : null}
       {tab === 'balance' ? <BalanceScreen data={data} lang={lang} /> : null}
       {tab === 'chores' ? <ChoresScreen data={data} actions={actions} lang={lang} /> : null}
+      {tab === 'lists' ? <ListsScreen data={data} lang={lang} {...(previewLists ? { preview: previewLists } : {})} /> : null}
       {tab === 'more' ? <SettingsScreen data={data} actions={actions} lang={lang} onLang={onLang} link={link} /> : null}
     </main>
   );

@@ -141,3 +141,25 @@ export const answerSwap = (hid: string, id: string, state: 'accepted' | 'decline
 export async function householdExists(hid: string): Promise<boolean> {
   try { return (await getDoc(house(hid))).exists(); } catch { return false; }
 }
+
+// ---- shared lists (shopping, trips, anything the two of them keep together). One document per item, so two people editing at once never overwrite each other.
+export interface KList { id: string; title: string; at: number; by: string }
+export interface KItem { id: string; listId: string; text: string; done: boolean; by: string; at: number; doneBy?: string; doneAt?: number }
+export function watchLists(hid: string, on: (l: KList[]) => void): () => void {
+  return onSnapshot(sub(hid, 'lists'), (s) => on(s.docs.map((d) => d.data() as KList).sort((a, b) => a.at - b.at)), () => on([]));
+}
+export function watchItems(hid: string, on: (i: KItem[]) => void): () => void {
+  return onSnapshot(sub(hid, 'listitems'), (s) => on(s.docs.map((d) => d.data() as KItem)), () => on([]));
+}
+export async function addList(hid: string, by: string, title: string): Promise<string> {
+  const id = newId();
+  await setDoc(doc(sub(hid, 'lists'), id), clean({ id, title: title.trim(), at: Date.now(), by } satisfies KList));
+  return id;
+}
+export const addItem = (hid: string, by: string, listId: string, text: string) => {
+  const id = newId();
+  return setDoc(doc(sub(hid, 'listitems'), id), clean({ id, listId, text: text.trim(), done: false, by, at: Date.now() } satisfies KItem));
+};
+export const tickItem = (hid: string, by: string, id: string, done: boolean) =>
+  updateDoc(doc(sub(hid, 'listitems'), id), done ? { done: true, doneBy: by, doneAt: Date.now() } : { done: false, doneBy: '', doneAt: 0 });
+export const removeItem = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'listitems'), id));
