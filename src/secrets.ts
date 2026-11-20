@@ -20,6 +20,16 @@ export const PRESETS: SecretPreset[] = [
       { key: 'DOJO_PASS', label: 'Password', type: 'password' },
     ],
   },
+  {
+    name: 'kaji',
+    title: 'Kaji calendar',
+    about: 'Where Kaji writes the chores, and the two calendars it reads so no chore lands on an event. These are calendar addresses, not passwords.',
+    fields: [
+      { key: 'KAJI_CALENDAR_ID', label: 'Kaji calendar id', type: 'text', hint: 'xxxx@group.calendar.google.com' },
+      { key: 'KAJI_CAL_ME', label: 'Your calendar', type: 'text', hint: 'you@gmail.com' },
+      { key: 'KAJI_CAL_PARTNER', label: 'Partner calendar', type: 'text', hint: 'her@gmail.com' },
+    ],
+  },
 ];
 
 const KEY_RE = /^[A-Z][A-Z0-9_]{0,39}$/;
