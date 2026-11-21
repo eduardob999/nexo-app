@@ -1,5 +1,6 @@
 import { balance, burdenOf, weightOf } from './burden';
 import type { Estimate, Interval, LogEvent, Member, PlannedItem, Settings, TaskType } from './model';
+import { applyLearned, dismissedAt, skipsFromLog } from './reschedule';
 import { atHm, dayKey, dayStart, DAY, hm, JST, MIN, overlaps, weekday } from './time';
 
 /**
@@ -35,20 +36,23 @@ export interface PlanInput {
 export interface Unplaced { taskId: string; ideal: number; reason: string }
 export interface PlanOutput { items: PlannedItem[]; unplaced: Unplaced[]; moved: { id: string; fromUid: string; toUid: string; from: number; to: number }[] }
 
-interface Occ { key: string; task: TaskType; ideal: number; earliest: number; latest: number; minutes: number; parent?: PlannedItem }
+interface Occ { key: string; task: TaskType; window?: { from: string; to: string }; ideal: number; earliest: number; latest: number; minutes: number; parent?: PlannedItem }
 
 const GRID = 15 * MIN;
 const HOME = /^home$/i;
 
 /** Bump when the shape or meaning of a stored plan changes: the service re-plans any plan with another version. */
-export const PLAN_VERSION = 2;
+export const PLAN_VERSION = 3;
 
 export function plan(input: PlanInput): PlanOutput {
-  const { now, tasks, members, estimates, log, settings: s } = input;
+  const { now, members, estimates, log, settings: s } = input;
   const tz = input.tz ?? JST;
   const travel = (input.travelMin ?? 45) * MIN;
   const buffer = s.bufferMin * MIN;
   const horizonEnd = dayStart(now, tz) + input.horizonDays * DAY;
+  // what the household's own moves have taught: windows shifted, gaps stretched. Recomputed from the log every time, never stored.
+  const tasks = applyLearned(input.tasks, log, now, s, tz);
+  const skips = skipsFromLog(log, now, tz);
   const tById = new Map(tasks.map((t) => [t.id, t]));
   const uids = members.map((m) => m.uid);
 
@@ -96,6 +100,8 @@ export function plan(input: PlanInput): PlanOutput {
 
   // ---- 2. demand: the occurrences the horizon needs
   const doneAt = (taskId: string) => log.filter((e) => e.taskId === taskId && e.kind === 'done').reduce((m, e) => Math.max(m, e.at), 0);
+  /** Done, or dismissed as not needed: either way the next one counts from there. */
+  const handledAt = (taskId: string) => Math.max(doneAt(taskId), dismissedAt(log, taskId));
   const doneToday = (taskId: string, day: number) => log.filter((e) => e.taskId === taskId && e.kind === 'done' && e.at >= day && e.at < day + DAY).length;
   const minutesOf = (task: TaskType) => Math.max(5, Math.ceil((task.mode === 'fixed' ? task.priorMinutes : (estimates[task.id]?.n ? estimates[task.id]!.meanMin : task.priorMinutes)) / 5) * 5);
   const activeDay = (task: TaskType, day: number): boolean => {
@@ -110,25 +116,40 @@ export function plan(input: PlanInput): PlanOutput {
     if (!task.active || task.freq.adhoc || task.after) continue;
     const interval = task.freq.perDays / Math.max(1, task.freq.times);
     if (task.freq.perDays <= 1) {
+      const wins = task.windows && task.windows.length === task.freq.times ? task.windows : undefined;
       for (let d = today; d < horizonEnd; d += DAY) {
         if (!activeDay(task, d)) continue;
         const already = doneToday(task.id, d);
+        const ideals: number[] = [];
+        for (let k = 0; k < task.freq.times; k++) {
+          const region = regionFor(wins ? { ...task, window: wins[k] as { from: string; to: string } } : task, d, s, tz);
+          ideals.push(region.from + Math.floor(((region.to - region.from) * (wins ? 0.5 : (k + 0.5) / task.freq.times))));
+        }
+        // a dismissal or a move to another day cancels the occurrence nearest to the time it was planned for
+        const cancelled = new Set<number>();
+        for (const sk of skips.filter((q) => q.taskId === task.id && q.day === dayKey(d, tz))) {
+          let bestK = -1;
+          ideals.forEach((id, k) => { if (!cancelled.has(k) && (bestK < 0 || Math.abs(id - sk.at) < Math.abs((ideals[bestK] as number) - sk.at))) bestK = k; });
+          if (bestK >= 0) cancelled.add(bestK);
+        }
         for (let k = already; k < task.freq.times; k++) {
-          const region = regionFor(task, d, s, tz);
-          const span = region.to - region.from;
-          const ideal = region.from + Math.floor((span * (k + 0.5)) / task.freq.times);
+          if (cancelled.has(k)) continue;
+          const win = wins ? (wins[k] as { from: string; to: string }) : undefined;
+          const region = regionFor(win ? { ...task, window: win } : task, d, s, tz);
           if (region.to <= now) continue;
-          occs.push({ key: `${task.id}@${dayKey(d, tz)}#${k}`, task, ideal: Math.max(ideal, now), earliest: d, latest: d + DAY - 1, minutes: minutesOf(task) });
+          occs.push({ key: `${task.id}@${dayKey(d, tz)}#${k}`, task, ...(win ? { window: win } : {}), ideal: Math.max(ideals[k] as number, now), earliest: d, latest: d + DAY - 1, minutes: minutesOf(task) });
         }
       }
     } else {
-      const last = doneAt(task.id);
+      const last = handledAt(task.id);
       let ideal = last ? last + interval * DAY : today;
       let i = 0;
       while (ideal < horizonEnd && i < 40) {
         let day = dayStart(Math.max(ideal, now), tz);
         const pref = task.freq.days;
         if (pref && pref.length) for (let g = 0; g < 7 && !pref.includes(weekday(day, tz)); g++) day += DAY;
+        const sk = skips.find((q) => q.taskId === task.id && q.day === dayKey(day, tz));
+        if (sk) { ideal = sk.reason === 'no_time' || sk.reason === 'moved' ? day + DAY : day + interval * DAY; i += 1; continue; }
         const tol = Math.max(0.5, interval * 0.25) * DAY;
         occs.push({ key: `${task.id}@${dayKey(day, tz)}#0`, task, ideal: Math.max(atHm(day, regionFor(task, day, s, tz).fromHm), now), earliest: Math.max(day - tol, today), latest: Math.min(day + tol, horizonEnd - 1), minutes: minutesOf(task) });
         ideal = day + interval * DAY;
@@ -140,13 +161,19 @@ export function plan(input: PlanInput): PlanOutput {
   for (const task of tasks) {
     if (!task.active || !task.after) continue;
     const parentDone = doneAt(task.after.taskId);
-    if (parentDone && doneAt(task.id) < parentDone) {
+    if (parentDone && handledAt(task.id) < parentDone) {
       const ideal = Math.max(parentDone + task.after.delayMin * MIN, now);
       occs.push({ key: `${task.id}@after-${parentDone}`, task, ideal, earliest: ideal, latest: ideal + (task.after.delayMin <= 180 ? 12 * 60 * MIN : 2 * DAY), minutes: minutesOf(task) });
     }
   }
   // the freeze already holds some of them: do not plan a second copy
-  const heldBy = (o: Occ) => frozen.some((f) => f.taskId === o.task.id && f.start >= o.earliest && f.start <= o.latest);
+  // each frozen chore holds one occurrence, the nearest to where it sits (three dishes a day need three, not one)
+  const used = new Set<string>();
+  const heldBy = (o: Occ) => {
+    const f = frozen.filter((x) => x.taskId === o.task.id && !used.has(x.id) && x.start >= o.earliest && x.start <= o.latest).sort((a, b) => Math.abs(a.start - o.ideal) - Math.abs(b.start - o.ideal))[0];
+    if (f) used.add(f.id);
+    return Boolean(f);
+  };
 
   // ---- 3. order: fixed windows first, then by earliest deadline
   const order = (a: Occ, b: Occ) => (a.task.mode === 'fixed' ? 0 : 1) - (b.task.mode === 'fixed' ? 0 : 1) || a.latest - b.latest || a.ideal - b.ideal || (a.key < b.key ? -1 : 1);
@@ -157,7 +184,7 @@ export function plan(input: PlanInput): PlanOutput {
   const place = (o: Occ): void => {
     const task = o.task;
     const w = weight(task);
-    const region = (day: number) => regionFor(task, day, s, tz);
+    const region = (day: number) => regionFor(o.window ? { ...task, window: o.window } : task, day, s, tz);
     let best: { uid: string; start: number; score: number } | undefined;
     const prev = sticky.filter((e) => e.taskId === task.id && !retained.has(e.id) && e.start >= o.earliest - DAY / 2 && e.start <= o.latest + DAY / 2).sort((a, b) => Math.abs(a.start - o.ideal) - Math.abs(b.start - o.ideal))[0];
     const parentItem = o.parent;
@@ -215,7 +242,7 @@ export function plan(input: PlanInput): PlanOutput {
     for (const p of placed.filter((x) => x.taskId === task.after!.taskId && x.end > now - DAY)) {
       const ideal = Math.max(p.end + task.after.delayMin * MIN, now);
       if (ideal >= horizonEnd) continue;
-      if (doneAt(task.id) >= p.end) continue;
+      if (handledAt(task.id) >= p.end) continue;
       children.push({ key: `${task.id}@${dayKey(p.start, tz)}+`, task, ideal, earliest: ideal, latest: ideal + (task.after.delayMin <= 180 ? 12 * 60 * MIN : 2 * DAY), minutes: minutesOf(task), parent: p });
     }
   }

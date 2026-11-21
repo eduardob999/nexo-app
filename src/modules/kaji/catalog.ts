@@ -5,9 +5,12 @@ const t = (id: string, es: string, en: string, ja: string, icon: string, categor
   id, names: { es, en, ja }, icon, category, freq: { times, perDays }, mode, priorMinutes, active: true, ...extra,
 });
 
+/** Dishes are washed three times a day: after breakfast, after lunch (the lunch hour itself is blocked) and after dinner. */
+export const DISH_WINDOWS = [{ from: '08:00', to: '11:30' }, { from: '13:00', to: '16:00' }, { from: '19:30', to: '22:00' }];
+
 /** First assumptions, 2026-11-20. Every number is a prior to be corrected in the app or by the data. */
 export const SEED: TaskType[] = [
-  t('platos', 'Lavar platos', 'Wash the dishes', '皿洗い', '🍽️', 'kitchen', 1, 1, 'measured', 15, { window: { from: '19:30', to: '22:00' } }),
+  t('platos', 'Lavar platos', 'Wash the dishes', '皿洗い', '🍽️', 'kitchen', 3, 1, 'measured', 10, { windows: DISH_WINDOWS }),
   t('recoger', 'Recoger los platos', 'Clear the dishes', '食器を下げる', '🥣', 'kitchen', 2, 1, 'measured', 5),
   t('desayuno', 'Preparar el desayuno', 'Make breakfast', '朝食づくり', '🍳', 'kitchen', 1, 1, 'fixed', 25, { window: { from: '07:00', to: '08:30' } }),
   t('bento', 'Preparar los bento boxes', 'Pack the bento boxes', 'お弁当づくり', '🍱', 'kitchen', 1, 1, 'fixed', 30, { window: { from: '21:00', to: '22:30' }, freq: { times: 1, perDays: 1, weekdaysOnly: true } }),
@@ -32,3 +35,17 @@ export const SEED: TaskType[] = [
 export const CATEGORY_COLOR: Record<TaskType['category'], string> = {
   kitchen: '#e8a33d', floors: '#4f8fd6', rooms: '#8e6cc4', bathroom: '#2fa7a0', laundry: '#d9618a', bed: '#7a7fd0', shopping: '#5aa05a', trash: '#8a8f98', tidy: '#c98b5a',
 };
+
+/**
+ * Stored chores that predate a change in the seed. Only a chore still exactly as the old seed made it is updated, so nothing he edited is
+ * overwritten. 2026-11-21: the dishes went from once after dinner to three times a day.
+ */
+export function migrateTasks(stored: TaskType[]): TaskType[] {
+  return stored.map((x) => {
+    const old = x.freq.times === 1 && x.freq.perDays === 1 && !x.freq.adhoc && !x.windows && x.window?.from === '19:30' && x.window.to === '22:00';
+    if (x.id !== 'platos' || !old) return x;
+    const { window: _drop, ...rest } = x;
+    void _drop;
+    return { ...rest, freq: { times: 3, perDays: 1 }, windows: DISH_WINDOWS, priorMinutes: x.priorMinutes === 15 ? 10 : x.priorMinutes };
+  });
+}

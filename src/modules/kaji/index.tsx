@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ModuleProps } from '../types';
 import { estimateFor } from './adapt';
+import { migrateTasks } from './catalog';
 import { BalanceScreen } from './BalanceScreen';
 import { ChoresScreen } from './ChoresScreen';
 import { ListsScreen } from './ListsScreen';
@@ -56,7 +57,7 @@ export function KajiView({ data, actions, lang, onLang, link, tab: forced, previ
 export function useKaji(uid: string): { hid: string | null | undefined; data: KajiData | null; actions: KajiActions | null } {
   const [hid, setHid] = useState<string | null | undefined>(undefined);
   const [house, setHouse] = useState<HouseholdDoc | null>(null);
-  const [tasks, setTasks] = useState<TaskType[]>([]);
+  const [storedTasks, setTasks] = useState<TaskType[]>([]);
   const [log, setLog] = useState<LogEvent[]>([]);
   const [survey, setSurvey] = useState<Record<string, Record<string, number>>>({});
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -76,6 +77,16 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
   }, [hid]);
 
   const members = useMemo(() => membersOf(house), [house]);
+  // chores stored before a change in the seed are brought up to date on screen at once, and written back once by the owner (with a history line)
+  const tasks = useMemo(() => migrateTasks(storedTasks), [storedTasks]);
+  const migrated = useRef(new Set<string>());
+  useEffect(() => {
+    if (!hid || !house || house.members[uid] !== 'owner') return;
+    tasks.forEach((x, i) => {
+      const before = storedTasks[i];
+      if (before && x !== before && !migrated.current.has(x.id)) { migrated.current.add(x.id); void saveTask(hid, uid, x, before); }
+    });
+  }, [hid, house, uid, tasks, storedTasks]);
   const estimates = useMemo(() => Object.fromEntries(tasks.map((x) => [x.id, estimateFor(x, log, survey, members)])), [tasks, log, survey, members]);
   const existing = useRef<PlannedItem[]>([]);
   existing.current = planDoc?.items ?? [];
@@ -103,6 +114,14 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
       rate: async (id, r) => rateEvent(hid, id, r),
       undo: async () => {},
       notToday: async (item) => addNotToday(hid, uid, item.taskId, dayKey(item.start)),
+      reschedule: async (item, start, reason, note) => {
+        await logEvent(hid, { taskId: item.taskId, uid, kind: 'rescheduled', at: Date.now(), minutes: 0, planned: true, plannedStart: item.start, newStart: start, ...(reason ? { reason } : {}), ...(note ? { note: note.slice(0, 200) } : {}) });
+        await savePlan(hid, uid, existing.current.map((x) => (x.id === item.id ? { ...x, start, end: start + (item.end - item.start), pinned: true } : x)));
+      },
+      dismiss: async (item, reason, note) => {
+        await logEvent(hid, { taskId: item.taskId, uid, kind: 'dismissed', at: Date.now(), minutes: 0, planned: true, plannedStart: item.start, reason, ...(note ? { note: note.slice(0, 200) } : {}) });
+        await savePlan(hid, uid, existing.current.filter((x) => x.id !== item.id));
+      },
       move: async (item, to, start) => savePlan(hid, uid, existing.current.map((x) => (x.id === item.id ? { ...x, uid: to, start, end: start + (item.end - item.start), pinned: true } : x))),
       askSwap: async (item, to) => proposeSwap(hid, item, to),
       answerSwap: async (s, accept) => {

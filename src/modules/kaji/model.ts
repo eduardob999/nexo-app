@@ -28,6 +28,8 @@ export interface TaskType {
   priorMinutes: number;
   /** HH:MM to HH:MM. A fixed chore sits inside it; a measured one may have a preferred one. */
   window?: { from: string; to: string };
+  /** One window per occurrence of a day, when `freq.times` > 1 (dishes: after breakfast, lunch and dinner). Replaces `window` when its length equals `times`. */
+  windows?: { from: string; to: string }[];
   /** Done after another chore: starts `delayMin` minutes after that one ends. */
   after?: { taskId: string; delayMin: number };
   /** Uids allowed to do it. Empty or absent means anyone. */
@@ -46,7 +48,7 @@ export interface LogEvent {
   id: string;
   taskId: string;
   uid: string;
-  kind: 'done' | 'skipped';
+  kind: 'done' | 'skipped' | 'rescheduled' | 'dismissed';
   /** Epoch milliseconds when it ended. */
   at: number;
   start?: number;
@@ -58,8 +60,16 @@ export interface LogEvent {
   /** If part was done by someone else: [uid, minutes] pairs, this event's own minutes included. */
   split?: { uid: string; minutes: number }[];
   note?: string;
+  /** rescheduled / dismissed: when the chore was planned to start, where it went, and why. A dismissal always has a reason. */
+  plannedStart?: number;
+  newStart?: number;
+  reason?: Reason;
   context?: { weather?: string; busyMinutes?: number };
 }
+
+/** Why a chore was dismissed or moved. `other` carries free text in `note`. */
+export type Reason = 'not_needed' | 'no_time' | 'not_enough' | 'other';
+export const REASONS: Reason[] = ['not_needed', 'no_time', 'not_enough', 'other'];
 
 export interface Settings {
   /** Share of total burden each member should carry, by uid. Equal when absent. */

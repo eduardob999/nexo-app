@@ -4,13 +4,14 @@ import { t } from './i18n';
 import type { Lang, LogEvent, PlannedItem, TaskType } from './model';
 import { AskButton } from './AskSheet';
 import { HowLongSheet, LogSheet, RateSheet } from './Sheets';
+import { DismissSheet, RescheduleSheet } from './MoveSheets';
 import { clockText, elapsedMin, loadTimer, recentAnswers, saveTimer, type Running } from './timer';
 import { clockLabel } from './time';
 import { readingFor, readingsOn } from './readings';
 import type { KajiActions, KajiData, Ratings } from './ui';
 import { memberColor, recentDone, taskName, todayFor } from './view';
 
-type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'later'; task: TaskType; event: LogEvent } | null;
+type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'later'; task: TaskType; event: LogEvent } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
 
 export function TodayScreen({ data, actions, lang, rand = Math.random, askPreview }: { data: KajiData; actions: KajiActions; lang: Lang; rand?: () => number; askPreview?: import('./asks').Ask[] }) {
   const [running, setRunning] = useState<Running | null>(() => loadTimer());
@@ -98,6 +99,8 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
                   ) : (
                     <button className="copy-main" disabled={running !== null} onClick={() => start(i)}>{t(lang, 'start')}</button>
                   )}
+                  <button className="chip-btn small" onClick={() => setFlow({ step: 'reschedule', task, item: i })}>{t(lang, 'reschedule')}</button>
+                  <button className="chip-btn small" onClick={() => setFlow({ step: 'dismiss', task, item: i })}>{t(lang, 'dismiss')}</button>
                   <button className="chip-btn kaji-more" aria-label={t(lang, 'more')} aria-expanded={menu === i.id} onClick={() => setMenu(menu === i.id ? null : i.id)}>⋯</button>
                   {menu === i.id ? (
                     <>
@@ -157,6 +160,14 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
       {flow?.step === 'later' ? (
         <RateSheet lang={lang} task={flow.task} later initial={{ ...(flow.event.effort ? { effort: flow.event.effort } : {}), ...(flow.event.dislike ? { dislike: flow.event.dislike } : {}), ...(flow.event.enjoyment ? { enjoyment: flow.event.enjoyment } : {}), ...(flow.event.note ? { note: flow.event.note } : {}) }}
           onSkip={() => setFlow(null)} onSave={(r) => { void actions.rate(flow.event.id, r); setFlow(null); }} />
+      ) : null}
+      {flow?.step === 'reschedule' ? (
+        <RescheduleSheet lang={lang} task={flow.task} item={flow.item} now={Date.now() > data.now ? Date.now() : data.now} settings={data.settings} onCancel={() => setFlow(null)}
+          onPick={(start, reason, note) => { void actions.reschedule(flow.item, start, reason, note); setFlow(null); setUndo({ id: '', label: `${taskName(flow.task, lang)} · ${t(lang, 'movedTo')} ${clockLabel(start)}` }); }} />
+      ) : null}
+      {flow?.step === 'dismiss' ? (
+        <DismissSheet lang={lang} task={flow.task} onCancel={() => setFlow(null)}
+          onConfirm={(reason, note) => { void actions.dismiss(flow.item, reason, note); setFlow(null); setUndo({ id: '', label: `${taskName(flow.task, lang)} · ${t(lang, 'dismissed')}` }); }} />
       ) : null}
       {flow?.step === 'rate' ? (
         <RateSheet lang={lang} task={flow.task} onSkip={() => void commit(flow.task, flow.item, flow.minutes, {}, flow.start)} onSave={(r) => void commit(flow.task, flow.item, flow.minutes, r, flow.start)} />

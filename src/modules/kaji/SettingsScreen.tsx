@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { historyLine } from './history';
+import { historyLine, learnedLine } from './history';
+import { learnShifts } from './reschedule';
 import { readingsOn, setReadings } from './readings';
 import { watchHistory, type HistoryEntry } from './store';
 import { InviteCard, LangPick } from './Setup';
@@ -13,6 +14,7 @@ export function SettingsScreen({ data, actions, lang, onLang, link }: { data: Ka
   const other = data.members.find((m) => m.uid !== data.me);
   const myShare = Math.round(((s.targets?.[data.me] ?? 1) / ((s.targets?.[data.me] ?? 1) + (other ? s.targets?.[other.uid] ?? 1 : 0))) * 100) || 50;
   const [date, setDate] = useState('');
+  const learned = learnShifts(data.tasks, data.log, data.now);
   const [hist, setHist] = useState<HistoryEntry[]>([]);
   const [furi, setFuri] = useState(() => readingsOn());
   useEffect(() => (data.hid === 'h' ? undefined : watchHistory(data.hid, setHist)), [data.hid]);
@@ -48,10 +50,11 @@ export function SettingsScreen({ data, actions, lang, onLang, link }: { data: Ka
           </>
         )}
       </div>
-      {hist.length ? (
+      {hist.length || learned.length ? (
         <>
           <h2 className="group-title">{t(lang, 'history')}</h2>
           <ul className="kaji-list panel">
+            {learned.map((l) => <li key={l.taskId + l.kind} className="kaji-item"><span className="kaji-main"><b style={{ fontWeight: 500 }}>{learnedLine(l, data.tasks, lang)}</b><small className="mut">{t(lang, 'learnedTitle')}</small></span></li>)}
             {hist.slice(0, 15).map((h) => (
               <li key={h.id} className="kaji-item"><span className="kaji-main"><b style={{ fontWeight: 500 }}>{historyLine(h, data.tasks, data.members, lang)}</b><small className="mut">{new Date(h.at + 9 * 3_600_000).toISOString().slice(5, 16).replace('T', ' ')}</small></span></li>
             ))}

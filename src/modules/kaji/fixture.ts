@@ -25,6 +25,9 @@ export function kajiFixture(now = NOW): { data: KajiData; actions: KajiActions }
     if (d % 3 === 1) add('poceta', 'b', atHm(day, '18:00'), 9, { dislike: 2, effort: 2 });
     if (d % 4 === 1) add('ropa', d % 8 === 1 ? 'a' : 'b', atHm(day, '18:10'), 15, { dislike: 2 });
   }
+  // earlier moves, so the preview shows what Kaji has learned: the rubbish keeps being pushed later, and was twice judged not worth taking out
+  for (const d of [9, 6, 3]) log.push({ id: `r${d}`, taskId: 'basura', uid: 'a', kind: 'rescheduled', at: dayStart(now) - d * DAY + 15 * 3_600_000, minutes: 0, planned: true, plannedStart: atHm(dayStart(now) - d * DAY, '15:00'), newStart: atHm(dayStart(now) - d * DAY, '18:30') });
+  for (const d of [5, 2]) log.push({ id: `x${d}`, taskId: 'basura', uid: 'b', kind: 'dismissed', at: dayStart(now) - d * DAY + 20 * 3_600_000, minutes: 0, planned: true, plannedStart: atHm(dayStart(now) - d * DAY, '19:00'), reason: 'not_enough' });
   const survey = { a: { cena: 2, platos: 4, 'bano-profundo': 5, poceta: 4 }, b: { cena: 3, platos: 2, 'bano-profundo': 2, poceta: 2 } };
   const estimates = Object.fromEntries(SEED.map((t) => [t.id, estimateFor(t, log, survey, members)]));
   const busy: Record<string, Interval[]> = {
@@ -37,6 +40,6 @@ export function kajiFixture(now = NOW): { data: KajiData; actions: KajiActions }
     members, tasks: SEED, log, survey, settings: DEFAULT_SETTINGS, away: {}, busy, plan: out.items, unplaced: out.unplaced, swaps: [], estimates, now,
   };
   const noop = async () => {};
-  return { data, actions: { logDone: noop, rate: noop, undo: noop, notToday: noop, move: noop, askSwap: noop, answerSwap: noop, saveTask: noop, saveSettings: noop, saveSurvey: noop, setAway: noop, invite: noop, ask: noop } };
+  return { data, actions: { logDone: noop, rate: noop, undo: noop, notToday: noop, reschedule: noop, dismiss: noop, move: noop, askSwap: noop, answerSwap: noop, saveTask: noop, saveSettings: noop, saveSurvey: noop, setAway: noop, invite: noop, ask: noop } };
 }
 export { MIN };

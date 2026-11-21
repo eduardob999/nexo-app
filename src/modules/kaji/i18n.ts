@@ -29,6 +29,11 @@ const en: Dict = {
   readings: 'Hiragana readings',
   ask: 'Ask Eduardo', askAbout: 'It lands on his board as a question. Nothing is done until he answers.', askKind: 'What kind?', askText: 'Write it in a line', askWhen: 'Which day?', askTime: 'Time (optional)', askSend: 'Send', askSent: 'Sent. He will see it on his board.', askShort: 'Write a little more.', askLong: 'Too long, keep it under 400 characters.', askNeedWhen: 'Pick a day.', myAsks: 'Your requests', askNew: 'sent', askDone: 'answered',
   move: 'Move', moveTitle: 'Move to a free slot', noSlots: 'No free slot in the next five days.', moved: 'Moved and pinned', pinned: 'Pinned',
+  reschedule: 'Reschedule', dismiss: 'Dismiss', laterToday: 'Later today', thisEvening: 'This evening', tomorrow: 'Tomorrow', pickTime: 'Pick another time', setTime: 'Move it',
+  rescheduleAbout: 'Pick a new time. Kaji keeps it and learns from it.', whyOptional: 'Why? (optional)',
+  dismissAbout: 'Not needed, or could not be finished. It will not be planned again today.', dismissWhy: 'Why? (required)', confirmDismiss: 'Dismiss it',
+  reasonNot_needed: 'Not needed', reasonNo_time: 'No time', reasonNot_enough: 'Not enough to do', reasonOther: 'Other', reasonText: 'Say why in a few words', dismissed: 'Dismissed', movedTo: 'Moved to', cancel: 'Cancel',
+  learnedTitle: 'Learned from your moves', learnedEarlier: 'window {m} min earlier, from {n} moves', learnedLater: 'window {m} min later, from {n} moves', learnedFreq: 'interval {x}x longer, from {n} dismissals',
 };
 const es: Dict = {
   kaji: 'Kaji', kajiSub: 'Las tareas del hogar, repartidas con justicia',
@@ -58,6 +63,11 @@ const es: Dict = {
   readings: 'Lectura en hiragana',
   ask: 'Pedirle a Eduardo', askAbout: 'Le llega a su tablero como una pregunta. No se hace nada hasta que responda.', askKind: '¿De qué tipo?', askText: 'Escríbelo en una línea', askWhen: '¿Qué día?', askTime: 'Hora (opcional)', askSend: 'Enviar', askSent: 'Enviado. Lo verá en su tablero.', askShort: 'Escribe un poco más.', askLong: 'Muy largo, máximo 400 caracteres.', askNeedWhen: 'Elige un día.', myAsks: 'Tus pedidos', askNew: 'enviado', askDone: 'respondido',
   move: 'Mover', moveTitle: 'Mover a un hueco libre', noSlots: 'No hay hueco libre en los próximos cinco días.', moved: 'Movida y fijada', pinned: 'Fijada',
+  reschedule: 'Reprogramar', dismiss: 'Descartar', laterToday: 'Más tarde hoy', thisEvening: 'Esta tarde-noche', tomorrow: 'Mañana', pickTime: 'Elegir otra hora', setTime: 'Moverla',
+  rescheduleAbout: 'Elige una hora nueva. Kaji la mantiene y aprende de ello.', whyOptional: '¿Por qué? (opcional)',
+  dismissAbout: 'No hace falta, o no se pudo terminar. No se volverá a planear hoy.', dismissWhy: '¿Por qué? (obligatorio)', confirmDismiss: 'Descartarla',
+  reasonNot_needed: 'No hace falta', reasonNo_time: 'Sin tiempo', reasonNot_enough: 'Casi no hay nada que hacer', reasonOther: 'Otro', reasonText: 'Dilo en pocas palabras', dismissed: 'Descartada', movedTo: 'Movida a', cancel: 'Cancelar',
+  learnedTitle: 'Aprendido de tus cambios', learnedEarlier: 'ventana {m} min antes, por {n} cambios', learnedLater: 'ventana {m} min después, por {n} cambios', learnedFreq: 'intervalo {x} veces más largo, por {n} descartes',
 };
 const ja: Dict = {
   kaji: '家事', kajiSub: '家事を公平に分け合う',
@@ -87,6 +97,11 @@ const ja: Dict = {
   readings: 'ひらがなの読み',
   ask: 'Eduardoに頼む', askAbout: '彼のボードに質問として届きます。彼が答えるまで何も実行されません。', askKind: '種類は？', askText: '一行で書いてください', askWhen: '何日？', askTime: '時間（任意）', askSend: '送る', askSent: '送りました。彼のボードに表示されます。', askShort: 'もう少し書いてください。', askLong: '長すぎます（400文字まで）。', askNeedWhen: '日にちを選んでください。', myAsks: 'あなたの依頼', askNew: '送信済み', askDone: '回答済み',
   move: '移動', moveTitle: '空いている時間に移動', noSlots: '今後5日間に空きがありません。', moved: '移動して固定しました', pinned: '固定',
+  reschedule: '時間を変更', dismiss: '見送る', laterToday: '今日あとで', thisEvening: '今夜', tomorrow: '明日', pickTime: '別の時間を選ぶ', setTime: '移動する',
+  rescheduleAbout: '新しい時間を選んでください。Kajiが記録し、次回の計画に生かします。', whyOptional: '理由（任意）',
+  dismissAbout: '不要、または終わらなかった家事です。今日は再び計画されません。', dismissWhy: '理由（必須）', confirmDismiss: '見送る',
+  reasonNot_needed: '不要だった', reasonNo_time: '時間がない', reasonNot_enough: '量が少ない', reasonOther: 'その他', reasonText: '理由を短く', dismissed: '見送り', movedTo: '移動先', cancel: 'キャンセル',
+  learnedTitle: '変更から学んだこと', learnedEarlier: '時間帯を{m}分早く（{n}回の変更から）', learnedLater: '時間帯を{m}分遅く（{n}回の変更から）', learnedFreq: '間隔を{x}倍に（{n}回の見送りから）',
 };
 export const DICT: Record<Lang, Dict> = { en, es, ja };
 
