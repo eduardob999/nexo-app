@@ -45,21 +45,19 @@ function EditSheet({ lang, data, task, isNew, onSave, onClose }: { lang: Lang; d
   const [x, setX] = useState<TaskType>(task);
   const set = (p: Partial<TaskType>) => setX({ ...x, ...p });
   const num = (v: string, d: number) => (v === '' ? d : Math.max(0, Number(v) || 0));
-  const valid = x.names.en.trim() || x.names.es.trim() || x.names.ja.trim();
+  const valid = x.names.en.trim();
   return (
     <div className="scrim" onClick={onClose}>
       <form className="sheet kaji-sheet kaji-edit" role="dialog" aria-label={t(lang, 'edit')} onClick={(e) => e.stopPropagation()}
-        onSubmit={(e) => { e.preventDefault(); const names = { en: x.names.en.trim() || x.names.es.trim() || x.names.ja.trim(), es: x.names.es.trim() || x.names.en.trim() || x.names.ja.trim(), ja: x.names.ja.trim() || x.names.en.trim() || x.names.es.trim() };
+        onSubmit={(e) => { e.preventDefault(); const names = { ...x.names, en: x.names.en.trim() };
           onSave({ ...x, names, id: x.id || `${slug(names.en)}-${Date.now().toString(36).slice(-3)}` }); }}>
         <span className="grab" />
         <b className="sheet-title">{isNew ? t(lang, 'add') : t(lang, 'edit')}</b>
-        {(['en', 'es', 'ja'] as const).map((l) => (
-          <label className="kaji-field" key={l}><span>{t(lang, 'name')} ({l})</span><input value={x.names[l]} onChange={(e) => set({ names: { ...x.names, [l]: e.target.value } })} /></label>
-        ))}
+        <label className="kaji-field"><span>{t(lang, 'name')}</span><input value={x.names.en} onChange={(e) => set({ names: { ...x.names, en: e.target.value } })} /></label>
         <div className="kaji-row">
           <label className="kaji-field"><span>{t(lang, 'icon')}</span><input value={x.icon} maxLength={4} onChange={(e) => set({ icon: e.target.value })} style={{ width: 64 }} /></label>
           <label className="kaji-field"><span>{t(lang, 'category')}</span>
-            <select value={x.category} onChange={(e) => set({ category: e.target.value as Category })}>{CATS.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c][lang]}</option>)}</select></label>
+            <select value={x.category} onChange={(e) => set({ category: e.target.value as Category })}>{CATS.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}</select></label>
         </div>
         <div className="kaji-field"><span>{t(lang, 'every')}</span>
           <div className="kaji-row">
@@ -81,7 +79,7 @@ function EditSheet({ lang, data, task, isNew, onSave, onClose }: { lang: Lang; d
         ) : null}
         <div className="kaji-field"><span>{t(lang, 'allowed')}</span>
           <div className="kaji-chips">
-            <button type="button" className="chip-btn" aria-pressed={!x.who?.length} onClick={() => { const { who: _w, ...rest } = x; setX(rest as TaskType); }}>{t(lang, 'everyone')}</button>
+            <button type="button" className="chip-btn" aria-pressed={!x.who?.length} onClick={() => { set({ who: [] }); }}>{t(lang, 'everyone')}</button>
             {data.members.map((m) => <button type="button" key={m.uid} className="chip-btn" aria-pressed={!!x.who?.includes(m.uid)}
               onClick={() => { const cur = new Set(x.who ?? []); cur.has(m.uid) ? cur.delete(m.uid) : cur.add(m.uid); set({ who: [...cur] }); }}>{m.name}</button>)}
           </div>

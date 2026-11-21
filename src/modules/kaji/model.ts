@@ -41,6 +41,9 @@ export interface TaskType {
 
 export interface Member { uid: string; name: string; lang: Lang; role: 'owner' | 'member'; awayUntil?: string; share?: number }
 
+/** A request to hand one planned chore to the other person. `accepted` is binding on every re-plan; `declined` is remembered by the planner. */
+export interface SwapRecord { id: string; itemId: string; taskId: string; fromUid: string; toUid: string; state: 'open' | 'accepted' | 'declined'; at: number; start: number }
+
 export interface Interval { start: number; end: number; label?: string; place?: string }   // epoch milliseconds
 
 /** What happened, appended and never rewritten. */

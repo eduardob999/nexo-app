@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DISH_WINDOWS, migrateTasks, SEED } from './catalog';
+import { CARLA_UID, DISH_WINDOWS, migrateTasks, SEED as REAL_SEED } from './catalog';
 import { DEFAULT_SETTINGS as S, type LogEvent, type PlannedItem } from './model';
-import { plan, type PlanInput } from './planner';
+import { nexoPick, plan, type PlanInput } from './planner';
 import { applyLearned, learnRate, learnShifts, reasonValid, rescheduleOptions, skipsFromLog, windowOffset } from './reschedule';
 import { atHm, dayKey, dayStart, DAY, MIN } from './time';
 
+const SEED = REAL_SEED.map((t) => (t.who ? { ...t, who: t.who.map((u) => (u === CARLA_UID ? 'b' : u)) } : t));
 const NOW = Date.parse('2026-11-21T10:00:00+09:00');   // a Saturday
 const day = (n: number) => dayStart(NOW) + n * DAY;
 const A = { uid: 'a', name: 'A', lang: 'en' as const, role: 'owner' as const };
@@ -161,5 +162,54 @@ describe('learning from moves', () => {
     const some = [dis('basura', 'not_needed', atHm(day(-1), '19:00'), NOW - DAY), dis('basura', 'not_needed', atHm(day(-3), '19:00'), NOW - 3 * DAY)];
     const f = learnShifts(SEED, [...done, ...some], NOW).find((s) => s.kind === 'freq');
     expect(f === undefined || f.value < 1.15).toBe(true);
+  });
+});
+
+describe('Carla-only laundry in stored households', () => {
+  const stored = (id: string, extra: Partial<(typeof REAL_SEED)[number]> = {}) => {
+    const { who: _w, ...rest } = REAL_SEED.find((x) => x.id === id)!;
+    void _w;
+    return { ...rest, ...extra };
+  };
+  it('gives sorting and hanging to Carla when no one has chosen who may do them', () => {
+    for (const id of ['ropa', 'guindar']) expect(migrateTasks([stored(id)])[0]!.who).toEqual([CARLA_UID]);
+  });
+  it('leaves a choice made in the app alone: a list, or an empty list meaning everyone', () => {
+    const mine = stored('ropa', { who: ['a'] });
+    expect(migrateTasks([mine])[0]).toBe(mine);
+    const all = stored('guindar', { who: [] });
+    expect(migrateTasks([all])[0]).toBe(all);
+  });
+  it('does not touch other chores', () => {
+    const x = stored('poceta');
+    expect(migrateTasks([x])[0]).toBe(x);
+  });
+});
+
+describe('Let Nexo pick', () => {
+  const first = plan(input());
+  const aspirar = first.items.find((i) => i.taskId === 'aspirar')!;
+  it('chooses the nearest valid free slot, which the manual options do not check', () => {
+    const pick = nexoPick(input({ existing: first.items }), aspirar)!;
+    expect(pick).not.toBeNull();
+    expect(pick.start).toBeGreaterThan(NOW);
+    expect(pick.end - pick.start).toBe(aspirar.end - aspirar.start);
+    expect(first.items.some((o) => o.id !== aspirar.id && o.uid === pick.uid && o.start < pick.end && pick.start < o.end)).toBe(false);
+  });
+  it('avoids a calendar event on the way, even where "later today" would land on it', () => {
+    const later = rescheduleOptions(aspirar, NOW, S).find((o) => o.id === 'later')?.start ?? aspirar.start + 2 * 3_600_000;
+    const busy = { a: [{ start: later - 30 * MIN, end: later + 60 * MIN }], b: [{ start: later - 30 * MIN, end: later + 60 * MIN }] };
+    const pick = nexoPick(input({ busy, existing: first.items }), aspirar)!;
+    for (const e of busy[pick.uid as 'a' | 'b']) expect(pick.start < e.end + S.bufferMin * MIN && e.start - S.bufferMin * MIN < pick.end).toBe(false);
+  });
+  it('only offers a person allowed to do the chore', () => {
+    const tasks = SEED.map((t) => (t.id === 'aspirar' ? { ...t, who: ['b'] } : t));
+    const f = plan(input({ tasks }));
+    const item = f.items.find((i) => i.taskId === 'aspirar')!;
+    expect(nexoPick(input({ tasks, existing: f.items }), item)!.uid).toBe('b');
+  });
+  it('stays with the same person unless another one is much sooner', () => {
+    const pick = nexoPick(input({ existing: first.items }), aspirar)!;
+    expect(pick.uid).toBe(aspirar.uid);
   });
 });

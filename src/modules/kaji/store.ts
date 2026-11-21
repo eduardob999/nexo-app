@@ -2,7 +2,7 @@ import { collection, deleteDoc, doc, getDoc, limit as limitTo, onSnapshot, order
 import { db } from '../../firebase';
 import { SEED } from './catalog';
 import type { LedgerEntry } from './ledger';
-import type { Interval, LogEvent, Member, PlannedItem, Settings, TaskType } from './model';
+import type { Interval, LogEvent, Member, PlannedItem, Settings, SwapRecord, TaskType } from './model';
 import { DEFAULT_SETTINGS } from './model';
 import { PLAN_VERSION } from './planner';
 import { DAY } from './time';
@@ -17,7 +17,7 @@ export function clean<T>(x: T): T {
 }
 
 export interface HouseholdDoc { name: string; members: Record<string, 'owner' | 'member'>; createdAt: number; names?: Record<string, string>; langs?: Record<string, 'en' | 'es' | 'ja'> }
-export interface Swap { id: string; itemId: string; taskId: string; fromUid: string; toUid: string; state: 'open' | 'accepted' | 'declined'; at: number; start: number }
+export type Swap = SwapRecord;
 export interface PlanDoc { items: PlannedItem[]; at: number; by: string; v?: number }
 export interface BusyDoc { events: Record<string, Interval[]>; at: number }
 export interface SurveyDoc { answers: Record<string, number>; at: number }
@@ -72,7 +72,7 @@ export async function join(uid: string, hid: string, myName: string, lang: 'en' 
 
 export function members(h: HouseholdDoc | null): Member[] {
   if (!h) return [];
-  return Object.entries(h.members).map(([uid, role]) => ({ uid, role, name: h.names?.[uid] ?? uid.slice(0, 5), lang: h.langs?.[uid] ?? 'en' }));
+  return Object.entries(h.members).map(([uid, role]) => ({ uid, role, name: h.names?.[uid] ?? uid.slice(0, 5), lang: 'en' }));
 }
 
 // ---- watching

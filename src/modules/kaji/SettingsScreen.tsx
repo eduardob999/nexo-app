@@ -1,22 +1,20 @@
 import { useEffect, useState } from 'react';
 import { historyLine, learnedLine } from './history';
 import { learnShifts } from './reschedule';
-import { readingsOn, setReadings } from './readings';
 import { watchHistory, type HistoryEntry } from './store';
-import { InviteCard, LangPick } from './Setup';
+import { InviteCard } from './Setup';
 import { t } from './i18n';
 import type { Lang, Settings } from './model';
 import { DAY } from './time';
 import type { KajiActions, KajiData } from './ui';
 
-export function SettingsScreen({ data, actions, lang, onLang, link }: { data: KajiData; actions: KajiActions; lang: Lang; onLang: (l: Lang) => void; link: string }) {
+export function SettingsScreen({ data, actions, lang, link }: { data: KajiData; actions: KajiActions; lang: Lang; link: string }) {
   const s = data.settings;
   const other = data.members.find((m) => m.uid !== data.me);
   const myShare = Math.round(((s.targets?.[data.me] ?? 1) / ((s.targets?.[data.me] ?? 1) + (other ? s.targets?.[other.uid] ?? 1 : 0))) * 100) || 50;
   const [date, setDate] = useState('');
   const learned = learnShifts(data.tasks, data.log, data.now);
   const [hist, setHist] = useState<HistoryEntry[]>([]);
-  const [furi, setFuri] = useState(() => readingsOn());
   useEffect(() => (data.hid === 'h' ? undefined : watchHistory(data.hid, setHist)), [data.hid]);
   const awayUntil = data.away[data.me];
   const away = awayUntil && awayUntil > data.now;
@@ -26,8 +24,6 @@ export function SettingsScreen({ data, actions, lang, onLang, link }: { data: Ka
   return (
     <>
       <div className="panel settings secret-form">
-        <div className="setting"><span>{t(lang, 'language')}</span><LangPick value={lang} onChange={onLang} /></div>
-        {lang === 'ja' ? <div className="setting"><span>{t(lang, 'readings')}</span><button className={`switch ${furi ? 'on' : ''}`} role="switch" aria-checked={furi} aria-label={t(lang, 'readings')} onClick={() => { setReadings(!furi); setFuri(!furi); }} /></div> : null}
         {other ? (
           <label className="setting kaji-slider"><span>{t(lang, 'share')}: {data.members.find((m) => m.uid === data.me)?.name} {myShare}% / {other.name} {100 - myShare}%</span>
             <input type="range" min={20} max={80} step={5} value={myShare} onChange={(e) => { const v = Number(e.target.value); save({ targets: { [data.me]: v, [other.uid]: 100 - v } }); }} aria-label={t(lang, 'share')} /></label>
@@ -42,10 +38,10 @@ export function SettingsScreen({ data, actions, lang, onLang, link }: { data: Ka
       <h2 className="group-title">{t(lang, 'away')}</h2>
       <div className="panel settings secret-form">
         {away ? (
-          <div className="setting"><span>{t(lang, 'out')} {new Date(awayUntil as number).toLocaleDateString(lang === 'ja' ? 'ja-JP' : lang === 'es' ? 'es-ES' : 'en-GB', { day: 'numeric', month: 'short' })}</span><button className="copy-main" onClick={() => void actions.setAway(null)}>{t(lang, 'back')}</button></div>
+          <div className="setting"><span>{t(lang, 'out')} {new Date(awayUntil as number).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span><button className="copy-main" onClick={() => void actions.setAway(null)}>{t(lang, 'back')}</button></div>
         ) : (
           <>
-            <div className="setting"><span>{t(lang, 'out')}</span><span className="kaji-chips">{[1, 2, 3, 7].map((n) => <button key={n} className="chip-btn" onClick={() => void actions.setAway(days(n))}>{n}{lang === 'ja' ? '日' : 'd'}</button>)}</span></div>
+            <div className="setting"><span>{t(lang, 'out')}</span><span className="kaji-chips">{[1, 2, 3, 7].map((n) => <button key={n} className="chip-btn" onClick={() => void actions.setAway(days(n))}>{n}{'d'}</button>)}</span></div>
             <div className="setting"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /><button className="chip-btn" disabled={!date} onClick={() => { const d = new Date(date + 'T23:59:00'); void actions.setAway(d.getTime()); setDate(''); }}>{t(lang, 'save')}</button></div>
           </>
         )}

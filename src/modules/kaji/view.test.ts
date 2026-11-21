@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { LogEvent, PlannedItem } from './model';
-import { groupByDay, isDone, memberColor, recentDone, todayFor } from './view';
+import type { LogEvent, PlannedItem, SwapRecord } from './model';
+import { groupByDay, isDone, latestSwap, memberColor, recentDone, swapButtonState, todayFor } from './view';
 import { DAY, MIN } from './time';
 
 const NOW = Date.parse('2026-11-20T18:00:00+09:00');
@@ -28,5 +28,23 @@ describe('view helpers', () => {
   });
   it('gives each member a different colour', () => {
     expect(memberColor(0)).not.toBe(memberColor(1));
+  });
+});
+
+describe('swap button state', () => {
+  const item = it_('i1', 'aspirar', 'a', 60);
+  const sw = (over: Partial<SwapRecord>): SwapRecord => ({ id: 's', itemId: 'i1', taskId: 'aspirar', fromUid: 'a', toUid: 'b', state: 'open', at: 1, start: item.start, ...over });
+  it('shows idle, waiting and declined from the stored request, not from a flag that never resets', () => {
+    expect(swapButtonState(latestSwap([], 'a', item), false)).toBe('idle');
+    expect(swapButtonState(latestSwap([sw({})], 'a', item), false)).toBe('open');
+    expect(swapButtonState(latestSwap([sw({ state: 'declined' })], 'a', item), false)).toBe('declined');
+    expect(swapButtonState(undefined, true)).toBe('sending');
+  });
+  it('uses the newest request, ignores other people and other chores, and finds the chore after its id changed', () => {
+    const old = sw({ id: 'old', state: 'declined', at: 1 }), fresh = sw({ id: 'new', state: 'open', at: 2 });
+    expect(latestSwap([old, fresh], 'a', item)?.id).toBe('new');
+    expect(latestSwap([sw({ fromUid: 'b' })], 'a', item)).toBeUndefined();
+    expect(latestSwap([sw({ taskId: 'cena', itemId: 'zz' })], 'a', item)).toBeUndefined();
+    expect(latestSwap([sw({ itemId: 'gone' })], 'a', item)?.id).toBe('s');
   });
 });

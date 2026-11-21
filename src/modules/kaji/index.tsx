@@ -8,7 +8,7 @@ import { ListsScreen } from './ListsScreen';
 import { MoneyScreen } from './MoneyScreen';
 import { t } from './i18n';
 import { DEFAULT_SETTINGS, type Interval, type Lang, type LogEvent, type PlannedItem, type Settings, type TaskType } from './model';
-import { plan as makePlan, type Unplaced } from './planner';
+import { applySwaps, plan as makePlan, type Unplaced } from './planner';
 import { SettingsScreen } from './SettingsScreen';
 import { Setup } from './Setup';
 import { addNotToday, answerSwap, clearAway, createHousehold, invite, join, logEvent, members as membersOf, proposeSwap, rateEvent, sendAsk, saveSettings, saveSurvey, savePlan, saveTask, setAway,
@@ -24,17 +24,13 @@ export { kajiManifest } from './manifest';
 type Tab = 'today' | 'week' | 'balance' | 'chores' | 'lists' | 'money' | 'more';
 const TABS: Tab[] = ['today', 'week', 'balance', 'chores', 'lists', 'money', 'more'];
 
+/** Kaji is English only. */
 export function initialLang(): Lang {
-  try {
-    const s = window.localStorage.getItem('kaji.lang');
-    if (s === 'en' || s === 'es' || s === 'ja') return s;
-  } catch { /* private mode */ }
-  const n = (navigator.language || 'en').slice(0, 2);
-  return n === 'es' || n === 'ja' ? n : 'en';
+  return 'en';
 }
 
 /** The screens, with no Firebase in them: the live module and the preview both feed this. */
-export function KajiView({ data, actions, lang, onLang, link, tab: forced, previewLists, previewLedger, previewAsks }: { data: KajiData; actions: KajiActions; lang: Lang; onLang: (l: Lang) => void; link: string; tab?: Tab; previewLists?: { lists: import('./store').KList[]; items: import('./store').KItem[] }; previewLedger?: import('./ledger').LedgerEntry[]; previewAsks?: import('./asks').Ask[] }) {
+export function KajiView({ data, actions, lang, link, tab: forced, previewLists, previewLedger, previewAsks }: { data: KajiData; actions: KajiActions; lang: Lang; onLang?: (l: Lang) => void; link: string; tab?: Tab; previewLists?: { lists: import('./store').KList[]; items: import('./store').KItem[] }; previewLedger?: import('./ledger').LedgerEntry[]; previewAsks?: import('./asks').Ask[] }) {
   const [tab, setTab] = useState<Tab>(forced ?? 'today');
   return (
     <main className="screen kaji">
@@ -48,7 +44,7 @@ export function KajiView({ data, actions, lang, onLang, link, tab: forced, previ
       {tab === 'chores' ? <ChoresScreen data={data} actions={actions} lang={lang} /> : null}
       {tab === 'lists' ? <ListsScreen data={data} lang={lang} {...(previewLists ? { preview: previewLists } : {})} /> : null}
       {tab === 'money' ? <MoneyScreen data={data} lang={lang} {...(previewLedger ? { preview: previewLedger } : {})} /> : null}
-      {tab === 'more' ? <SettingsScreen data={data} actions={actions} lang={lang} onLang={onLang} link={link} /> : null}
+      {tab === 'more' ? <SettingsScreen data={data} actions={actions} lang={lang} link={link} /> : null}
     </main>
   );
 }
@@ -99,7 +95,7 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
       const busyBy: Record<string, Interval[]> = busy?.events ?? {};
       const today = dayKey(now);
       const declines = swaps.filter((s) => s.state === 'declined').map((s) => ({ uid: s.toUid, taskId: s.taskId, dow: weekday(s.start) }));
-      const out = makePlan({ now, horizonDays: 7, tasks, members, estimates, log, busy: busyBy, existing: existing.current, settings, awayUntil: away, notToday: notToday.filter((n) => n.day >= today), declines });
+      const out = makePlan({ now, horizonDays: 7, tasks, members, estimates, log, busy: busyBy, existing: existing.current, settings, swaps, awayUntil: away, notToday: notToday.filter((n) => n.day >= today), declines });
       setComputed({ items: out.items, unplaced: out.unplaced });
       const sig = JSON.stringify(out.items.map((i) => [i.id, i.uid, i.start, i.pinned ? 1 : 0]));
       if (sig !== lastSaved.current && sig !== JSON.stringify(existing.current.map((i) => [i.id, i.uid, i.start, i.pinned ? 1 : 0]))) { lastSaved.current = sig; void savePlan(hid, uid, out.items); }
@@ -114,9 +110,9 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
       rate: async (id, r) => rateEvent(hid, id, r),
       undo: async () => {},
       notToday: async (item) => addNotToday(hid, uid, item.taskId, dayKey(item.start)),
-      reschedule: async (item, start, reason, note) => {
+      reschedule: async (item, start, reason, note, toUid) => {
         await logEvent(hid, { taskId: item.taskId, uid, kind: 'rescheduled', at: Date.now(), minutes: 0, planned: true, plannedStart: item.start, newStart: start, ...(reason ? { reason } : {}), ...(note ? { note: note.slice(0, 200) } : {}) });
-        await savePlan(hid, uid, existing.current.map((x) => (x.id === item.id ? { ...x, start, end: start + (item.end - item.start), pinned: true } : x)));
+        await savePlan(hid, uid, existing.current.map((x) => (x.id === item.id ? { ...x, ...(toUid ? { uid: toUid } : {}), start, end: start + (item.end - item.start), pinned: true } : x)));
       },
       dismiss: async (item, reason, note) => {
         await logEvent(hid, { taskId: item.taskId, uid, kind: 'dismissed', at: Date.now(), minutes: 0, planned: true, plannedStart: item.start, reason, ...(note ? { note: note.slice(0, 200) } : {}) });
@@ -126,7 +122,11 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
       askSwap: async (item, to) => proposeSwap(hid, item, to),
       answerSwap: async (s, accept) => {
         await answerSwap(hid, s.id, accept ? 'accepted' : 'declined');
-        if (accept) await savePlan(hid, uid, existing.current.map((i) => (i.id === s.itemId ? { ...i, uid: s.toUid, pinned: true } : i)));
+        // pinned on the item the swap is about, found by id or, when a re-plan changed the id, by chore and time; the planner applies it again on every re-plan
+        if (accept) {
+          const next = applySwaps(existing.current, [{ ...s, state: 'accepted' }], Date.now());
+          if (next !== existing.current) await savePlan(hid, uid, next);
+        }
       },
       saveTask: async (task, before) => saveTask(hid, uid, task, before),
       saveSettings: async (s) => saveSettings(hid, uid, s, settings),
@@ -145,8 +145,7 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
 
 export function KajiModule({ uid, openId }: ModuleProps) {
   const { hid, data, actions } = useKaji(uid);
-  const [lang, setLang] = useState<Lang>(() => initialLang());
-  const changeLang = (l: Lang) => { setLang(l); try { window.localStorage.setItem('kaji.lang', l); } catch { /* private mode */ } };
+  const lang = initialLang();
   const joinHid = openId?.startsWith('join-') ? openId.slice(5) : null;
   const link = hid ? `${window.location.origin}${window.location.pathname}#/kaji/join-${hid}` : '';
   if (hid === undefined) return <main className="screen"><p className="empty">{t(lang, 'loading')}</p></main>;
@@ -154,11 +153,11 @@ export function KajiModule({ uid, openId }: ModuleProps) {
     return (
       <main className="screen kaji">
         <header className="top"><div><span className="kicker">KAJI</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
-        <Setup lang={lang} onLang={changeLang} defaultName="" joinHid={hid ? null : joinHid}
+        <Setup lang={lang} defaultName="" joinHid={hid ? null : joinHid}
           onCreate={async (name, me) => { await createHousehold(uid, name, me, lang); }}
           onJoin={async (h, me) => { await join(uid, h, me, lang); window.location.hash = '#/kaji'; }} />
       </main>
     );
   }
-  return <KajiView data={data} actions={actions} lang={lang} onLang={changeLang} link={link} />;
+  return <KajiView data={data} actions={actions} lang={lang} link={link} />;
 }

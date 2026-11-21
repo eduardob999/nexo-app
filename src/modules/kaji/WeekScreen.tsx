@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { t } from './i18n';
-import { readingFor, readingsOn } from './readings';
 import type { Lang, PlannedItem } from './model';
 import { candidateSlots } from './planner';
 import { clockLabel, dayStart, DAY } from './time';
@@ -33,7 +32,7 @@ export function WeekScreen({ data, lang, actions }: { data: KajiData; lang: Lang
                   <li key={i.id} className="kaji-item kaji-tap" role="button" tabIndex={0} onClick={() => setOpen(i)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(i); }}>
                     <i className="kaji-bar" style={{ background: memberColor(idx) }} />
                     <span className="kaji-ic">{task.icon}</span>
-                    <span className="kaji-main"><b>{taskName(task, lang)}</b>{readingFor(task, lang, readingsOn()) ? <small className="kaji-rt">{readingFor(task, lang, readingsOn())}</small> : null}<small className="mut">{clockLabel(i.start)}–{clockLabel(i.end)} · {data.members[idx]?.name}{i.pinned ? ` · 📌 ${t(lang, 'pinned')}` : ''}</small></span>
+                    <span className="kaji-main"><b>{taskName(task, lang)}</b><small className="mut">{clockLabel(i.start)}–{clockLabel(i.end)} · {data.members[idx]?.name}{i.pinned ? ` · 📌 ${t(lang, 'pinned')}` : ''}</small></span>
                   </li>
                 ) : null;
               })}

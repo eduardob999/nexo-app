@@ -1,5 +1,5 @@
 import { balance, burdenOf, weightOf } from './burden';
-import type { Estimate, Interval, LogEvent, Member, PlannedItem, Settings, TaskType } from './model';
+import type { Estimate, Interval, LogEvent, Member, PlannedItem, Settings, SwapRecord, TaskType } from './model';
 import { applyLearned, dismissedAt, skipsFromLog } from './reschedule';
 import { atHm, dayKey, dayStart, DAY, hm, JST, MIN, overlaps, weekday } from './time';
 
@@ -29,6 +29,8 @@ export interface PlanInput {
   notToday?: { uid: string; taskId: string; day: string }[];
   /** Learned declines: that person declined that chore on that weekday before. */
   declines?: { uid: string; taskId: string; dow: number }[];
+  /** Swap requests. An accepted one holds the chore with the person who took it on every re-plan, whoever wrote the plan; a declined one is remembered through `declines`. */
+  swaps?: SwapRecord[];
   /** Minutes added each side of an event that has a place other than home. */
   travelMin?: number;
 }
@@ -44,8 +46,33 @@ const HOME = /^home$/i;
 /** Bump when the shape or meaning of a stored plan changes: the service re-plans any plan with another version. */
 export const PLAN_VERSION = 3;
 
+/** The planned item a swap is about: the same id, or, when a re-plan changed the id, the same chore of either person closest in time (within 12 hours). */
+export function swapItem(items: PlannedItem[], s: Pick<SwapRecord, 'itemId' | 'taskId' | 'fromUid' | 'toUid' | 'start'>): PlannedItem | undefined {
+  const byId = items.find((i) => i.id === s.itemId && i.taskId === s.taskId);
+  if (byId) return byId;
+  return items.filter((i) => i.taskId === s.taskId && (i.uid === s.fromUid || i.uid === s.toUid) && Math.abs(i.start - s.start) <= 12 * 60 * MIN)
+    .sort((a, b) => Math.abs(a.start - s.start) - Math.abs(b.start - s.start))[0];
+}
+
+/**
+ * Accepted swaps made binding: the chore goes to the person who accepted and is pinned there, so a re-plan (the app's or the service's)
+ * keeps it. Applied only while the chore is still with the person who asked and not pinned by someone since, so a later manual move wins.
+ */
+export function applySwaps(existing: PlannedItem[], swaps: SwapRecord[] | undefined, now: number): PlannedItem[] {
+  const accepted = (swaps ?? []).filter((x) => x.state === 'accepted').sort((a, b) => a.at - b.at);
+  if (!accepted.length) return existing;
+  let out = existing;
+  for (const sw of accepted) {
+    const it = swapItem(out, sw);
+    if (!it || it.end <= now - 5 * MIN) continue;
+    if (it.uid === sw.fromUid && !it.pinned) out = out.map((x) => (x.id === it.id ? { ...x, uid: sw.toUid, pinned: true } : x));
+  }
+  return out;
+}
+
 export function plan(input: PlanInput): PlanOutput {
   const { now, members, estimates, log, settings: s } = input;
+  const existingIn = applySwaps(input.existing, input.swaps, now);
   const tz = input.tz ?? JST;
   const travel = (input.travelMin ?? 45) * MIN;
   const buffer = s.bufferMin * MIN;
@@ -86,7 +113,7 @@ export function plan(input: PlanInput): PlanOutput {
   const weight = (task: TaskType) => weightOf(task, estimates[task.id]);
 
   // ---- 1. frozen: already started or starting inside the freeze window, kept exactly
-  const frozen = input.existing.filter((e) => e.frozen || e.pinned || (e.start <= now + s.freezeMin * MIN && e.end > now - 5 * MIN));
+  const frozen = existingIn.filter((e) => e.frozen || e.pinned || (e.start <= now + s.freezeMin * MIN && e.end > now - 5 * MIN));
   for (const f of frozen) {
     placed.push({ ...f, frozen: true });
     const t = tById.get(f.taskId);
@@ -179,7 +206,7 @@ export function plan(input: PlanInput): PlanOutput {
   const order = (a: Occ, b: Occ) => (a.task.mode === 'fixed' ? 0 : 1) - (b.task.mode === 'fixed' ? 0 : 1) || a.latest - b.latest || a.ideal - b.ideal || (a.key < b.key ? -1 : 1);
   const unplaced: Unplaced[] = [];
   const retained = new Set<string>();
-  const sticky = input.existing.filter((e) => e.start > now && !frozen.includes(e));
+  const sticky = existingIn.filter((e) => e.start > now && !frozen.includes(e));
 
   const place = (o: Occ): void => {
     const task = o.task;
@@ -250,7 +277,7 @@ export function plan(input: PlanInput): PlanOutput {
 
   const items = placed.sort((a, b) => a.start - b.start || (a.id < b.id ? -1 : 1));
   const moved = items.filter((i) => !i.frozen).flatMap((i) => {
-    const old = input.existing.find((e) => e.id === i.id);
+    const old = existingIn.find((e) => e.id === i.id);
     return old && (old.uid !== i.uid || old.start !== i.start) ? [{ id: i.id, fromUid: old.uid, toUid: i.uid, from: old.start, to: i.start }] : [];
   });
   return { items, unplaced, moved };
@@ -312,4 +339,18 @@ export function candidateSlots(input: PlanInput, item: PlannedItem, limit = 8): 
   out.sort((a, b) => Math.abs(a.start - item.start) - Math.abs(b.start - item.start) || (a.uid < b.uid ? -1 : 1));
   const seen = new Set<string>();
   return out.filter((o) => { const k = o.uid + Math.floor(o.start / (60 * MIN)); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, limit);
+}
+
+/**
+ * The slot Nexo would choose for a chore that has to move: the closest valid one for either person allowed, found by `candidateSlots`
+ * (calendar, buffer, sleep, lunch, other chores, quiet hours all respected). The current person is kept unless another person's slot is
+ * more than two hours closer, so "Let Nexo pick" does not hand a chore over without need. Null when nothing is free in the next five days.
+ */
+export function nexoPick(input: PlanInput, item: PlannedItem): Slot | null {
+  const slots = candidateSlots(input, item, 40);
+  const best = slots[0];
+  if (!best) return null;
+  const mine = slots.find((s) => s.uid === item.uid);
+  if (mine && Math.abs(mine.start - item.start) <= Math.abs(best.start - item.start) + 2 * 60 * MIN) return mine;
+  return best;
 }

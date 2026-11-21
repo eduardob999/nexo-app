@@ -6,10 +6,10 @@ import { AskButton } from './AskSheet';
 import { HowLongSheet, LogSheet, RateSheet } from './Sheets';
 import { DismissSheet, RescheduleSheet } from './MoveSheets';
 import { clockText, elapsedMin, loadTimer, recentAnswers, saveTimer, type Running } from './timer';
+import { nexoPick, swapItem } from './planner';
 import { clockLabel } from './time';
-import { readingFor, readingsOn } from './readings';
 import type { KajiActions, KajiData, Ratings } from './ui';
-import { memberColor, recentDone, taskName, todayFor } from './view';
+import { latestSwap, memberColor, recentDone, swapButtonState, taskName, todayFor } from './view';
 
 type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'later'; task: TaskType; event: LogEvent } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
 
@@ -18,7 +18,8 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
   const [tick, setTick] = useState(() => Date.now());
   const [flow, setFlow] = useState<Flow>(null);
   const [undo, setUndo] = useState<{ id: string; label: string } | null>(null);
-  const [askedSwap, setAskedSwap] = useState<string | null>(null);
+  const [sendingSwap, setSendingSwap] = useState<string | null>(null);
+  const [swapErr, setSwapErr] = useState(false);
   const [menu, setMenu] = useState<string | null>(null);
   useEffect(() => {
     if (!running) return undefined;
@@ -35,7 +36,17 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
   const mine = todayFor(data.plan, data.me, data.log, data.now);
   const others = data.members.filter((m) => m.uid !== data.me);
   const theirs = others.flatMap((m) => todayFor(data.plan, m.uid, data.log, data.now).map((i) => ({ i, m })));
-  const openSwaps = data.swaps.filter((s) => s.state === 'open' && s.toUid === data.me);
+  // a request still shown to me only while its chore is still planned for the person who asked (a re-plan can change the id, so it is matched by chore and time too)
+  const openSwaps = data.swaps.filter((s) => s.state === 'open' && s.toUid === data.me && swapItem(data.plan, s)?.uid === s.fromUid);
+  const nameOf = (uid: string) => data.members.find((m) => m.uid === uid)?.name ?? '';
+  /** The other person who may do this chore: the one a swap can be asked of. */
+  const swapTarget = (task: TaskType) => others.find((m) => !task.who?.length || task.who.includes(m.uid));
+  const askSwap = async (item: PlannedItem, to: string) => {
+    setSendingSwap(item.id); setSwapErr(false); setMenu(null);
+    try { await actions.askSwap(item, to); setUndo({ id: '', label: `${taskName(byId.get(item.taskId), lang, item.taskId)} · ${t(lang, 'swapSent')} ${nameOf(to)}` }); } catch { setSwapErr(true); }
+    setSendingSwap(null);
+  };
+  const nexoSlot = (item: PlannedItem) => nexoPick({ now: Math.max(Date.now(), data.now), horizonDays: 7, tasks: data.tasks, members: data.members, estimates: data.estimates, log: data.log, busy: data.busy, existing: data.plan, settings: data.settings, awayUntil: data.away }, item);
 
   const start = (item: PlannedItem) => { const r = { taskId: item.taskId, itemId: item.id, start: Date.now() }; saveTimer(r); setRunning(r); };
   const stop = () => { saveTimer(null); setRunning(null); };
@@ -60,6 +71,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
     setUndo({ id: '', label: taskName(task, lang) });
   };
 
+  const pick = flow?.step === 'reschedule' ? nexoSlot(flow.item) : null;
   const runTask = running ? byId.get(running.taskId) : undefined;
   return (
     <>
@@ -73,10 +85,11 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
       ) : null}
       {openSwaps.map((s) => (
         <div className="panel kaji-swap" key={s.id}>
-          <span>{t(lang, 'swapOpen')}: {byId.get(s.taskId)?.icon} {taskName(byId.get(s.taskId), lang, s.taskId)} {clockLabel(s.start)}</span>
+          <span>{nameOf(s.fromUid)} {t(lang, 'swapFromName')}: {byId.get(s.taskId)?.icon} {taskName(byId.get(s.taskId), lang, s.taskId)} {clockLabel(s.start)}</span>
           <span><button className="copy-main" onClick={() => void actions.answerSwap(s, true)}>{t(lang, 'accept')}</button> <button className="chip-btn" onClick={() => void actions.answerSwap(s, false)}>{t(lang, 'decline')}</button></span>
         </div>
       ))}
+      {swapErr ? <p className="notice" role="alert">{t(lang, 'swapFailed')}</p> : null}
       <AskButton data={data} lang={lang} actions={actions} {...(askPreview ? { preview: askPreview } : {})} />
       <h2 className="group-title">{t(lang, 'yourChores')}</h2>
       {mine.length === 0 ? (
@@ -91,7 +104,6 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
               <li key={i.id} className="kaji-item">
                 <span className="kaji-ic">{task.icon}</span>
                 <span className="kaji-main"><b>{taskName(task, lang)}</b>
-                  {readingFor(task, lang, readingsOn()) ? <small className="kaji-rt">{readingFor(task, lang, readingsOn())}</small> : null}
                   <small className="mut">{clockLabel(i.start)}–{clockLabel(i.end)} · {task.mode === 'fixed' ? t(lang, 'fixedWindow') : `${Math.round((i.end - i.start) / 60000)} ${t(lang, 'minutes')}`}</small></span>
                 <span className="kaji-acts">
                   {on ? (
@@ -106,7 +118,12 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
                     <>
                       {on ? null : <button className="chip-btn" onClick={() => { setMenu(null); finish(task, i); }}>{t(lang, 'doneNoTimer')}</button>}
                       <button className="chip-btn" onClick={() => { setMenu(null); void actions.notToday(i); }}>{t(lang, 'notToday')}</button>
-                      {others.length ? <button className="chip-btn" disabled={askedSwap === i.id} onClick={() => { setAskedSwap(i.id); setMenu(null); void actions.askSwap(i, (others[0] as { uid: string }).uid); }}>{askedSwap === i.id ? t(lang, 'swapSent') : t(lang, 'swap')}</button> : null}
+                      {(() => {
+                        const to = swapTarget(task);
+                        if (!to) return null;
+                        const state = swapButtonState(latestSwap(data.swaps, data.me, i), sendingSwap === i.id);
+                        return <button className="chip-btn" disabled={state !== 'idle'} onClick={() => void askSwap(i, to.uid)}>{state === 'sending' ? t(lang, 'swapSending') : state === 'open' ? `${t(lang, 'swapSent')} ${to.name}` : state === 'declined' ? `${to.name}: ${t(lang, 'swapDeclined')}` : t(lang, 'swap')}</button>;
+                      })()}
                     </>
                   ) : null}
                 </span>
@@ -162,8 +179,8 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
           onSkip={() => setFlow(null)} onSave={(r) => { void actions.rate(flow.event.id, r); setFlow(null); }} />
       ) : null}
       {flow?.step === 'reschedule' ? (
-        <RescheduleSheet lang={lang} task={flow.task} item={flow.item} now={Date.now() > data.now ? Date.now() : data.now} settings={data.settings} onCancel={() => setFlow(null)}
-          onPick={(start, reason, note) => { void actions.reschedule(flow.item, start, reason, note); setFlow(null); setUndo({ id: '', label: `${taskName(flow.task, lang)} · ${t(lang, 'movedTo')} ${clockLabel(start)}` }); }} />
+        <RescheduleSheet lang={lang} task={flow.task} item={flow.item} now={Date.now() > data.now ? Date.now() : data.now} settings={data.settings} nexo={pick} nexoWho={pick && pick.uid !== flow.item.uid ? nameOf(pick.uid) : ''} onCancel={() => setFlow(null)}
+          onPick={(start, reason, note, toUid) => { void actions.reschedule(flow.item, start, reason, note, toUid); setFlow(null); setUndo({ id: '', label: `${taskName(flow.task, lang)} · ${t(lang, 'movedTo')} ${clockLabel(start)}` }); }} />
       ) : null}
       {flow?.step === 'dismiss' ? (
         <DismissSheet lang={lang} task={flow.task} onCancel={() => setFlow(null)}

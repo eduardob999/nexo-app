@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { balance } from './burden';
-import { SEED } from './catalog';
+import { CARLA_UID, SEED as REAL_SEED } from './catalog';
 import { estimateFor } from './adapt';
-import { DEFAULT_SETTINGS as S, type Interval, type LogEvent, type Member, type PlannedItem } from './model';
-import { candidateSlots, findCollisions, plan, type PlanInput } from './planner';
+import { DEFAULT_SETTINGS as S, type Interval, type LogEvent, type Member, type PlannedItem, type SwapRecord } from './model';
+import { burdenOf, weightOf } from './burden';
+import { applySwaps, candidateSlots, findCollisions, nexoPick, plan, swapItem, type PlanInput } from './planner';
 import { atHm, dayKey, dayStart, DAY, MIN } from './time';
 
+/** The seed with Carla's real uid replaced by the test's B, so her chores can be planned here. */
+const SEED = REAL_SEED.map((t) => (t.who ? { ...t, who: t.who.map((u) => (u === CARLA_UID ? 'b' : u)) } : t));
 const A: Member = { uid: 'a', name: 'Eduardo', lang: 'es', role: 'owner' };
 const B: Member = { uid: 'b', name: 'Carla', lang: 'en', role: 'member' };
 const NOW = Date.parse('2026-11-20T12:00:00+09:00');   // a Friday
@@ -205,3 +208,88 @@ describe('fairness over invented months', () => {
 function overlapsHm(it: PlannedItem, d: number, from: string, to: string): boolean {
   return it.start < atHm(d, to) && atHm(d, from) < it.end;
 }
+
+describe('Carla-only chores', () => {
+  const burden = (items: PlannedItem[], uid: string, tasks = SEED) =>
+    items.filter((i) => i.uid === uid && i.start < NOW + 7 * DAY).reduce((s, i) => {
+      const t = tasks.find((x) => x.id === i.taskId)!;
+      return s + burdenOf(weightOf(t, undefined), 3, S);
+    }, 0);
+  const only = ['ropa', 'guindar'];
+  it('plans sorting and hanging for her alone', () => {
+    const out = plan(input());
+    for (const id of only) {
+      const mine = out.items.filter((i) => i.taskId === id);
+      expect(mine.length).toBeGreaterThan(0);
+      expect(mine.every((i) => i.uid === 'b')).toBe(true);
+    }
+  });
+  it('shifts the other chores toward him so the burden still comes out even', () => {
+    const open = SEED.map(({ who: _w, ...t }) => t);
+    const free = plan(input({ tasks: open }));
+    const held = plan(input());
+    const others = (items: PlannedItem[], uid: string) => items.filter((i) => i.uid === uid && !only.includes(i.taskId) && i.taskId !== 'doblar' && i.start < NOW + 7 * DAY);
+    const w = (items: PlannedItem[]) => items.reduce((s, i) => s + weightOf(SEED.find((x) => x.id === i.taskId)!, undefined), 0);
+    // he carries more of everything else than he did when the laundry was shared
+    expect(w(others(held.items, 'a'))).toBeGreaterThan(w(others(free.items, 'a')));
+    // and the totals still come out close to even (within a fifth of the whole)
+    const gap = Math.abs(burden(held.items, 'a') - burden(held.items, 'b'));
+    expect(gap / (burden(held.items, 'a') + burden(held.items, 'b'))).toBeLessThan(0.2);
+  });
+});
+
+describe('swaps', () => {
+  const sw = (over: Partial<SwapRecord> = {}): SwapRecord => ({ id: 's1', itemId: 'x', taskId: 'aspirar', fromUid: 'a', toUid: 'b', state: 'accepted', at: NOW, start: 0, ...over });
+  const base = () => plan(input());
+  it('moves an accepted swap to the other person, pinned', () => {
+    const first = base();
+    const item = first.items.find((i) => i.taskId === 'aspirar' && i.uid === 'a') ?? first.items.find((i) => i.taskId === 'cena' && i.uid === 'a')!;
+    const out = plan(input({ existing: first.items, swaps: [sw({ itemId: item.id, taskId: item.taskId, start: item.start })] }));
+    const kept = out.items.find((i) => i.id === item.id)!;
+    expect([kept.uid, kept.start, kept.pinned]).toEqual(['b', item.start, true]);
+  });
+  it('still holds after a re-plan changed the item id (the old code pinned by id and did nothing)', () => {
+    const first = base();
+    const item = first.items.find((i) => i.taskId === 'aspirar' && i.start > NOW + 2 * DAY && i.uid === 'a') ?? first.items.find((i) => i.taskId === 'cena' && i.start > NOW + 2 * DAY && i.uid === 'a')!;
+    const renamed = first.items.map((i) => (i.id === item.id ? { ...i, id: 'renamed-by-replan' } : i));
+    const swap = sw({ itemId: item.id, taskId: item.taskId, start: item.start });
+    const out = plan(input({ existing: renamed, swaps: [swap] }));
+    const kept = out.items.find((i) => i.taskId === item.taskId && Math.abs(i.start - item.start) < 12 * 3_600_000 && i.uid === 'b' && i.pinned);
+    expect(kept).toBeDefined();
+    expect(swapItem(renamed, swap)?.id).toBe('renamed-by-replan');
+    // and again on the next re-plan, with no swap data needed once it is pinned
+    expect(plan(input({ existing: out.items, swaps: [swap] })).items.some((i) => i.id === kept!.id && i.uid === 'b')).toBe(true);
+  });
+  it('is applied even if the person who accepted never wrote the plan (state only in the swap)', () => {
+    const existing = [{ id: 'q', taskId: 'aspirar', uid: 'a', start: NOW + 3 * DAY, end: NOW + 3 * DAY + 20 * MIN }];
+    expect(applySwaps(existing, [sw({ itemId: 'q', start: existing[0]!.start })], NOW)[0]).toMatchObject({ uid: 'b', pinned: true });
+  });
+  it('ignores open and declined swaps, and a swap whose chore was since moved by hand', () => {
+    const existing: PlannedItem[] = [{ id: 'q', taskId: 'aspirar', uid: 'a', start: NOW + 3 * DAY, end: NOW + 3 * DAY + 20 * MIN }];
+    for (const state of ['open', 'declined'] as const) expect(applySwaps(existing, [sw({ itemId: 'q', state })], NOW)).toBe(existing);
+    const pinned = [{ ...existing[0]!, pinned: true }];
+    expect(applySwaps(pinned, [sw({ itemId: 'q' })], NOW)).toBe(pinned);
+  });
+  it('does not match a swap to another chore', () => {
+    const existing: PlannedItem[] = [{ id: 'q', taskId: 'cena', uid: 'a', start: NOW + DAY, end: NOW + DAY + 20 * MIN }];
+    expect(swapItem(existing, sw({ itemId: 'nope', taskId: 'aspirar', start: NOW + DAY }))).toBeUndefined();
+  });
+});
+
+describe('Nexo picks a slot', () => {
+  it('returns the nearest free slot for someone allowed, never a blocked one', () => {
+    const busy = { a: [ev(1, '17:30', '21:30')], b: [] as Interval[] };
+    const first = plan(input({ busy }));
+    const item = first.items.find((i) => i.taskId === 'aspirar')!;
+    const pick = nexoPick(input({ busy, existing: first.items }), item)!;
+    expect(pick).not.toBeNull();
+    expect(candidateSlots(input({ busy, existing: first.items }), item, 40).some((s) => s.uid === pick.uid && s.start === pick.start)).toBe(true);
+    expect(findCollisions([{ ...item, uid: pick.uid, start: pick.start, end: pick.end }], busy, S.bufferMin).filter((c) => c.event.label === undefined)).toEqual([]);
+  });
+  it('is null when nothing is free', () => {
+    const wall = () => Array.from({ length: 8 }, (_, n) => ev(n, '00:00', '23:59'));
+    const first = plan(input());
+    const item = first.items.find((i) => i.taskId === 'aspirar')!;
+    expect(nexoPick(input({ busy: { a: wall(), b: wall() }, existing: first.items }), item)).toBeNull();
+  });
+});

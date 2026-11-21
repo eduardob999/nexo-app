@@ -29,28 +29,28 @@ const NAV: { id: Tab; d: string }[] = [
 ];
 const LABEL: Record<Tab, string> = { today: 'today', week: 'week', lists: 'lists', money: 'money', more: 'more' };
 
-function greeting(lang: Lang, name: string, now: number): string {
+function greeting(name: string, now: number): string {
   const h = new Date(now + 9 * 3_600_000).getUTCHours();
-  const g = lang === 'es' ? (h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches') : lang === 'ja' ? (h < 11 ? 'おはよう' : h < 18 ? 'こんにちは' : 'こんばんは') : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-  return lang === 'ja' ? `${g}、${name}` : `${g}, ${name}`;
+  const g = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  return `${g}, ${name}`;
 }
 
 /** The screens of the guest app, with no Firebase in them: the live app and the preview both feed this. */
-export function GuestView({ data, actions, lang, onLang, link, tab: forced, onSignOut, previewLists, previewLedger, previewAsks }: {
-  data: KajiData; actions: KajiActions; lang: Lang; onLang: (l: Lang) => void; link: string; tab?: Tab; onSignOut: () => void;
+export function GuestView({ data, actions, lang, link, tab: forced, onSignOut, previewLists, previewLedger, previewAsks }: {
+  data: KajiData; actions: KajiActions; lang: Lang; onLang?: (l: Lang) => void; link: string; tab?: Tab; onSignOut: () => void;
   previewLists?: { lists: KList[]; items: KItem[] }; previewLedger?: LedgerEntry[]; previewAsks?: Ask[];
 }) {
   const [tab, setTab] = useState<Tab>(forced ?? 'today');
   const [more, setMore] = useState<'balance' | 'chores' | 'settings'>('balance');
   const me = data.members.find((m) => m.uid === data.me);
   const owner = data.members.find((m) => data.house.members[m.uid] === 'owner');
-  const WD = { en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], es: ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'], ja: ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'] }[lang];
+  const WD = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const d = new Date(data.now + 9 * 3_600_000);
-  const dateLine = lang === 'ja' ? `${d.getUTCMonth() + 1}月${d.getUTCDate()}日 ${WD[d.getUTCDay()]}` : `${WD[d.getUTCDay()]} ${d.getUTCDate()}`;
+  const dateLine = `${WD[d.getUTCDay()]} ${d.getUTCDate()}`;
   return (
     <>
       <main className="screen kaji guest">
-        <header className="top"><div><span className="kicker">{data.house.name.toUpperCase()} · {dateLine}</span><h1>{greeting(lang, me?.name ?? '', data.now)}</h1></div></header>
+        <header className="top"><div><span className="kicker">{data.house.name.toUpperCase()} · {dateLine}</span><h1>{greeting(me?.name ?? '', data.now)}</h1></div></header>
         {tab === 'today' ? <TodayScreen data={data} actions={actions} lang={lang} {...(previewAsks ? { askPreview: previewAsks } : {})} /> : null}
         {tab === 'week' ? <WeekScreen data={data} lang={lang} actions={actions} /> : null}
         {tab === 'lists' ? <ListsScreen data={data} lang={lang} {...(previewLists ? { preview: previewLists } : {})} /> : null}
@@ -62,7 +62,7 @@ export function GuestView({ data, actions, lang, onLang, link, tab: forced, onSi
             </div>
             {more === 'balance' ? <BalanceScreen data={data} lang={lang} /> : null}
             {more === 'chores' ? <ChoresScreen data={data} actions={actions} lang={lang} /> : null}
-            {more === 'settings' ? <SettingsScreen data={data} actions={actions} lang={lang} onLang={onLang} link={link} /> : null}
+            {more === 'settings' ? <SettingsScreen data={data} actions={actions} lang={lang} link={link} /> : null}
             <div className="panel settings" style={{ marginTop: 14 }}>
               <div className="setting"><span>{me?.name}{owner ? ` · ${owner.name}` : ''}</span><button className="chip-btn" onClick={onSignOut}>{lang === 'es' ? 'Salir' : lang === 'ja' ? 'ログアウト' : 'Sign out'}</button></div>
             </div>
@@ -84,8 +84,7 @@ export function GuestView({ data, actions, lang, onLang, link, tab: forced, onSi
 /** The whole app for a person who belongs to a household and nothing else: no cards, drafts, trips or sleep, just the house. */
 export function GuestApp({ uid }: { uid: string }) {
   const { hid, data, actions } = useKaji(uid);
-  const [lang, setLang] = useState<Lang>(() => initialLang());
-  const changeLang = (l: Lang) => { setLang(l); try { window.localStorage.setItem('kaji.lang', l); } catch { /* private mode */ } };
+  const lang = initialLang();
   const sky = useSky([], undefined, true);
   const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
   const joinHid = window.location.hash.startsWith('#/kaji/join-') ? window.location.hash.slice('#/kaji/join-'.length) : null;
@@ -95,7 +94,7 @@ export function GuestApp({ uid }: { uid: string }) {
     return (
       <main className="screen kaji">
         <header className="top"><div><span className="kicker">KAJI</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
-        <Setup lang={lang} onLang={changeLang} defaultName="" joinHid={hid ? null : joinHid}
+        <Setup lang={lang} defaultName="" joinHid={hid ? null : joinHid}
           onCreate={async (name, me) => { await createHousehold(uid, name, me, lang); }}
           onJoin={async (h, me) => { await join(uid, h, me, lang); window.location.hash = '#/'; }} />
       </main>
@@ -104,7 +103,7 @@ export function GuestApp({ uid }: { uid: string }) {
   return (
     <>
       {sky ? <Sky state={sky} dark={dark} mode="subtle" /> : null}
-      <GuestView data={data} actions={actions} lang={lang} onLang={changeLang} link={link} onSignOut={() => { void signOutUser(); }} />
+      <GuestView data={data} actions={actions} lang={lang} link={link} onSignOut={() => { void signOutUser(); }} />
     </>
   );
 }

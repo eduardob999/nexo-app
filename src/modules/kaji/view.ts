@@ -1,4 +1,5 @@
-import type { LogEvent, PlannedItem, TaskType } from './model';
+import type { LogEvent, PlannedItem, SwapRecord, TaskType } from './model';
+import { swapItem } from './planner';
 import { dayKey, dayStart, DAY } from './time';
 
 /** A planned chore counts as done once the log has that chore after (roughly) its start, so the screen answers before the replan. */
@@ -19,6 +20,17 @@ export function groupByDay(items: PlannedItem[], tz?: number): { day: string; it
     m.set(k, [...(m.get(k) ?? []), i]);
   }
   return [...m.entries()].map(([day, list]) => ({ day, items: list }));
+}
+
+/** My latest swap request for one planned chore (matched by id, or by chore and time when a re-plan changed the id), so the button reflects what became of it. */
+export function latestSwap(swaps: SwapRecord[], me: string, item: PlannedItem): SwapRecord | undefined {
+  return swaps.filter((s) => s.fromUid === me && swapItem([item], s) === item).sort((a, b) => b.at - a.at)[0];
+}
+
+/** What the Swap button shows: nothing sent yet, a request waiting, or an answer. An accepted swap has moved the chore, so it no longer sits with the one who asked. */
+export function swapButtonState(swap: SwapRecord | undefined, sending: boolean): 'idle' | 'sending' | 'open' | 'declined' {
+  if (sending) return 'sending';
+  return swap?.state === 'open' ? 'open' : swap?.state === 'declined' ? 'declined' : 'idle';
 }
 
 export function taskName(t: TaskType | undefined, lang: 'en' | 'es' | 'ja', id = ''): string {

@@ -5,6 +5,11 @@ const t = (id: string, es: string, en: string, ja: string, icon: string, categor
   id, names: { es, en, ja }, icon, category, freq: { times, perDays }, mode, priorMinutes, active: true, ...extra,
 });
 
+/** Carla's Firebase uid. Sorting the clothes and hanging the air-dry ones are hers alone (his instruction, 2026-11-21). */
+export const CARLA_UID = 'zqrCUOpCA6XX6GDPYHhb0nPCEVB3';
+/** Chores only Carla does. */
+export const CARLA_ONLY = ['ropa', 'guindar'];
+
 /** Dishes are washed three times a day: after breakfast, after lunch (the lunch hour itself is blocked) and after dinner. */
 export const DISH_WINDOWS = [{ from: '08:00', to: '11:30' }, { from: '13:00', to: '16:00' }, { from: '19:30', to: '22:00' }];
 
@@ -21,8 +26,8 @@ export const SEED: TaskType[] = [
   t('piso-sala', 'Limpiar el piso de la sala a profundidad', 'Deep-clean the living-room floor', 'リビングの床の念入り掃除', '🧽', 'floors', 1, 14, 'measured', 40),
   t('bano-profundo', 'Limpiar la ducha, el piso del baño, el lavamanos y el tanque de la poceta', 'Deep-clean the shower, bathroom floor, sink and cistern', '浴室・洗面・トイレタンクの念入り掃除', '🛁', 'bathroom', 1, 7, 'measured', 45),
   t('poceta', 'Limpiar la poceta', 'Clean the toilet', 'トイレ掃除', '🚽', 'bathroom', 2, 7, 'measured', 10),
-  t('ropa', 'Lavar la ropa (separar la que se guinda y la que seca en lavadora)', 'Do the laundry (sort hang-dry from machine-dry)', '洗濯（干す物と乾燥機の物を分ける）', '🧺', 'laundry', 2, 7, 'measured', 15),
-  t('guindar', 'Guindar la ropa que se guinda', 'Hang the air-dry clothes', '洗濯物を干す', '👕', 'laundry', 2, 7, 'measured', 10, { after: { taskId: 'ropa', delayMin: 60 } }),
+  t('ropa', 'Lavar la ropa (separar la que se guinda y la que seca en lavadora)', 'Do the laundry (sort hang-dry from machine-dry)', '洗濯（干す物と乾燥機の物を分ける）', '🧺', 'laundry', 2, 7, 'measured', 15, { who: [CARLA_UID] }),
+  t('guindar', 'Guindar la ropa que se guinda', 'Hang the air-dry clothes', '洗濯物を干す', '👕', 'laundry', 2, 7, 'measured', 10, { after: { taskId: 'ropa', delayMin: 60 }, who: [CARLA_UID] }),
   t('doblar', 'Doblar la ropa', 'Fold the clothes', '洗濯物をたたむ', '🧦', 'laundry', 2, 7, 'measured', 15, { after: { taskId: 'ropa', delayMin: 1440 } }),
   t('sabanas', 'Lavar las sábanas', 'Wash the sheets', 'シーツを洗う', '🛏️', 'bed', 1, 14, 'measured', 10),
   t('poner-sabanas', 'Poner las sábanas luego de lavarlas', 'Put the sheets back on', 'シーツを敷く', '🛌', 'bed', 1, 14, 'measured', 10, { after: { taskId: 'sabanas', delayMin: 120 } }),
@@ -42,6 +47,8 @@ export const CATEGORY_COLOR: Record<TaskType['category'], string> = {
  */
 export function migrateTasks(stored: TaskType[]): TaskType[] {
   return stored.map((x) => {
+    // 2026-11-21: sorting and hanging the laundry are Carla's. Only a chore whose `who` was never set is changed, so a choice made in the app stands.
+    if (CARLA_ONLY.includes(x.id) && x.who === undefined) return { ...x, who: [CARLA_UID] };
     const old = x.freq.times === 1 && x.freq.perDays === 1 && !x.freq.adhoc && !x.windows && x.window?.from === '19:30' && x.window.to === '22:00';
     if (x.id !== 'platos' || !old) return x;
     const { window: _drop, ...rest } = x;

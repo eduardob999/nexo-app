@@ -1,5 +1,5 @@
 import { estimateFor } from './adapt';
-import { SEED } from './catalog';
+import { CARLA_UID, SEED as REAL_SEED } from './catalog';
 import { DEFAULT_SETTINGS, type Interval, type LogEvent, type Member } from './model';
 import { plan } from './planner';
 import type { KajiActions, KajiData } from './ui';
@@ -7,11 +7,12 @@ import { atHm, dayStart, DAY, MIN } from './time';
 
 /** Invented data for the dev preview and render checks: a Friday evening, three weeks of history, two people. */
 export const NOW = Date.parse('2026-11-20T18:05:00+09:00');
-const A: Member = { uid: 'a', name: 'Eduardo', lang: 'es', role: 'owner' };
+const A: Member = { uid: 'a', name: 'Eduardo', lang: 'en', role: 'owner' };
 const B: Member = { uid: 'b', name: 'Carla', lang: 'en', role: 'member' };
 
 export function kajiFixture(now = NOW): { data: KajiData; actions: KajiActions } {
   const members = [A, B];
+  const SEED = REAL_SEED.map((t) => (t.who ? { ...t, who: t.who.map((u) => (u === CARLA_UID ? 'b' : u)) } : t));       // Carla's real uid is B here
   const log: LogEvent[] = [];
   let n = 0;
   const add = (taskId: string, uid: string, at: number, minutes: number, extra: Partial<LogEvent> = {}) => log.push({ id: `f${n++}`, taskId, uid, kind: 'done', at, minutes, planned: true, ...extra });

@@ -30,7 +30,7 @@ export interface KajiActions {
   undo: (eventId: string) => Promise<void>;
   notToday: (item: PlannedItem) => Promise<void>;
   /** Move one planned chore to a new time (pinned there) and log it with the optional reason. */
-  reschedule: (item: PlannedItem, start: number, reason: import('./model').Reason | null, note: string) => Promise<void>;
+  reschedule: (item: PlannedItem, start: number, reason: import('./model').Reason | null, note: string, toUid?: string) => Promise<void>;
   /** Take a planned chore off the plan for good, with a required reason, and log it. */
   dismiss: (item: PlannedItem, reason: import('./model').Reason, note: string) => Promise<void>;
   move: (item: PlannedItem, uid: string, start: number) => Promise<void>;

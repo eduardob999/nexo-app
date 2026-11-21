@@ -17,6 +17,6 @@ process.stdin.on('end', () => {
   const today = dayKey(i.now);
   const declines = (i.swaps ?? []).filter((s: { state: string }) => s.state === 'declined').map((s: { toUid: string; taskId: string; start: number }) => ({ uid: s.toUid, taskId: s.taskId, dow: weekday(s.start) }));
   const out = plan({ now: i.now, horizonDays: 7, tasks: i.tasks, members: i.members, estimates, log: i.log, busy: i.busy ?? {}, existing: i.existing ?? [], settings: i.settings,
-    awayUntil: i.away ?? {}, notToday: (i.notToday ?? []).filter((n: { day: string }) => n.day >= today), declines });
+    awayUntil: i.away ?? {}, swaps: i.swaps ?? [], notToday: (i.notToday ?? []).filter((n: { day: string }) => n.day >= today), declines });
   process.stdout.write(JSON.stringify({ items: out.items, unplaced: out.unplaced }));
 });
