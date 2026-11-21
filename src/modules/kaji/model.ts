@@ -63,6 +63,8 @@ export interface LogEvent {
   /** If part was done by someone else: [uid, minutes] pairs, this event's own minutes included. */
   split?: { uid: string; minutes: number }[];
   note?: string;
+  /** A one-off chore that is not in the catalog (taskId is "custom"): its name. */
+  custom?: string;
   /** rescheduled / dismissed: when the chore was planned to start, where it went, and why. A dismissal always has a reason. */
   plannedStart?: number;
   newStart?: number;

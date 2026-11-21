@@ -852,3 +852,4 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .tabs-5 { grid-template-columns: repeat(5, 1fr); } .tabs-5 a { padding-left: 2px; padding-right: 2px; font-size: 11.5px; }
 .kaji-sheet .kaji-text { width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--edge); border-radius: 10px; background: transparent; color: var(--ink); font: inherit; box-sizing: border-box; }
 .kaji-acts { padding-left: 44px; gap: 5px; } .kaji-acts .chip-btn.small { padding: 0 9px; } .kaji-acts .kaji-more { padding: 0 12px; min-width: 40px; }
+.kaji-nolog { text-align: center; margin: 12px 0 0; } .kaji-form { display: grid; gap: 12px; }

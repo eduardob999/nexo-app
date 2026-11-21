@@ -3,7 +3,8 @@ import { askRates, maturity, drifted, shouldAsk } from './adapt';
 import { t } from './i18n';
 import type { Lang, LogEvent, PlannedItem, TaskType } from './model';
 import { AskButton } from './AskSheet';
-import { HowLongSheet, LogSheet, RateSheet } from './Sheets';
+import { HowLongSheet, KindSheet, LogSheet, RateSheet } from './Sheets';
+import { customTask, eventFromTimer, isOpenTimer, startOpenTimer, type Kind } from './quicklog';
 import { DismissSheet, RescheduleSheet } from './MoveSheets';
 import { clockText, elapsedMin, loadTimer, recentAnswers, saveTimer, type Running } from './timer';
 import { nexoPick, swapItem } from './planner';
@@ -11,7 +12,7 @@ import { clockLabel } from './time';
 import type { KajiActions, KajiData, Ratings } from './ui';
 import { latestSwap, memberColor, recentDone, swapButtonState, taskName, todayFor } from './view';
 
-type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'later'; task: TaskType; event: LogEvent } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
+type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'kind'; start: number; end: number } | { step: 'later'; task: TaskType; event: LogEvent } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
 
 export function TodayScreen({ data, actions, lang, rand = Math.random, askPreview }: { data: KajiData; actions: KajiActions; lang: Lang; rand?: () => number; askPreview?: import('./asks').Ask[] }) {
   const [running, setRunning] = useState<Running | null>(() => loadTimer());
@@ -49,6 +50,17 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
   const nexoSlot = (item: PlannedItem) => nexoPick({ now: Math.max(Date.now(), data.now), horizonDays: 7, tasks: data.tasks, members: data.members, estimates: data.estimates, log: data.log, busy: data.busy, existing: data.plan, settings: data.settings, awayUntil: data.away }, item);
 
   const start = (item: PlannedItem) => { const r = { taskId: item.taskId, itemId: item.id, start: Date.now() }; saveTimer(r); setRunning(r); };
+  const startOpen = () => { const r = startOpenTimer(Date.now()); saveTimer(r); setRunning(r); };
+  const kindPicked = async (k: Kind, r: Running, end: number) => {
+    setFlow(null);
+    const ev = eventFromTimer(r, end, data.me, k);
+    if (k.kind === 'custom') { stop(); await actions.logDone(ev.taskId, ev.minutes, {}, { planned: false, start: r.start, custom: ev.custom ?? k.name }); setUndo({ id: '', label: `${k.name} · ${ev.minutes} ${t(lang, 'minutes')}` }); return; }
+    const task = k.kind === 'new' ? k.task : byId.get(k.taskId);
+    if (!task) return;
+    if (k.kind === 'new') await actions.saveTask(task);
+    stop();
+    maybeRate(task, null, ev.minutes, 1, r.start);
+  };
   const stop = () => { saveTimer(null); setRunning(null); };
 
   const finish = (task: TaskType, item: PlannedItem | null, startedAt?: number) => {
@@ -73,8 +85,17 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
 
   const pick = flow?.step === 'reschedule' ? nexoSlot(flow.item) : null;
   const runTask = running ? byId.get(running.taskId) : undefined;
+  const open = isOpenTimer(running);
   return (
     <>
+      {open && running ? (
+        <div className="panel kaji-run" role="status">
+          <div><small className="mut">{t(lang, 'running')}</small><b>{t(lang, 'quickRunning')}</b></div>
+          <span className="kaji-clock">{clockText(tick - running.start)}</span>
+          <button className="copy-main" onClick={() => setFlow({ step: 'kind', start: running.start, end: Date.now() })}>{t(lang, 'finish')}</button>
+          <button className="chip-btn" onClick={stop}>{t(lang, 'discard')}</button>
+        </div>
+      ) : null}
       {running && runTask ? (
         <div className="panel kaji-run" role="status">
           <div><small className="mut">{t(lang, 'running')}</small><b>{runTask.icon} {taskName(runTask, lang)}</b></div>
@@ -154,7 +175,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
           <h2 className="group-title">{t(lang, 'recentDone')}</h2>
           <ul className="kaji-list panel">
             {recentDone(data.log, data.me, data.now).map(({ event, rated }) => {
-              const task = byId.get(event.taskId);
+              const task = byId.get(event.taskId) ?? (event.custom ? customTask(event.custom) : undefined);
               return task ? (
                 <li key={event.id} className="kaji-item">
                   <span className="kaji-ic">{task.icon}</span>
@@ -167,9 +188,11 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
         </>
       ) : null}
       {data.unplaced.length ? <p className="notice">{t(lang, 'unplaced')}: {data.unplaced.slice(0, 4).map((u) => byId.get(u.taskId)?.icon ?? u.taskId).join(' ')}</p> : null}
-      <button className="kaji-fab" aria-label={t(lang, 'logAChore')} onClick={() => setFlow({ step: 'log' })}>+</button>
+      {running ? null : <button className="kaji-fab" aria-label={t(lang, 'startTimer')} onClick={startOpen}>+</button>}
+      {running ? null : <p className="kaji-nolog"><button className="chip-btn small" onClick={() => setFlow({ step: 'log' })}>{t(lang, 'logNoTimer')}</button></p>}
       {undo ? <div className="kaji-toast" role="status">{t(lang, 'saved')}: {undo.label}</div> : null}
       {flow?.step === 'log' ? <LogSheet lang={lang} tasks={data.tasks} onCancel={() => setFlow(null)} onPick={(task) => { setFlow(null); finish(task, null); }} /> : null}
+      {flow?.step === 'kind' && running ? <KindSheet lang={lang} tasks={data.tasks} minutes={elapsedMin(flow.start, flow.end)} now={flow.end} onCancel={() => setFlow(null)} onPick={(k) => void kindPicked(k, running, flow.end)} /> : null}
       {flow?.step === 'minutes' ? (
         <HowLongSheet lang={lang} task={flow.task} choices={recentAnswers(data.log, flow.task.id, flow.task.priorMinutes)} onCancel={() => setFlow(null)}
           onPick={(m) => { const est = data.estimates[flow.task.id]; const mat = est ? maturity(est, flow.task, data.log, data.now) : 'new'; maybeRate(flow.task, flow.item, m, askRates(mat, drifted(data.log, flow.task.id), flow.task, data.settings).rating); }} />

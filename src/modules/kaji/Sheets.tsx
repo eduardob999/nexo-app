@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Face } from '../../SleepFeedback';
 import { faces, t } from './i18n';
-import type { Lang, TaskType } from './model';
+import { CATEGORY_LABEL } from './i18n';
+import type { Category, Lang, TaskType } from './model';
+import { newTaskFrom, type Kind } from './quicklog';
 import type { Ratings } from './ui';
 
 /** Three faces, each optional, and one tap to skip them all. */
@@ -70,6 +72,56 @@ export function LogSheet({ lang, tasks, onPick, onCancel }: { lang: Lang; tasks:
           {tasks.filter((x) => x.active).map((x) => (
             <button key={x.id} type="button" className="kaji-pickrow" onClick={() => onPick(x)}><span className="kaji-ic">{x.icon}</span><span>{x.names[lang]}</span></button>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The timer is stopped: what kind of task was it? One from the list, a new one, or a one-off. */
+export function KindSheet({ lang, tasks, minutes, now, onPick, onCancel }: { lang: Lang; tasks: TaskType[]; minutes: number; now: number; onPick: (k: Kind) => void; onCancel: () => void }) {
+  const [mode, setMode] = useState<'menu' | 'existing' | 'new' | 'custom'>('menu');
+  const [name, setName] = useState('');
+  const [icon, setIcon] = useState('🧹');
+  const [cat, setCat] = useState<Category>('rooms');
+  const cats = Object.keys(CATEGORY_LABEL) as Category[];
+  const ok = name.trim().length > 0;
+  return (
+    <div className="scrim" onClick={onCancel}>
+      <div className="sheet kaji-sheet" role="dialog" aria-label={t(lang, 'whatDone')} onClick={(e) => e.stopPropagation()}>
+        <span className="grab" />
+        <div><b className="sheet-title">{t(lang, 'whatDone')}</b><p className="mut sheet-sub">{t(lang, 'tookMin')} {minutes} {t(lang, 'minutes')}</p></div>
+        {mode === 'menu' ? (
+          <div className="kaji-pick">
+            <button type="button" className="kaji-pickrow" onClick={() => setMode('existing')}><span className="kaji-ic">📋</span><span>{t(lang, 'existingChore')}</span></button>
+            <button type="button" className="kaji-pickrow" onClick={() => setMode('new')}><span className="kaji-ic">➕</span><span>{t(lang, 'newChore')}</span></button>
+            <button type="button" className="kaji-pickrow" onClick={() => setMode('custom')}><span className="kaji-ic">✏️</span><span>{t(lang, 'customChore')}</span></button>
+          </div>
+        ) : null}
+        {mode === 'existing' ? (
+          <div className="kaji-pick">
+            {tasks.filter((x) => x.active).map((x) => (
+              <button key={x.id} type="button" className="kaji-pickrow" onClick={() => onPick({ kind: 'existing', taskId: x.id })}><span className="kaji-ic">{x.icon}</span><span>{x.names[lang] || x.names.en}</span></button>
+            ))}
+          </div>
+        ) : null}
+        {mode === 'new' || mode === 'custom' ? (
+          <form className="kaji-form" onSubmit={(e) => { e.preventDefault(); if (!ok) return; onPick(mode === 'new' ? { kind: 'new', task: newTaskFrom(name, icon, cat, minutes, now) } : { kind: 'custom', name: name.trim() }); }}>
+            <p className="mut sheet-sub">{t(lang, mode === 'new' ? 'newChoreHint' : 'customHint')}</p>
+            <label className="kaji-field"><span>{t(lang, mode === 'new' ? 'name' : 'customName')}</span><input value={name} maxLength={80} autoFocus onChange={(e) => setName(e.target.value)} /></label>
+            {mode === 'new' ? (
+              <div className="kaji-row">
+                <label className="kaji-field"><span>{t(lang, 'icon')}</span><input value={icon} maxLength={4} onChange={(e) => setIcon(e.target.value)} style={{ width: 64 }} /></label>
+                <label className="kaji-field"><span>{t(lang, 'category')}</span>
+                  <select value={cat} onChange={(e) => setCat(e.target.value as Category)}>{cats.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}</select></label>
+              </div>
+            ) : null}
+            <div className="sheet-foot"><button type="button" className="chip-btn" onClick={() => setMode('menu')}>{t(lang, 'back')}</button><button type="submit" className="copy-main" disabled={!ok}>{t(lang, 'saveLog')}</button></div>
+          </form>
+        ) : null}
+        <div className="sheet-foot">
+          {mode === 'existing' ? <button type="button" className="chip-btn" onClick={() => setMode('menu')}>{t(lang, 'back')}</button> : null}
+          <button type="button" className="chip-btn" onClick={onCancel}>{t(lang, 'cancel')}</button>
         </div>
       </div>
     </div>

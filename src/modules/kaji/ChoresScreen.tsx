@@ -4,12 +4,12 @@ import { CATEGORY_COLOR } from './catalog';
 import { CATEGORY_LABEL, faces, t } from './i18n';
 import type { Category, Lang, TaskType } from './model';
 import type { KajiActions, KajiData } from './ui';
+import { blankTask, slug } from './quicklog';
 import { taskName } from './view';
 
 const CATS = Object.keys(CATEGORY_LABEL) as Category[];
 
-const blank = (): TaskType => ({ id: '', names: { en: '', es: '', ja: '' }, icon: '🧹', category: 'rooms', freq: { times: 1, perDays: 7 }, mode: 'measured', priorMinutes: 15, active: true });
-const slug = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'chore';
+const blank = blankTask;
 
 /** The catalog, every field editable. Edits are saved with who made them. */
 export function ChoresScreen({ data, actions, lang }: { data: KajiData; actions: KajiActions; lang: Lang }) {

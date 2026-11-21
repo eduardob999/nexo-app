@@ -34,6 +34,7 @@ const en: Dict = {
   rescheduleAbout: 'Pick a new time. Kaji keeps it and learns from it.', whyOptional: 'Why? (optional)',
   dismissAbout: 'Not needed, or could not be finished. It will not be planned again today.', dismissWhy: 'Why? (required)', confirmDismiss: 'Dismiss it',
   reasonNot_needed: 'Not needed', reasonNo_time: 'No time', reasonNot_enough: 'Not enough to do', reasonOther: 'Other', reasonText: 'Say why in a few words', dismissed: 'Dismissed', movedTo: 'Moved to', cancel: 'Cancel',
+  quickRunning: 'Timing something', discard: 'Discard', whatDone: 'What did you do?', tookMin: 'Took', existingChore: 'A chore from the list', newChore: 'A new chore', customChore: 'Something one-off', customHint: 'Counted for this time only, not added to the list.', customName: 'What was it?', newChoreHint: 'Added to the Chores list, then logged.', saveLog: 'Save and log', logNoTimer: 'Log without a timer', startTimer: 'Start a timer',
   learnedTitle: 'Learned from your moves', learnedEarlier: 'window {m} min earlier, from {n} moves', learnedLater: 'window {m} min later, from {n} moves', learnedFreq: 'interval {x}x longer, from {n} dismissals',
 };
 export const DICT: Record<'en', Dict> = { en };

@@ -1,3 +1,4 @@
+import { CUSTOM_ID, customTask } from './quicklog';
 import type { Estimate, LogEvent, Member, Settings, TaskType } from './model';
 
 const DAY = 86_400_000;
@@ -46,7 +47,7 @@ export function balance(log: LogEvent[], tasks: TaskType[], estimates: Record<st
   const perUid: Record<string, Share> = Object.fromEntries(members.map((m) => [m.uid, { uid: m.uid, weight: 0, burden: 0, minutes: 0, credit: 0 }]));
   for (const ev of log) {
     if (ev.kind !== 'done' || ev.at < from || ev.at > now) continue;
-    const task = byId.get(ev.taskId);
+    const task = byId.get(ev.taskId) ?? (ev.taskId === CUSTOM_ID ? customTask(ev.custom ?? '') : undefined);
     if (!task) continue;
     const est = estimates[ev.taskId];
     const parts = ev.split && ev.split.length ? ev.split : [{ uid: ev.uid, minutes: ev.minutes }];
