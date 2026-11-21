@@ -12,7 +12,7 @@ import { clockLabel } from './time';
 import type { KajiActions, KajiData, Ratings } from './ui';
 import { latestSwap, memberColor, recentDone, swapButtonState, taskName, todayFor } from './view';
 
-type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'kind'; start: number; end: number } | { step: 'later'; task: TaskType; event: LogEvent } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
+type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number; est?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'kind'; start: number; end: number } | { step: 'later'; task: TaskType; event: LogEvent } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
 
 export function TodayScreen({ data, actions, lang, rand = Math.random, askPreview }: { data: KajiData; actions: KajiActions; lang: Lang; rand?: () => number; askPreview?: import('./asks').Ask[] }) {
   const [running, setRunning] = useState<Running | null>(() => loadTimer());
@@ -72,6 +72,13 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
     if (task.mode === 'measured' && shouldAsk(rates.timer, rand)) { setFlow({ step: 'minutes', task, item }); return; }
     const minutes = task.mode === 'fixed' ? task.priorMinutes : Math.round(est && est.n ? est.meanMin : task.priorMinutes);
     maybeRate(task, item, minutes, rates.rating);
+  };
+  // Logging without a timer always carries a duration: the estimate is offered first and one tap accepts it.
+  const logWithoutTimer = (task: TaskType) => {
+    const est = data.estimates[task.id];
+    const guess = Math.round(est && est.n ? est.meanMin : task.priorMinutes);
+    if (task.mode === 'measured') { setFlow({ step: 'minutes', task, item: null, est: guess }); return; }
+    finish(task, null);
   };
   const maybeRate = (task: TaskType, item: PlannedItem | null, minutes: number, p: number, startedAt?: number) => {
     if (shouldAsk(p, rand)) setFlow({ step: 'rate', task, item, minutes, ...(startedAt !== undefined ? { start: startedAt } : {}) });
@@ -191,10 +198,10 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
       {running ? null : <button className="kaji-fab" aria-label={t(lang, 'startTimer')} onClick={startOpen}>+</button>}
       {running ? null : <p className="kaji-nolog"><button className="chip-btn small" onClick={() => setFlow({ step: 'log' })}>{t(lang, 'logNoTimer')}</button></p>}
       {undo ? <div className="kaji-toast" role="status">{t(lang, 'saved')}: {undo.label}</div> : null}
-      {flow?.step === 'log' ? <LogSheet lang={lang} tasks={data.tasks} onCancel={() => setFlow(null)} onPick={(task) => { setFlow(null); finish(task, null); }} /> : null}
+      {flow?.step === 'log' ? <LogSheet lang={lang} tasks={data.tasks} onCancel={() => setFlow(null)} onPick={(task) => { setFlow(null); logWithoutTimer(task); }} /> : null}
       {flow?.step === 'kind' && running ? <KindSheet lang={lang} tasks={data.tasks} minutes={elapsedMin(flow.start, flow.end)} now={flow.end} onCancel={() => setFlow(null)} onPick={(k) => void kindPicked(k, running, flow.end)} /> : null}
       {flow?.step === 'minutes' ? (
-        <HowLongSheet lang={lang} task={flow.task} choices={recentAnswers(data.log, flow.task.id, flow.task.priorMinutes)} onCancel={() => setFlow(null)}
+        <HowLongSheet lang={lang} task={flow.task} choices={recentAnswers(data.log, flow.task.id, flow.est ?? flow.task.priorMinutes)} onCancel={() => setFlow(null)}
           onPick={(m) => { const est = data.estimates[flow.task.id]; const mat = est ? maturity(est, flow.task, data.log, data.now) : 'new'; maybeRate(flow.task, flow.item, m, askRates(mat, drifted(data.log, flow.task.id), flow.task, data.settings).rating); }} />
       ) : null}
       {flow?.step === 'later' ? (
