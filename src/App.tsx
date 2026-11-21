@@ -354,7 +354,7 @@ function OwnerApp() {
         </button>
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
-        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' || tab === 'homework' || tab === 'kaji' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' || tab === 'homework' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {shared && !addingShared ? (
         <ShareSheet shared={shared} cards={cards} busy={shareBusy} onClose={() => setShared(null)}
           onNew={() => { setAddingShared(shared); setShared(null); }}

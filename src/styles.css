@@ -92,7 +92,7 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .chip-btn { height: 44px; padding: 0 16px; border: 1px solid var(--edge); border-radius: 12px; background: var(--surface); font-size: 15px; font-weight: 500; }
 
 .fab { position: fixed; right: 20px; bottom: calc(100px + env(safe-area-inset-bottom)); width: 56px; height: 56px; border: 0; border-radius: 50%; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; box-shadow: 0 8px 20px rgba(59, 78, 255, .35); }
-.tabs { position: fixed; left: 16px; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); max-width: 608px; margin: 0 auto; height: 64px; padding: 6px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: 32px; box-shadow: 0 10px 28px rgba(21, 23, 27, .12); }
+.tabs { position: fixed; left: 16px; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); max-width: 608px; margin: 0 auto; height: 64px; padding: 6px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; background: var(--surface); border: 1px solid var(--edge); border-radius: 32px; box-shadow: 0 10px 28px rgba(21, 23, 27, .12); }
 .tabs button { border: 0; border-radius: 26px; background: transparent; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11.5px; font-weight: 500; }
 .tabs button[aria-current='page'] { background: var(--chip); color: var(--ink); font-weight: 600; }
 

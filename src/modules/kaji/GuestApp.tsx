@@ -94,7 +94,7 @@ export function GuestApp({ uid }: { uid: string }) {
   if (!hid || !data || !actions) {
     return (
       <main className="screen kaji">
-        <header className="top"><div><span className="kicker">KAJI · 家事</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
+        <header className="top"><div><span className="kicker">KAJI</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
         <Setup lang={lang} onLang={changeLang} defaultName="" joinHid={hid ? null : joinHid}
           onCreate={async (name, me) => { await createHousehold(uid, name, me, lang); }}
           onJoin={async (h, me) => { await join(uid, h, me, lang); window.location.hash = '#/'; }} />

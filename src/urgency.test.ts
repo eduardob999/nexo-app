@@ -171,7 +171,8 @@ describe('isQA after he replies', () => {
   it('drops a question once his reply is the newest entry', () => {
     expect(isQA({ ...base, last: { by: 'eduardo', text: 'Friday', ts: '2026-11-09T01:00:00Z' } } as Card)).toBe(false);
   });
-  it('keeps an ANSWER card pinned, since Nexo owes him the facts', () => {
-    expect(isQA({ ...base, type: 'ANSWER', last: { by: 'eduardo', text: 'what time?', ts: '2026-11-09T01:00:00Z' } } as Card)).toBe(true);
+  it('takes an ANSWER card off his list once he has written last, and pins it again when Nexo answers', () => {
+    expect(isQA({ ...base, type: 'ANSWER', last: { by: 'eduardo', text: 'what time?', ts: '2026-11-09T01:00:00Z' } } as Card)).toBe(false);
+    expect(isQA({ ...base, type: 'ANSWER', last: { by: 'nexo', text: '10:00', ts: '2026-11-09T01:05:00Z' } } as Card)).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 const TABS = [
   { id: 'today', label: 'Today', href: '#/', d: 'M4 4h16v16H4zM9 12l2 2 4-4' },
   { id: 'upcoming', label: 'Upcoming', href: '#/upcoming', d: 'M4 6h16v14H4zM4 11h16M9 3v5M15 3v5' },
+  { id: 'kaji', label: 'Kaji', href: '#/kaji', d: 'M3 11l9-7 9 7M5 10v10h14V10M10 20v-5h4v5' },
   { id: 'drafts', label: 'Drafts', href: '#/drafts', d: 'M3 6h18v12H3zM4 8l8 6 8-6' },
   { id: 'browse', label: 'Browse', href: '#/browse', d: 'M4 6h16M4 12h16M4 18h10' },
 ] as const;
