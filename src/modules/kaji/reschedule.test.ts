@@ -130,8 +130,8 @@ describe('learning from moves', () => {
     expect(s[0]!.value).toBeGreaterThan(0);
     expect(s[0]!.value % 15).toBe(0);
     const eff = applyLearned(SEED, log, NOW, S).find((x) => x.id === 'basura')!;
-    expect(eff.window!.from > '08:00').toBe(true);
-    expect(SEED.find((x) => x.id === 'basura')!.window!.from).toBe('08:00');       // the stored chore is untouched
+    expect(eff.window!.from > '20:00').toBe(true);
+    expect(SEED.find((x) => x.id === 'basura')!.window!.from).toBe('20:00');       // the stored chore is untouched
   });
   it('shifts every window of a chore that has one per occurrence', () => {
     const log = [mv('platos', '19:30', '21:00', 6), mv('platos', '19:30', '21:00', 3)];
