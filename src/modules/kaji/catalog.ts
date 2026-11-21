@@ -27,7 +27,7 @@ export const SEED: TaskType[] = [
   t('sabanas', 'Lavar las sábanas', 'Wash the sheets', 'シーツを洗う', '🛏️', 'bed', 1, 14, 'measured', 10),
   t('poner-sabanas', 'Poner las sábanas luego de lavarlas', 'Put the sheets back on', 'シーツを敷く', '🛌', 'bed', 1, 14, 'measured', 10, { after: { taskId: 'sabanas', delayMin: 120 } }),
   t('panos', 'Lavar los paños', 'Wash the cloths and towels', 'ふきん・タオルを洗う', '🧻', 'laundry', 1, 7, 'measured', 10),
-  t('basura', 'Botar la basura', 'Take out the rubbish', 'ゴミ出し', '🗑️', 'trash', 1, 1, 'fixed', 5, { window: { from: '20:00', to: '23:00' } }),
+  t('basura', 'Botar la basura', 'Take out the rubbish', 'ゴミ出し', '🗑️', 'trash', 1, 1, 'fixed', 5, { window: { from: '20:00', to: '22:30' } }),
   t('mercado', 'Ir al mercado, a Daiso o a Sugi', 'Shopping run (market, Daiso, Sugi)', '買い物（市場・ダイソー・スギ薬局）', '🛒', 'shopping', 1, 7, 'measured', 90),
   t('ordenar', 'Ordenar', 'Tidy up', '片付け', '✨', 'tidy', 1, 1, 'measured', 15, { freq: { times: 0, perDays: 1, adhoc: true } }),
 ];
