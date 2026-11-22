@@ -42,6 +42,12 @@ export interface TaskType {
    * words 2026-11-21: "Clear the dishes rack should be done the next day, so nothing left for me."
    */
   morningAfter?: string;
+  /**
+   * Closing chores: planned last on their day, after every other chore of either person, in ascending order and back to back when the
+   * time allows. His words, 2026-11-22: "Clean the kitchen sink and take down the trash should be done in sequence at the very end once
+   * everything else is done." The sink is 1, the rubbish 2. Its window may run past its usual end, up to bedtime, so the end can wait.
+   */
+  closing?: number;
   /** Uids allowed to do it. Empty or absent means anyone. */
   who?: string[];
   /** Replaces the learned difficulty when set. */

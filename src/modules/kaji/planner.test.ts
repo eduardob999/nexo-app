@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { balance } from './burden';
-import { CARLA_UID, SEED as REAL_SEED } from './catalog';
+import { CARLA_UID, SEED as REAL_SEED, migrateTasks } from './catalog';
 import { estimateFor } from './adapt';
 import { DEFAULT_SETTINGS as S, type Interval, type LogEvent, type Member, type PlannedItem, type SwapRecord } from './model';
 import { burdenOf, weightOf } from './burden';
@@ -291,5 +291,34 @@ describe('Nexo picks a slot', () => {
     const first = plan(input());
     const item = first.items.find((i) => i.taskId === 'aspirar')!;
     expect(nexoPick(input({ busy: { a: wall(), b: wall() }, existing: first.items }), item)).toBeNull();
+  });
+});
+
+describe('closing chores', () => {
+  // His words, 2026-11-22: "Clean the kitchen sink and take down the trash should be done in sequence at the very end once everything
+  // else is done." The live sink chore was added in the app, weekly and measured, and is found by name.
+  const sink = { id: 'clean-kitchen-sink-7d1', names: { en: 'Clean kitchen sink', es: 'Clean kitchen sink', ja: 'Clean kitchen sink' }, icon: '🚰', category: 'kitchen' as const,
+    freq: { times: 1, perDays: 7 }, mode: 'measured' as const, priorMinutes: 15, active: true };
+  it('the migration marks the sink 1 and the rubbish 2', () => {
+    const m = migrateTasks([sink, (({ closing: _c, ...t }) => t)(REAL_SEED.find((t) => t.id === 'basura')!), REAL_SEED.find((t) => t.id === 'platos')!]);
+    expect(m.map((t) => t.closing)).toEqual([1, 2, undefined]);
+  });
+  it('plans the sink and then the rubbish, back to back, after every other chore of the day', () => {
+    const tasks = migrateTasks([...SEED, sink]);
+    const busy = { a: [ev(1, '17:00', '20:00')], b: [ev(2, '18:00', '21:00')] };
+    const out = plan(input({ tasks, busy }));
+    expect(findCollisions(out.items, busy, S.bufferMin)).toEqual([]);
+    const sinks = out.items.filter((i) => i.taskId === sink.id);
+    expect(sinks.length).toBeGreaterThanOrEqual(1);
+    for (const sk of sinks) {
+      const trash = out.items.find((i) => i.taskId === 'basura' && dayKey(i.start) === dayKey(sk.start))!;
+      expect(trash).toBeDefined();
+      expect(trash.start).toBe(sk.end);
+    }
+    for (const trash of out.items.filter((i) => i.taskId === 'basura')) {
+      const rest = out.items.filter((i) => dayKey(i.start) === dayKey(trash.start) && i.taskId !== 'basura' && i.taskId !== sink.id);
+      const sk = sinks.find((i) => dayKey(i.start) === dayKey(trash.start));
+      for (const r of rest) expect(r.end).toBeLessThanOrEqual(sk ? sk.start : trash.start);
+    }
   });
 });

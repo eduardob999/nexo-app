@@ -240,10 +240,28 @@ export function plan(input: PlanInput): PlanOutput {
     let best: { uid: string; start: number; score: number } | undefined;
     const prev = sticky.filter((e) => e.taskId === task.id && !retained.has(e.id) && e.start >= o.earliest - DAY / 2 && e.start <= o.latest + DAY / 2).sort((a, b) => Math.abs(a.start - o.ideal) - Math.abs(b.start - o.ideal))[0];
     const parentItem = o.parent;
+    const rank = task.closing;
     for (let day = dayStart(o.earliest, tz); day <= o.latest; day += DAY) {
       const r = region(day);
-      const lo = Math.max(r.from, o.earliest, now), hi = Math.min(r.to, o.latest + 1);
-      for (let start = Math.ceil(lo / GRID) * GRID; start + o.minutes * MIN <= hi; start += GRID) {
+      let lo = Math.max(r.from, o.earliest, now), hi = Math.min(r.to, o.latest + 1);
+      // a closing chore starts once every other chore of that day has ended, for either person, and may run to bedtime to manage it
+      let chain: PlannedItem | undefined, aim = 0;
+      if (rank) {
+        const dk = dayKey(day, tz);
+        const before = placed.filter((p) => dayKey(p.start, tz) === dk && !((tById.get(p.taskId)?.closing ?? 0) >= rank));
+        const tail = before.reduce((m, p) => Math.max(m, p.end), 0);
+        chain = before.filter((p) => tById.get(p.taskId)?.closing).sort((a, b) => b.end - a.end)[0];
+        lo = Math.max(lo, tail);
+        hi = Math.max(hi, Math.min(atHm(day, s.sleep.from), o.latest + 1));
+        // aim to end where the next closing chore can begin, so the two run back to back
+        const next = tasks.filter((t) => t.active && (t.closing ?? 0) > rank).reduce((m, t) => Math.max(m, regionFor(t, day, s, tz).from), 0);
+        aim = Math.max(lo, next - o.minutes * MIN);
+      }
+      const starts: number[] = [];
+      if (rank && lo % GRID) starts.push(lo);
+      for (let start = Math.ceil(lo / GRID) * GRID; start + o.minutes * MIN <= hi; start += GRID) starts.push(start);
+      for (const start of starts) {
+        if (start + o.minutes * MIN > hi) continue;
         const end = start + o.minutes * MIN;
         for (const m of members) {
           if (task.who && task.who.length && !task.who.includes(m.uid)) continue;
@@ -270,6 +288,10 @@ export function plan(input: PlanInput): PlanOutput {
           if (o.eaters && !o.eaters.includes(m.uid)) score += 2;
           if (input.declines?.some((d) => d.uid === m.uid && d.taskId === task.id && d.dow === weekday(start, tz))) score += 3;
           if (parentItem && parentItem.uid === m.uid) score -= 1;
+          if (rank) {
+            score += Math.abs(start - aim) / (60 * MIN);
+            if (chain) score += (start === chain.end ? -3 : 0) + (chain.uid === m.uid ? -1 : 0);
+          }
           if (prev && prev.uid === m.uid && !overloaded.has(m.uid)) score -= prev.start === start ? 2.5 : dayKey(prev.start, tz) === dayKey(start, tz) ? 1 : 0;
           if (!best || score < best.score - 1e-9) best = { uid: m.uid, start, score };
         }
@@ -290,7 +312,8 @@ export function plan(input: PlanInput): PlanOutput {
     dayLoad[k] = (dayLoad[k] ?? 0) + b;
   };
 
-  for (const o of occs.sort(order)) if (!heldBy(o)) place(o);
+  // closing chores wait until everything else is placed (step 6)
+  for (const o of occs.sort(order)) if (!o.task.closing && !heldBy(o)) place(o);
 
   // ---- 4. children of planned parents
   const children: Occ[] = [];
@@ -321,6 +344,10 @@ export function plan(input: PlanInput): PlanOutput {
     }
   }
   for (const o of mornings.sort(order)) if (!heldBy(o)) place(o);
+
+  // ---- 6. closing chores, last on their day and in their order: the kitchen sink, then the rubbish (his words, 2026-11-22)
+  const closers = occs.filter((o) => o.task.closing).sort((a, b) => (a.task.closing as number) - (b.task.closing as number) || order(a, b));
+  for (const o of closers) if (!heldBy(o)) place(o);
 
   const items = placed.sort((a, b) => a.start - b.start || (a.id < b.id ? -1 : 1));
   const moved = items.filter((i) => !i.frozen).flatMap((i) => {

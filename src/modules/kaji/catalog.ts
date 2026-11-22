@@ -36,7 +36,7 @@ export const SEED: TaskType[] = [
   t('sabanas', 'Lavar las sábanas', 'Wash the sheets', 'シーツを洗う', '🛏️', 'bed', 1, 14, 'measured', 10),
   t('poner-sabanas', 'Poner las sábanas luego de lavarlas', 'Put the sheets back on', 'シーツを敷く', '🛌', 'bed', 1, 14, 'measured', 10, { after: { taskId: 'sabanas', delayMin: 120 } }),
   t('panos', 'Lavar los paños', 'Wash the cloths and towels', 'ふきん・タオルを洗う', '🧻', 'laundry', 1, 7, 'measured', 10),
-  t('basura', 'Botar la basura', 'Take out the rubbish', 'ゴミ出し', '🗑️', 'trash', 1, 1, 'fixed', 5, { window: { from: '20:00', to: '22:30' } }),
+  t('basura', 'Botar la basura', 'Take out the rubbish', 'ゴミ出し', '🗑️', 'trash', 1, 1, 'fixed', 5, { window: { from: '20:00', to: '22:30' }, closing: 2 }),
   t('mercado', 'Ir al mercado, a Daiso o a Sugi', 'Shopping run (market, Daiso, Sugi)', '買い物（市場・ダイソー・スギ薬局）', '🛒', 'shopping', 1, 7, 'measured', 90),
   t('ordenar', 'Ordenar', 'Tidy up', '片付け', '✨', 'tidy', 1, 1, 'measured', 15, { freq: { times: 0, perDays: 1, adhoc: true } }),
 ];
@@ -49,8 +49,14 @@ export const CATEGORY_COLOR: Record<TaskType['category'], string> = {
  * Stored chores that predate a change in the seed. Only a chore still exactly as the old seed made it is updated, so nothing he edited is
  * overwritten. 2026-11-21: the dishes went from once after dinner to three times a day.
  */
+const SINK = /kitchen[ -]sink|fregadero|lavaplatos|lavaplato|流し|シンク/i;
+
 export function migrateTasks(stored: TaskType[]): TaskType[] {
   return stored.map((x) => {
+    // 2026-11-22, his words: the kitchen sink then the rubbish, "in sequence at the very end once everything else is done". The sink chore
+    // was added in the app (live id clean-kitchen-sink-7d1), so it is found by name. Only a chore whose `closing` was never set.
+    if (x.closing === undefined && x.id === 'basura') x = { ...x, closing: 2 };
+    if (x.closing === undefined && SINK.test(`${x.names?.en ?? ''} ${x.names?.es ?? ''} ${x.id}`)) x = { ...x, closing: 1 };
     // 2026-11-21: sorting and hanging the laundry are Carla's. Only a chore whose `who` was never set is changed, so a choice made in the app stands.
     if (CARLA_ONLY.includes(x.id) && x.who === undefined) return { ...x, who: [CARLA_UID] };
     // 2026-11-22: the rack is cleared the next morning, once; washing and cooking follow the meals eaten at home. Same rule: only a chore
