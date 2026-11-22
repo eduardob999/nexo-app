@@ -41,8 +41,8 @@ export interface PlanInput {
 export interface Unplaced { taskId: string; ideal: number; reason: string }
 export interface PlanOutput { items: PlannedItem[]; unplaced: Unplaced[]; moved: { id: string; fromUid: string; toUid: string; from: number; to: number }[] }
 
-/** `eaters`: for a chore that follows a meal, who ate it at home; they are preferred for it. */
-interface Occ { key: string; task: TaskType; window?: { from: string; to: string }; ideal: number; earliest: number; latest: number; minutes: number; parent?: PlannedItem; eaters?: string[] }
+/** `eaters`: for a chore that follows a meal, who ate it at home; they are preferred for it. `meal`: the meal it follows. `riders`: bundled chores it carries. */
+interface Occ { key: string; task: TaskType; window?: { from: string; to: string }; ideal: number; earliest: number; latest: number; minutes: number; parent?: PlannedItem; eaters?: string[]; meal?: number; riders?: Occ[] }
 
 const GRID = 15 * MIN;
 const HOME = /^home$/i;
@@ -135,7 +135,8 @@ export function plan(input: PlanInput): PlanOutput {
     placed.push({ ...f, frozen: true });
     const t = tById.get(f.taskId);
     if (t) {
-      const b = burdenOf(weight(t), dislikeOf(t, f.uid), s);
+      let b = burdenOf(weight(t), dislikeOf(t, f.uid), s);
+      for (const w of f.with ?? []) { const r = tById.get(w.taskId); if (r) b += burdenOf(weight(r), dislikeOf(r, f.uid), s); }
       load[f.uid] = (load[f.uid] ?? 0) + b;
       const k = f.uid + dayKey(f.start, tz);
       dayLoad[k] = (dayLoad[k] ?? 0) + b;
@@ -177,10 +178,10 @@ export function plan(input: PlanInput): PlanOutput {
           if (bestK >= 0) cancelled.add(bestK);
         }
         // a chore that follows a meal is planned only when someone eats that meal at home (Go out / Back home, or the calendars)
+        const mealOf = (k: number): number | undefined => (task.meals && task.meals.length ? task.meals[k] ?? task.meals[0] as number : undefined);
         const eatersOf = (k: number): string[] | undefined => {
-          if (!task.meals || !task.meals.length) return undefined;
-          const meal = task.meals[k] ?? task.meals[0] as number;
-          return mealsOn(d)[meal]?.home ?? uids;
+          const meal = mealOf(k);
+          return meal === undefined ? undefined : mealsOn(d)[meal]?.home ?? uids;
         };
         for (let k = already; k < task.freq.times; k++) {
           if (cancelled.has(k)) continue;
@@ -189,7 +190,8 @@ export function plan(input: PlanInput): PlanOutput {
           const win = wins ? (wins[k] as { from: string; to: string }) : undefined;
           const region = regionFor(win ? { ...task, window: win } : task, d, s, tz);
           if (region.to <= now) continue;
-          occs.push({ key: `${task.id}@${dayKey(d, tz)}#${k}`, task, ...(win ? { window: win } : {}), ...(eaters ? { eaters } : {}), ideal: Math.max(ideals[k] as number, now), earliest: d, latest: d + DAY - 1, minutes: minutesOf(task) });
+          const meal = mealOf(k);
+          occs.push({ key: `${task.id}@${dayKey(d, tz)}#${k}`, task, ...(win ? { window: win } : {}), ...(eaters ? { eaters } : {}), ...(meal !== undefined ? { meal } : {}), ideal: Math.max(ideals[k] as number, now), earliest: d, latest: d + DAY - 1, minutes: minutesOf(task) });
         }
       }
     } else {
@@ -218,13 +220,35 @@ export function plan(input: PlanInput): PlanOutput {
       occs.push({ key: `${task.id}@after-${parentDone}`, task, ideal, earliest: ideal, latest: ideal + (task.after.delayMin <= 180 ? 12 * 60 * MIN : 2 * DAY), minutes: minutesOf(task) });
     }
   }
+  // a bundled chore due on a day rides on its host occurrence that day (the kitchen sink on the after-dinner wash, his words 2026-11-22:
+  // "included in the night time dish washing by default"). No host that day, because nobody eats dinner at home, and it keeps its own slot.
+  const riding = new Set<Occ>();
+  for (const o of occs) {
+    const b = o.task.bundle;
+    if (!b) continue;
+    const dk = dayKey(o.ideal, tz);
+    if (frozen.some((f) => f.taskId === o.task.id && dayKey(f.start, tz) === dk)) continue;       // already planned on its own and frozen
+    const host = occs.find((h) => h !== o && !riding.has(h) && h.task.id === b.taskId && h.meal === b.meal && dayKey(h.ideal, tz) === dk);
+    if (!host) continue;
+    host.minutes += o.minutes;
+    host.riders = [...(host.riders ?? []), o];
+    riding.add(o);
+  }
+  /** The host could not carry its riders after all: they go back to being planned on their own. */
+  const dropped: Occ[] = [];
+  const unload = (o: Occ, keep: (r: Occ) => boolean = () => false) => {
+    for (const r of o.riders ?? []) if (!keep(r)) { riding.delete(r); o.minutes -= r.minutes; dropped.push(r); }
+    const left = (o.riders ?? []).filter(keep);
+    if (left.length) o.riders = left; else delete o.riders;
+  };
+
   // the freeze already holds some of them: do not plan a second copy
   // each frozen chore holds one occurrence, the nearest to where it sits (three dishes a day need three, not one)
   const used = new Set<string>();
-  const heldBy = (o: Occ) => {
+  const heldBy = (o: Occ): PlannedItem | undefined => {
     const f = frozen.filter((x) => x.taskId === o.task.id && !used.has(x.id) && x.start >= o.earliest && x.start <= o.latest).sort((a, b) => Math.abs(a.start - o.ideal) - Math.abs(b.start - o.ideal))[0];
     if (f) used.add(f.id);
-    return Boolean(f);
+    return f;
   };
 
   // ---- 3. order: fixed windows first, then by earliest deadline
@@ -233,7 +257,7 @@ export function plan(input: PlanInput): PlanOutput {
   const retained = new Set<string>();
   const sticky = existingIn.filter((e) => e.start > now && !frozen.includes(e));
 
-  const place = (o: Occ): void => {
+  const place = (o: Occ): boolean => {
     const task = o.task;
     const w = weight(task);
     const region = (day: number) => regionFor(o.window ? { ...task, window: o.window } : task, day, s, tz);
@@ -299,21 +323,37 @@ export function plan(input: PlanInput): PlanOutput {
     }
     if (!best) {
       unplaced.push({ taskId: task.id, ideal: o.ideal, reason: 'no free time for anyone before ' + dayKey(o.latest, tz) });
-      return;
+      return false;
     }
     let id = prev ? prev.id : o.key;
     if (placed.some((x) => x.id === id)) id = `${o.key}~${best.start}`;      // ids are unique, always: the calendar keys its events on them
     if (prev) retained.add(prev.id);
-    const item: PlannedItem = { id, taskId: task.id, uid: best.uid, start: best.start, end: best.start + o.minutes * MIN };
+    const item: PlannedItem = { id, taskId: task.id, uid: best.uid, start: best.start, end: best.start + o.minutes * MIN,
+      ...(o.riders?.length ? { with: o.riders.map((r) => ({ taskId: r.task.id, minutes: r.minutes })) } : {}) };
     placed.push(item);
-    const b = burdenOf(w, dislikeOf(task, best.uid), s);
+    let b = burdenOf(w, dislikeOf(task, best.uid), s);
+    for (const r of o.riders ?? []) b += burdenOf(weight(r.task), dislikeOf(r.task, best.uid), s);
     load[best.uid] = (load[best.uid] ?? 0) + b;
     const k = best.uid + dayKey(best.start, tz);
     dayLoad[k] = (dayLoad[k] ?? 0) + b;
+    return true;
   };
 
   // closing chores wait until everything else is placed (step 6)
-  for (const o of occs.sort(order)) if (!o.task.closing && !heldBy(o)) place(o);
+  const seen = new Set<Occ>();
+  for (const o of occs.sort(order)) {
+    if (o.task.closing || riding.has(o)) continue;
+    seen.add(o);
+    const f = heldBy(o);
+    // a host frozen before it carried a rider (an older plan) keeps its shape; the rider is planned on its own
+    if (f) { if (o.riders) unload(o, (r) => Boolean(f.with?.some((x) => x.taskId === r.task.id))); continue; }
+    if (!place(o) && o.riders) {
+      unplaced.pop();
+      unload(o);
+      place(o);
+    }
+  }
+  for (const r of dropped) if (!r.task.closing && !seen.has(r) && !heldBy(r)) place(r);
 
   // ---- 4. children of planned parents
   const children: Occ[] = [];
@@ -346,7 +386,7 @@ export function plan(input: PlanInput): PlanOutput {
   for (const o of mornings.sort(order)) if (!heldBy(o)) place(o);
 
   // ---- 6. closing chores, last on their day and in their order: the kitchen sink, then the rubbish (his words, 2026-11-22)
-  const closers = occs.filter((o) => o.task.closing).sort((a, b) => (a.task.closing as number) - (b.task.closing as number) || order(a, b));
+  const closers = occs.filter((o) => o.task.closing && !riding.has(o)).sort((a, b) => (a.task.closing as number) - (b.task.closing as number) || order(a, b));
   for (const o of closers) if (!heldBy(o)) place(o);
 
   const items = placed.sort((a, b) => a.start - b.start || (a.id < b.id ? -1 : 1));
@@ -355,6 +395,18 @@ export function plan(input: PlanInput): PlanOutput {
     return old && (old.uid !== i.uid || old.start !== i.start) ? [{ id: i.id, fromUid: old.uid, toUid: i.uid, from: old.start, to: i.start }] : [];
   });
   return { items, unplaced, moved };
+}
+
+/**
+ * The minutes logged for a planned chore that carried bundled ones, split by planned share, so the wash keeps learning its own length
+ * and the sink its own. Without riders everything goes to the chore itself.
+ */
+export function bundleSplit(item: PlannedItem | null, minutes: number): { main: number; with: { taskId: string; minutes: number }[] } {
+  const riders = item?.with ?? [];
+  if (!item || !riders.length) return { main: minutes, with: [] };
+  const total = Math.max(1, Math.round((item.end - item.start) / MIN));
+  const out = riders.map((r) => ({ taskId: r.taskId, minutes: Math.round((minutes * r.minutes) / total) }));
+  return { main: Math.max(0, minutes - out.reduce((a, r) => a + r.minutes, 0)), with: out };
 }
 
 /** Who would end up past the fair split by more than the tolerance if the plan on file were carried out as it stands. */

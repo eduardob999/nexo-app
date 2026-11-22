@@ -1,5 +1,5 @@
 import { estimateFor } from './adapt';
-import { CARLA_UID, SEED as REAL_SEED } from './catalog';
+import { CARLA_UID, migrateTasks, SEED as REAL_SEED } from './catalog';
 import { DEFAULT_SETTINGS, type Interval, type LogEvent, type Member } from './model';
 import { plan } from './planner';
 import type { KajiActions, KajiData } from './ui';
@@ -12,7 +12,9 @@ const B: Member = { uid: 'b', name: 'Carla', lang: 'en', role: 'member' };
 
 export function kajiFixture(now = NOW): { data: KajiData; actions: KajiActions } {
   const members = [A, B];
-  const SEED = REAL_SEED.map((t) => (t.who ? { ...t, who: t.who.map((u) => (u === CARLA_UID ? 'b' : u)) } : t));       // Carla's real uid is B here
+  // Carla's real uid is B here; the kitchen sink as it lives in the app (added there, weekly), so the preview shows it riding on the dinner wash
+  const SEED = migrateTasks([...REAL_SEED, { id: 'clean-kitchen-sink-7d1', names: { en: 'Clean kitchen sink', es: 'Clean kitchen sink', ja: 'Clean kitchen sink' }, icon: '🚰', category: 'kitchen' as const,
+    freq: { times: 1, perDays: 7 }, mode: 'measured' as const, priorMinutes: 15, active: true }]).map((t) => (t.who ? { ...t, who: t.who.map((u) => (u === CARLA_UID ? 'b' : u)) } : t));
   const log: LogEvent[] = [];
   let n = 0;
   const add = (taskId: string, uid: string, at: number, minutes: number, extra: Partial<LogEvent> = {}) => log.push({ id: `f${n++}`, taskId, uid, kind: 'done', at, minutes, planned: true, ...extra });

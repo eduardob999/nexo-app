@@ -8,10 +8,10 @@ import { customTask, eventFromTimer, isOpenTimer, startOpenTimer, type Kind } fr
 import { DismissSheet, RescheduleSheet } from './MoveSheets';
 import { HomeStrip } from './HomeStrip';
 import { clockText, elapsedMin, loadTimer, recentAnswers, saveTimer, type Running } from './timer';
-import { nexoPick, swapItem } from './planner';
+import { bundleSplit, nexoPick, swapItem } from './planner';
 import { clockLabel } from './time';
 import type { KajiActions, KajiData, Ratings } from './ui';
-import { latestSwap, memberColor, recentDone, swapButtonState, taskName, todayFor } from './view';
+import { latestSwap, memberColor, recentDone, swapButtonState, taskName, todayFor, withNames as withLabel } from './view';
 
 type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number; est?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'kind'; start: number; end: number } | { step: 'later'; task: TaskType; event: LogEvent } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
 
@@ -40,6 +40,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
   const theirs = others.flatMap((m) => todayFor(data.plan, m.uid, data.log, data.now).map((i) => ({ i, m })));
   // a request still shown to me only while its chore is still planned for the person who asked (a re-plan can change the id, so it is matched by chore and time too)
   const openSwaps = data.swaps.filter((s) => s.state === 'open' && s.toUid === data.me && swapItem(data.plan, s)?.uid === s.fromUid);
+  const withNames = (i: PlannedItem) => withLabel(i, byId, lang, t(lang, 'withWord'));
   const nameOf = (uid: string) => data.members.find((m) => m.uid === uid)?.name ?? '';
   /** The other person who may do this chore: the one a swap can be asked of. */
   const swapTarget = (task: TaskType) => others.find((m) => !task.who?.length || task.who.includes(m.uid));
@@ -70,8 +71,10 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
     const rates = askRates(mat, drifted(data.log, task.id), task, data.settings);
     const timed = startedAt !== undefined && running?.taskId === task.id;
     if (timed) { stop(); maybeRate(task, item, elapsedMin(startedAt as number, Date.now()), 1, startedAt); return; }       // he asked: finishing a timed chore always opens the form
-    if (task.mode === 'measured' && shouldAsk(rates.timer, rand)) { setFlow({ step: 'minutes', task, item }); return; }
-    const minutes = task.mode === 'fixed' ? task.priorMinutes : Math.round(est && est.n ? est.meanMin : task.priorMinutes);
+    // a wash that carried the sink: the planned length of both is the guess, and the split happens on commit
+    const both = item?.with?.length ? Math.round((item.end - item.start) / 60000) : undefined;
+    if (task.mode === 'measured' && shouldAsk(rates.timer, rand)) { setFlow({ step: 'minutes', task, item, ...(both ? { est: both } : {}) }); return; }
+    const minutes = both ?? (task.mode === 'fixed' ? task.priorMinutes : Math.round(est && est.n ? est.meanMin : task.priorMinutes));
     maybeRate(task, item, minutes, rates.rating);
   };
   // Logging without a timer always carries a duration: the estimate is offered first and one tap accepts it.
@@ -87,7 +90,8 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
   };
   const commit = async (task: TaskType, item: PlannedItem | null, minutes: number, r: Ratings, startedAt?: number) => {
     setFlow(null);
-    await actions.logDone(task.id, minutes, r, { planned: item !== null, ...(startedAt !== undefined ? { start: startedAt } : {}) });
+    const split = bundleSplit(item, minutes);
+    await actions.logDone(task.id, split.main, r, { planned: item !== null, ...(startedAt !== undefined ? { start: startedAt } : {}), ...(split.with.length ? { with: split.with } : {}) });
     setUndo({ id: '', label: taskName(task, lang) });
   };
 
@@ -132,7 +136,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
             return (
               <li key={i.id} className="kaji-item">
                 <span className="kaji-ic">{task.icon}</span>
-                <span className="kaji-main"><b>{taskName(task, lang)}</b>
+                <span className="kaji-main"><b>{taskName(task, lang)}{withNames(i)}</b>
                   <small className="mut">{clockLabel(i.start)}–{clockLabel(i.end)} · {task.mode === 'fixed' ? t(lang, 'fixedWindow') : `${Math.round((i.end - i.start) / 60000)} ${t(lang, 'minutes')}`}</small></span>
                 <span className="kaji-acts">
                   {on ? (
@@ -172,7 +176,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
               return task ? (
                 <li key={i.id} className="kaji-item kaji-dim">
                   <span className="kaji-ic">{task.icon}</span>
-                  <span className="kaji-main"><b>{taskName(task, lang)}</b><small className="mut">{clockLabel(i.start)} · {m.name}</small></span>
+                  <span className="kaji-main"><b>{taskName(task, lang)}{withNames(i)}</b><small className="mut">{clockLabel(i.start)} · {m.name}</small></span>
                   <i className="kaji-dot" style={{ background: memberColor(data.members.findIndex((x) => x.uid === m.uid)) }} />
                 </li>
               ) : null;

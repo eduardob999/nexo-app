@@ -48,3 +48,13 @@ describe('swap button state', () => {
     expect(latestSwap([sw({ itemId: 'gone' })], 'a', item)?.id).toBe('s');
   });
 });
+
+describe('withNames', () => {
+  it('names the chores a planned item carries', async () => {
+    const { withNames } = await import('./view');
+    const sink = { id: 's', names: { en: 'Clean kitchen sink', es: 'Limpiar el fregadero', ja: 'シンク' }, icon: '', category: 'kitchen' as const, freq: { times: 1, perDays: 7 }, mode: 'measured' as const, priorMinutes: 15, active: true };
+    const item = { id: 'x', taskId: 'platos', uid: 'a', start: 0, end: 1, with: [{ taskId: 's', minutes: 15 }] };
+    expect(withNames(item, new Map([['s', sink]]), 'en', 'with')).toBe(' with Clean kitchen sink');
+    expect(withNames({ ...item, with: [] }, new Map(), 'en', 'with')).toBe('');
+  });
+});

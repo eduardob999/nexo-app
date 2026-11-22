@@ -100,8 +100,8 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
       const declines = swaps.filter((s) => s.state === 'declined').map((s) => ({ uid: s.toUid, taskId: s.taskId, dow: weekday(s.start) }));
       const out = makePlan({ now, horizonDays: 7, tasks, members, estimates, log, busy: busyBy, existing: existing.current, settings, swaps, awayUntil: away, presence: awayDocs, notToday: notToday.filter((n) => n.day >= today), declines });
       setComputed({ items: out.items, unplaced: out.unplaced });
-      const sig = JSON.stringify(out.items.map((i) => [i.id, i.uid, i.start, i.pinned ? 1 : 0]));
-      if (sig !== lastSaved.current && sig !== JSON.stringify(existing.current.map((i) => [i.id, i.uid, i.start, i.pinned ? 1 : 0]))) { lastSaved.current = sig; void savePlan(hid, uid, out.items); }
+      const sig = JSON.stringify(out.items.map((i) => [i.id, i.uid, i.start, i.end, i.pinned ? 1 : 0]));
+      if (sig !== lastSaved.current && sig !== JSON.stringify(existing.current.map((i) => [i.id, i.uid, i.start, i.end, i.pinned ? 1 : 0]))) { lastSaved.current = sig; void savePlan(hid, uid, out.items); }
     }, 1200);
     return () => window.clearTimeout(handle);
   }, [hid, house, tasks, members, estimates, log, busy, settings, away, awayDocs, swaps, notToday, slot, uid]);
@@ -109,7 +109,10 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
   const actions = useMemo<KajiActions | null>(() => {
     if (!hid) return null;
     return {
-      logDone: async (taskId, minutes, r, o) => { await logEvent(hid, { taskId, uid, kind: 'done', at: Date.now(), minutes, planned: o?.planned ?? false, ...(o?.start !== undefined ? { start: o.start } : {}), ...(o?.custom ? { custom: o.custom.slice(0, 80) } : {}), ...(r.effort ? { effort: r.effort } : {}), ...(r.dislike ? { dislike: r.dislike } : {}), ...(r.enjoyment ? { enjoyment: r.enjoyment } : {}), ...(r.note?.trim() ? { note: r.note.trim().slice(0, 500) } : {}) }); },
+      logDone: async (taskId, minutes, r, o) => { await logEvent(hid, { taskId, uid, kind: 'done', at: Date.now(), minutes, planned: o?.planned ?? false, ...(o?.start !== undefined ? { start: o.start } : {}), ...(o?.custom ? { custom: o.custom.slice(0, 80) } : {}), ...(r.effort ? { effort: r.effort } : {}), ...(r.dislike ? { dislike: r.dislike } : {}), ...(r.enjoyment ? { enjoyment: r.enjoyment } : {}), ...(r.note?.trim() ? { note: r.note.trim().slice(0, 500) } : {}) });
+        // a bundled chore done in the same go is logged as done by the same person, so its frequency and the balance stay right
+        for (const w of o?.with ?? []) await logEvent(hid, { taskId: w.taskId, uid, kind: 'done', at: Date.now(), minutes: w.minutes, planned: true, ...(o?.start !== undefined ? { start: o.start } : {}) });
+      },
       rate: async (id, r) => rateEvent(hid, id, r),
       undo: async () => {},
       notToday: async (item) => addNotToday(hid, uid, item.taskId, dayKey(item.start)),

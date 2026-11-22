@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Face } from '../../SleepFeedback';
-import { CATEGORY_COLOR } from './catalog';
+import { CATEGORY_COLOR, DINNER_WASH } from './catalog';
 import { CATEGORY_LABEL, faces, t } from './i18n';
 import type { Category, Lang, TaskType } from './model';
 import type { KajiActions, KajiData } from './ui';
@@ -84,6 +84,10 @@ function EditSheet({ lang, data, task, isNew, onSave, onClose }: { lang: Lang; d
               onClick={() => { const cur = new Set(x.who ?? []); cur.has(m.uid) ? cur.delete(m.uid) : cur.add(m.uid); set({ who: [...cur] }); }}>{m.name}</button>)}
           </div>
         </div>
+        {x.category === 'kitchen' && x.id !== DINNER_WASH.taskId && !x.meals && !x.windows && !x.after && !x.morningAfter ? (
+          // his request, 2026-11-22: the sink is cleaned with the night wash by default; this is the switch to take it back out (null, kept by the migration)
+          <label className="kaji-field kaji-check"><input type="checkbox" checked={Boolean(x.bundle)} onChange={(e) => set({ bundle: e.target.checked ? { ...DINNER_WASH } : null })} /> <span>{t(lang, 'withDinnerWash')}</span></label>
+        ) : null}
         <label className="kaji-field kaji-check"><input type="checkbox" checked={x.active} onChange={(e) => set({ active: e.target.checked })} /> <span>{t(lang, 'active')}</span></label>
         <div className="sheet-foot"><button type="button" className="chip-btn" onClick={onClose}>{t(lang, 'skip')}</button><button type="submit" className="copy-main" disabled={!valid}>{t(lang, 'save')}</button></div>
       </form>

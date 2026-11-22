@@ -48,6 +48,14 @@ export interface TaskType {
    * everything else is done." The sink is 1, the rubbish 2. Its window may run past its usual end, up to bedtime, so the end can wait.
    */
   closing?: number;
+  /**
+   * Done in one go with another chore's occurrence after meal `meal` (0 breakfast, 1 lunch, 2 dinner): on a day this chore is due and that
+   * occurrence is planned, it is not planned on its own; the host carries it, one person, with both lengths added, and logging the host
+   * logs this one too. When the host is not planned (nobody eats that meal at home) it falls back to its own slot. His words, 2026-11-22:
+   * "The kitchen cleaning should be included in the night time dish washing by default." `null` means switched off on the edit screen,
+   * which the migration never overrides.
+   */
+  bundle?: { taskId: string; meal: number } | null;
   /** Uids allowed to do it. Empty or absent means anyone. */
   who?: string[];
   /** Replaces the learned difficulty when set. */
@@ -154,4 +162,6 @@ export interface PlannedItem {
   /** Fixed by a person (an accepted swap or a drag): kept exactly until it is past. */
   pinned?: boolean;
   reason?: string;
+  /** Chores done in the same go (TaskType.bundle), with their planned minutes; `end` already includes them. */
+  with?: { taskId: string; minutes: number }[];
 }

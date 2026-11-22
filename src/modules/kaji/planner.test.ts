@@ -4,7 +4,7 @@ import { CARLA_UID, SEED as REAL_SEED, migrateTasks } from './catalog';
 import { estimateFor } from './adapt';
 import { DEFAULT_SETTINGS as S, type Interval, type LogEvent, type Member, type PlannedItem, type SwapRecord } from './model';
 import { burdenOf, weightOf } from './burden';
-import { applySwaps, candidateSlots, findCollisions, nexoPick, plan, swapItem, type PlanInput } from './planner';
+import { applySwaps, bundleSplit, candidateSlots, findCollisions, nexoPick, plan, swapItem, type PlanInput } from './planner';
 import { atHm, dayKey, dayStart, DAY, MIN } from './time';
 
 /** The seed with Carla's real uid replaced by the test's B, so her chores can be planned here. */
@@ -304,7 +304,8 @@ describe('closing chores', () => {
     expect(m.map((t) => t.closing)).toEqual([1, 2, undefined]);
   });
   it('plans the sink and then the rubbish, back to back, after every other chore of the day', () => {
-    const tasks = migrateTasks([...SEED, sink]);
+    // with the bundle onto the dinner wash switched off (bundle: null), the sink keeps its own closing slot
+    const tasks = migrateTasks([...SEED, { ...sink, bundle: null }]);
     const busy = { a: [ev(1, '17:00', '20:00')], b: [ev(2, '18:00', '21:00')] };
     const out = plan(input({ tasks, busy }));
     expect(findCollisions(out.items, busy, S.bufferMin)).toEqual([]);
@@ -320,5 +321,87 @@ describe('closing chores', () => {
       const sk = sinks.find((i) => dayKey(i.start) === dayKey(trash.start));
       for (const r of rest) expect(r.end).toBeLessThanOrEqual(sk ? sk.start : trash.start);
     }
+  });
+});
+
+describe('bundled chores', () => {
+  // His words, 2026-11-22 23:06: "The kitchen cleaning should be included in the night time dish washing by default."
+  const sink = { id: 'clean-kitchen-sink-7d1', names: { en: 'Clean kitchen sink', es: 'Clean kitchen sink', ja: 'Clean kitchen sink' }, icon: '🚰', category: 'kitchen' as const,
+    freq: { times: 1, perDays: 7 }, mode: 'measured' as const, priorMinutes: 15, active: true };
+  const tasks = () => migrateTasks([...SEED, sink]);
+  const dinnerWash = (items: PlannedItem[], d: string) => items.find((i) => i.taskId === 'platos' && dayKey(i.start) === d && i.start >= atHm(dayStart(i.start), '19:30'));
+
+  it('the migration bundles the live sink onto the after-dinner wash, and leaves a switched-off or edited one alone', () => {
+    const [m] = migrateTasks([sink]);
+    expect(m!.bundle).toEqual({ taskId: 'platos', meal: 2 });
+    expect(m!.closing).toBe(1);
+    expect(migrateTasks([{ ...sink, bundle: null }])[0]!.bundle).toBeNull();
+    expect(migrateTasks([{ ...sink, closing: 3 }])[0]!.bundle).toBeUndefined();
+    expect(migrateTasks([REAL_SEED.find((t) => t.id === 'basura')!])[0]!.bundle).toBeUndefined();
+  });
+
+  it('plans no separate sink: the dinner wash carries it, one person, with both lengths added', () => {
+    const out = plan(input({ tasks: tasks() }));
+    expect(out.items.filter((i) => i.taskId === sink.id)).toEqual([]);
+    const hosts = out.items.filter((i) => i.with?.some((w) => w.taskId === sink.id));
+    expect(hosts.length).toBe(1);                         // weekly: once in the week
+    const h = hosts[0]!;
+    expect(h.taskId).toBe('platos');
+    expect(dinnerWash(out.items, dayKey(h.start))).toBe(h);
+    expect(h.with).toEqual([{ taskId: sink.id, minutes: 15 }]);
+    expect(h.end - h.start).toBe((10 + 15) * MIN);
+    // the rubbish is still the last chore of that day
+    const trash = out.items.find((i) => i.taskId === 'basura' && dayKey(i.start) === dayKey(h.start))!;
+    for (const r of out.items.filter((i) => dayKey(i.start) === dayKey(h.start) && i !== trash)) expect(r.end).toBeLessThanOrEqual(trash.start);
+  });
+
+  it('falls back to its own closing slot when nobody eats dinner at home that day', () => {
+    const first = plan(input({ tasks: tasks() }));
+    const d = dayKey(first.items.find((i) => i.with)!.start);
+    const n = Math.round((Date.parse(d + 'T00:00:00+09:00') - dayStart(NOW)) / DAY);
+    const out = plan(input({ tasks: tasks(), busy: { a: [ev(n, '18:00', '21:30', { place: 'Gion' })], b: [ev(n, '18:00', '21:30', { place: 'Gion' })] } }));
+    expect(dinnerWash(out.items, d)).toBeUndefined();
+    const own = out.items.filter((i) => i.taskId === sink.id);
+    expect(own.length).toBe(1);
+    expect(dayKey(own[0]!.start)).toBe(d);
+    expect(out.items.some((i) => i.with)).toBe(false);
+    const trash = out.items.find((i) => i.taskId === 'basura' && dayKey(i.start) === d)!;
+    expect(trash.start).toBe(own[0]!.end);
+  });
+
+  it('switched off, the sink is planned on its own again', () => {
+    const out = plan(input({ tasks: migrateTasks([...SEED, { ...sink, bundle: null }]) }));
+    expect(out.items.some((i) => i.with)).toBe(false);
+    expect(out.items.filter((i) => i.taskId === sink.id).length).toBe(1);
+  });
+
+  it('a frozen dinner wash planned before the bundle existed keeps its shape and the sink is planned on its own', () => {
+    const first = plan(input({ tasks: tasks() }));
+    const h = first.items.find((i) => i.with)!;
+    const { with: _w, ...bare } = h;
+    void _w;
+    const old = { ...bare, end: bare.start + 10 * MIN };
+    // an hour before it, inside the freeze window, with the day's earlier washes behind
+    const out = plan(input({ now: h.start - 60 * MIN, tasks: tasks(), existing: [old] }));
+    expect(out.items.find((i) => i.id === old.id)!.with).toBeUndefined();
+    expect(out.items.filter((i) => i.taskId === sink.id && dayKey(i.start) === dayKey(h.start)).length).toBe(1);
+  });
+
+  it('a frozen dinner wash that carries the sink keeps it, and the sink is not planned a second time', () => {
+    const t = tasks();
+    const out = plan(input({ tasks: t }));
+    const h = out.items.find((i) => i.with)!;
+    const again = plan(input({ now: h.start - 60 * MIN, tasks: t, existing: [h] }));
+    expect(again.items.filter((i) => i.taskId === sink.id)).toEqual([]);
+    expect(again.items.find((i) => i.id === h.id)!.with).toEqual(h.with);
+  });
+});
+
+describe('bundleSplit', () => {
+  it('splits the logged minutes of a wash that carried the sink by planned share', () => {
+    const item: PlannedItem = { id: 'x', taskId: 'platos', uid: 'a', start: 0, end: 25 * MIN, with: [{ taskId: 'sink', minutes: 15 }] };
+    expect(bundleSplit(item, 50)).toEqual({ main: 20, with: [{ taskId: 'sink', minutes: 30 }] });
+    expect(bundleSplit({ ...item, with: [] }, 12)).toEqual({ main: 12, with: [] });
+    expect(bundleSplit(null, 12)).toEqual({ main: 12, with: [] });
   });
 });

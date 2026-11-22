@@ -20,7 +20,7 @@ const en: Dict = {
   credit: 'Credit earned', swapAsk: 'Hand to', swapSent: 'Asked', swapOpen: 'Swap asked', accept: 'Accept', decline: 'Decline',
   out: 'I am out until', back: 'Back', away: 'Away', replan: 'Plan updated', baseline: 'How much do you mind each chore?', baselineAbout: 'One tap each. It decides who gets what.',
   add: 'Add', edit: 'Edit', name: 'Name', icon: 'Icon', category: 'Category', every: 'How often', times: 'times every', days: 'days', mode: 'Timing',
-  modeFixed: 'Fixed window (not timed)', modeMeasured: 'Timed', priorMinutes: 'Minutes (first guess)', windowFrom: 'From', windowTo: 'To', active: 'Active',
+  modeFixed: 'Fixed window (not timed)', modeMeasured: 'Timed', priorMinutes: 'Minutes (first guess)', windowFrom: 'From', windowTo: 'To', active: 'Active', withDinnerWash: 'Done with the after-dinner wash', withWord: 'with',
   allowed: 'Who can do it', everyone: 'Anyone', weightOverride: 'Fixed weight (tama)', history: 'Changes', settings: 'Settings',
   share: 'Share of the work', buffer: 'Space around events (min)', freeze: 'Chores this close never move (min)', slot: 'Daily chore time', quiet: 'Quiet hours', burden: 'How much a chore you mind counts',
   adhoc: 'Not scheduled, logged when done', tidy: 'Tidy up',

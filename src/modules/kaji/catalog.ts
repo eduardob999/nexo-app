@@ -49,6 +49,8 @@ export const CATEGORY_COLOR: Record<TaskType['category'], string> = {
  * Stored chores that predate a change in the seed. Only a chore still exactly as the old seed made it is updated, so nothing he edited is
  * overwritten. 2026-11-21: the dishes went from once after dinner to three times a day.
  */
+/** The after-dinner wash: the occurrence of the dishes that follows meal 2. */
+export const DINNER_WASH = { taskId: 'platos', meal: 2 };
 const SINK = /kitchen[ -]sink|fregadero|lavaplatos|lavaplato|流し|シンク/i;
 
 export function migrateTasks(stored: TaskType[]): TaskType[] {
@@ -57,6 +59,9 @@ export function migrateTasks(stored: TaskType[]): TaskType[] {
     // was added in the app (live id clean-kitchen-sink-7d1), so it is found by name. Only a chore whose `closing` was never set.
     if (x.closing === undefined && x.id === 'basura') x = { ...x, closing: 2 };
     if (x.closing === undefined && SINK.test(`${x.names?.en ?? ''} ${x.names?.es ?? ''} ${x.id}`)) x = { ...x, closing: 1 };
+    // 2026-11-22 23:06, his words: "The kitchen cleaning should be included in the night time dish washing by default." Only a sink chore
+    // still as the closing migration left it and never given a bundle (null is his switch-off on the edit screen, and stays).
+    if (x.bundle === undefined && x.closing === 1 && SINK.test(`${x.names?.en ?? ''} ${x.names?.es ?? ''} ${x.id}`)) x = { ...x, bundle: DINNER_WASH };
     // 2026-11-21: sorting and hanging the laundry are Carla's. Only a chore whose `who` was never set is changed, so a choice made in the app stands.
     if (CARLA_ONLY.includes(x.id) && x.who === undefined) return { ...x, who: [CARLA_UID] };
     // 2026-11-22: the rack is cleared the next morning, once; washing and cooking follow the meals eaten at home. Same rule: only a chore

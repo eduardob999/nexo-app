@@ -37,6 +37,11 @@ export function taskName(t: TaskType | undefined, lang: 'en' | 'es' | 'ja', id =
   return t ? t.names[lang] || t.names.en : id;
 }
 
+/** " with Clean kitchen sink": the chores a planned item carries in the same go (TaskType.bundle), empty when none. */
+export function withNames(item: PlannedItem, byId: Map<string, TaskType>, lang: 'en' | 'es' | 'ja', word: string): string {
+  return item.with?.length ? ` ${word} ${item.with.map((w) => taskName(byId.get(w.taskId), lang, w.taskId)).join(', ')}` : '';
+}
+
 /** Two colours, one per person, readable on light and dark. */
 export const MEMBER_COLORS = ['#3b6fe0', '#d0508a', '#2f9e8f', '#c98a2c'];
 export const memberColor = (index: number): string => MEMBER_COLORS[index % MEMBER_COLORS.length] as string;

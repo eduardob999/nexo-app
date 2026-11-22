@@ -26,7 +26,8 @@ export interface Ratings { effort?: number; dislike?: number; enjoyment?: number
 
 /** What the screens can do. The live module wires these to Firestore; the preview wires them to nothing. */
 export interface KajiActions {
-  logDone: (taskId: string, minutes: number, ratings: Ratings, opts?: { start?: number; planned?: boolean; custom?: string }) => Promise<void>;
+  /** `with`: chores done in the same go (a wash that carried the sink), each logged as done by the same person with its share of the minutes. */
+  logDone: (taskId: string, minutes: number, ratings: Ratings, opts?: { start?: number; planned?: boolean; custom?: string; with?: { taskId: string; minutes: number }[] }) => Promise<void>;
   /** Fill in or change the ratings and the comment of something already logged (the person's own entry only). */
   rate: (eventId: string, ratings: Ratings) => Promise<void>;
   undo: (eventId: string) => Promise<void>;

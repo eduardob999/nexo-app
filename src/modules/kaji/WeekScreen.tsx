@@ -4,7 +4,7 @@ import type { Lang, PlannedItem } from './model';
 import { candidateSlots } from './planner';
 import { clockLabel, dayStart, DAY } from './time';
 import type { KajiActions, KajiData } from './ui';
-import { groupByDay, isDone, memberColor, taskName } from './view';
+import { groupByDay, isDone, memberColor, taskName, withNames } from './view';
 
 const WD = { en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], es: ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'], ja: ['日', '月', '火', '水', '木', '金', '土'] } as const;
 
@@ -32,7 +32,7 @@ export function WeekScreen({ data, lang, actions }: { data: KajiData; lang: Lang
                   <li key={i.id} className="kaji-item kaji-tap" role="button" tabIndex={0} onClick={() => setOpen(i)} onKeyDown={(e) => { if (e.key === 'Enter') setOpen(i); }}>
                     <i className="kaji-bar" style={{ background: memberColor(idx) }} />
                     <span className="kaji-ic">{task.icon}</span>
-                    <span className="kaji-main"><b>{taskName(task, lang)}</b><small className="mut">{clockLabel(i.start)}–{clockLabel(i.end)} · {data.members[idx]?.name}{i.pinned ? ` · 📌 ${t(lang, 'pinned')}` : ''}</small></span>
+                    <span className="kaji-main"><b>{taskName(task, lang)}{withNames(i, byId, lang, t(lang, 'withWord'))}</b><small className="mut">{clockLabel(i.start)}–{clockLabel(i.end)} · {data.members[idx]?.name}{i.pinned ? ` · 📌 ${t(lang, 'pinned')}` : ''}</small></span>
                   </li>
                 ) : null;
               })}
