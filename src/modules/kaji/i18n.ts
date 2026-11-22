@@ -30,7 +30,7 @@ const en: Dict = {
   readings: 'Hiragana readings',
   ask: 'Ask Eduardo', askAbout: 'It lands on his board as a question. Nothing is done until he answers.', askKind: 'What kind?', askText: 'Write it in a line', askWhen: 'Which day?', askTime: 'Time (optional)', askSend: 'Send', askSent: 'Sent. He will see it on his board.', askShort: 'Write a little more.', askLong: 'Too long, keep it under 400 characters.', askNeedWhen: 'Pick a day.', myAsks: 'Your requests', askNew: 'sent', askDone: 'answered',
   move: 'Move', moveTitle: 'Move to a free slot', noSlots: 'No free slot in the next five days.', moved: 'Moved and pinned', pinned: 'Pinned',
-  reschedule: 'Reschedule', dismiss: 'Dismiss', laterToday: 'Later today', thisEvening: 'This evening', tomorrow: 'Tomorrow', pickTime: 'Pick another time', setTime: 'Move it',
+  reschedule: 'Reschedule', dismiss: 'Dismiss', laterToday: 'Later today', thisEvening: 'This evening', tomorrow: 'Tomorrow', nextWeekend: 'Next weekend', pickTime: 'Pick another time', setTime: 'Move it',
   rescheduleAbout: 'Pick a new time. Kaji keeps it and learns from it.', whyOptional: 'Why? (optional)',
   dismissAbout: 'Not needed, or could not be finished. It will not be planned again today.', dismissWhy: 'Why? (required)', confirmDismiss: 'Dismiss it',
   reasonNot_needed: 'Not needed', reasonNo_time: 'No time', reasonNot_enough: 'Not enough to do', reasonDislike: 'I dislike it', reasonOther: 'Other', karmaNote: 'It goes to the other person today, and you owe half its weight, doubling if you skip it again within 14 days. Doing it once clears it.', karma: 'Karma owed', reasonText: 'Say why in a few words', dismissed: 'Dismissed', movedTo: 'Moved to', cancel: 'Cancel',

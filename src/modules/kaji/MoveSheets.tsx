@@ -26,7 +26,7 @@ export function RescheduleSheet({ lang, task, item, now, settings, nexo = null, 
   const [note, setNote] = useState('');
   const [custom, setCustom] = useState('');
   const opts = rescheduleOptions(item, now, settings);
-  const label = (id: string, start: number) => `${t(lang, id === 'later' ? 'laterToday' : id === 'evening' ? 'thisEvening' : 'tomorrow')} · ${clockLabel(start)}`;
+  const label = (id: string, start: number) => `${t(lang, id === 'later' ? 'laterToday' : id === 'evening' ? 'thisEvening' : id === 'weekend' ? 'nextWeekend' : 'tomorrow')} · ${WD[weekday(start)]} ${clockLabel(start)}`;
   const customMs = custom ? Date.parse(`${custom}:00+09:00`) : NaN;
   const customOk = Number.isFinite(customMs) && customMs > now;
   const go = (start: number, toUid?: string) => onPick(start, reason, reason === 'other' ? note.trim() : '', toUid);

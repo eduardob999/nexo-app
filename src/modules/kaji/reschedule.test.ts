@@ -32,16 +32,17 @@ describe('dismiss reasons', () => {
 describe('reschedule options', () => {
   it('offers later today two hours on, this evening and tomorrow, all on the quarter hour', () => {
     const o = rescheduleOptions(item('basura', atHm(day(0), '10:00')), NOW, S);
-    expect(o.map((x) => x.id)).toEqual(['later', 'evening', 'tomorrow']);
+    expect(o.map((x) => x.id)).toEqual(['later', 'evening', 'tomorrow', 'weekend']);
     expect(o[0]!.start).toBe(atHm(day(0), '12:00'));
     expect(o[1]!.start).toBe(atHm(day(0), '19:00'));
     expect(o[2]!.start).toBe(atHm(day(1), '10:00'));
+    expect(o[3]!.start).toBe(atHm(day(7), '10:00'));   // today is Saturday: next weekend is the Saturday a week on
     for (const x of o) expect(x.start % (15 * MIN)).toBe(0);
   });
-  it('drops today choices that would run into the quiet hours, but always keeps tomorrow', () => {
+  it('drops today choices that would run into the quiet hours, but always keeps tomorrow and next weekend', () => {
     const late = Date.parse('2026-11-21T21:00:00+09:00');
     const o = rescheduleOptions(item('basura', late), late, S);
-    expect(o.map((x) => x.id)).toEqual(['tomorrow']);
+    expect(o.map((x) => x.id)).toEqual(['tomorrow', 'weekend']);
   });
 });
 

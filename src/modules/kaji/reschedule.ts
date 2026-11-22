@@ -1,5 +1,5 @@
 import type { LogEvent, PlannedItem, Reason, Settings, TaskType } from './model';
-import { atHm, dayKey, dayStart, DAY, hm, JST, MIN } from './time';
+import { atHm, dayKey, dayStart, DAY, hm, JST, MIN, weekday } from './time';
 
 /**
  * Rescheduling and dismissing a planned chore, and what the household's own moves teach the planner. All pure: the same log always gives
@@ -16,7 +16,7 @@ export function reasonValid(reason: Reason | null, text: string): boolean {
   return reason !== 'other' || text.trim().length > 0;
 }
 
-export interface RescheduleOption { id: 'later' | 'evening' | 'tomorrow'; start: number }
+export interface RescheduleOption { id: 'later' | 'evening' | 'tomorrow' | 'weekend'; start: number }
 
 const roundUp = (ms: number) => Math.ceil(ms / GRID) * GRID;
 
@@ -34,6 +34,10 @@ export function rescheduleOptions(item: PlannedItem, now: number, s: Pick<Settin
   const clock = item.start - dayStart(item.start, tz);
   const tomorrow = today + DAY + Math.max(clock, hm('07:30') * MIN);
   out.push({ id: 'tomorrow', start: tomorrow });
+  // next weekend: the Saturday after today (a week out when today is Saturday), at the chore's own clock time but not before 09:00
+  const toSat = ((6 - weekday(now, tz)) + 7) % 7 || 7;
+  const sat = today + toSat * DAY + Math.max(clock, hm('09:00') * MIN);
+  if (sat > tomorrow + DAY - 1) out.push({ id: 'weekend', start: sat });
   return out;
 }
 
