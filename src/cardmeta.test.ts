@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calendarLabel, cardTag, cardTags, holidayLine, placeLabel, placeUrl, priorityLabel } from './cardmeta';
+import { calendarLabel, cardTag, cardTags, holidayLine, placeLabel, placeUrl, priorityLabel, ringClass, tagKey } from './cardmeta';
 import type { Card } from './types';
 
 const c = (extra: Partial<Card>): Card => ({ id: 'x', status: 'open', for: 'you', ...extra });
@@ -61,5 +61,18 @@ describe('placeUrl', () => {
   });
   it('keeps a link that is already one', () => {
     expect(placeUrl(' https://maps.app.goo.gl/abc ')).toBe('https://maps.app.goo.gl/abc');
+  });
+});
+
+describe('tag colours', () => {
+  // His words, 2026-11-22: "Info card should have a green 'done' button instead of the yellow ones like the task card"
+  it('gives each known tag its own key and a new label the neutral one', () => {
+    expect(['TASK', 'INFO', 'QUESTION', 'ANSWER', 'ASSIGNMENT', 'TRIP', 'HOLIDAY', 'NEXO', 'MEETING', 'CLASS'].map(tagKey)).toEqual(['task', 'info', 'question', 'answer', 'assignment', 'trip', 'holiday', 'nexo', 'meeting', 'class']);
+    expect(tagKey('ERRAND')).toBe('other');
+  });
+  it('paints the Done ring by tag, except a TASK, which keeps its band colour', () => {
+    expect(ringClass({ id: 'x', status: 'open', for: 'you', type: 'INFO' } as Card)).toBe(' tag-info');
+    expect(ringClass({ id: 'x', status: 'open', for: 'you', type: 'TASK' } as Card)).toBe('');
+    expect(ringClass({ id: 'x', status: 'done', for: 'you', type: 'INFO' } as Card)).toBe('');
   });
 });

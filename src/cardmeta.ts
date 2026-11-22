@@ -22,6 +22,23 @@ export function cardTags(card: Card): string[] {
   return (t === 'ANSWER' || t === 'QUESTION') && card.trip ? [t, 'TRIP'] : [t];
 }
 
+/**
+ * Each tag has its own colour, used by its chip and by the card's Done ring. His words, 2026-11-22 (nmwrc3n0d3kw): "Info card should
+ * have a green 'done' button instead of the yellow ones like the task card, in fact each tag should give a distinctive color."
+ * A tag with no colour of its own (a new label) gets the neutral one. The palette lives in styles.css as --tg-<key>.
+ */
+const TAG_KEYS = ['task', 'info', 'question', 'answer', 'assignment', 'trip', 'holiday', 'nexo', 'meeting', 'class'];
+export function tagKey(tag: string | null | undefined): string {
+  const k = (tag ?? '').trim().toLowerCase();
+  return TAG_KEYS.includes(k) ? k : 'other';
+}
+
+/** The class a row wears for its Done ring: a TASK keeps its band's colour, as it always had; every other tag paints the ring its own. */
+export function ringClass(card: Card): string {
+  const t = cardTag(card);
+  return t && tagKey(t) !== 'task' ? ` tag-${tagKey(t)}` : '';
+}
+
 const YMD = /^\d{4}-\d{2}-\d{2}/;
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

@@ -8,6 +8,8 @@
   --later: #3a5a40; --later-ring: #4b7f52; --later-tint: #e7ece4;
   --prep: #1d5a85; --prep-ring: #2f7fb5; --prep-tint: #e1eef8;
   --urgent: #8f1d0a; --urgent-tint: #f8d6cc;
+  /* One colour per card tag (chip and Done ring), his request 2026-11-22: INFO green, each tag its own. Ink on tint is 5.6:1 or better. */
+  --tg-task: #7a4b00; --tg-task-t: #fdf1d6; --tg-info: #2b6a37; --tg-info-t: #e2f2e4; --tg-question: #2f3fd6; --tg-question-t: #e8eaff; --tg-answer: #0b6461; --tg-answer-t: #daf2ef; --tg-assignment: #4b2da8; --tg-assignment-t: #e9e5fb; --tg-trip: #1d5a85; --tg-trip-t: #e1eef8; --tg-holiday: #9c1f63; --tg-holiday-t: #fbe3ef; --tg-nexo: #4a5260; --tg-nexo-t: #e6e9ee; --tg-meeting: #8a3b12; --tg-meeting-t: #fbe6da; --tg-class: #5a5900; --tg-class-t: #f0f0cc;
   --sans: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic UI', Meiryo, sans-serif;
   --mono: 'DM Mono', ui-monospace, monospace;
   color-scheme: light dark;
@@ -22,6 +24,7 @@
     --later: #b4dcba; --later-ring: #7fb88b; --later-tint: #223a28;
     --prep: #a4d3f5; --prep-ring: #5aa6dc; --prep-tint: #17324a;
     --urgent: #ffc8b8; --urgent-tint: #6b2314;
+    --tg-task: #f7d27e; --tg-task-t: #43340f; --tg-info: #a8e0b2; --tg-info-t: #1f3d26; --tg-question: #b0b9ff; --tg-question-t: #232945; --tg-answer: #8fdcd6; --tg-answer-t: #133d3b; --tg-assignment: #c8b8ff; --tg-assignment-t: #33296a; --tg-trip: #a4d3f5; --tg-trip-t: #17324a; --tg-holiday: #f6a9d0; --tg-holiday-t: #4a1a33; --tg-nexo: #c3cad6; --tg-nexo-t: #2c323c; --tg-meeting: #ffc19e; --tg-meeting-t: #4a2616; --tg-class: #e4e38a; --tg-class-t: #3a3a12;
   }
 }
 :root[data-theme='dark'] {
@@ -33,6 +36,7 @@
     --later: #b4dcba; --later-ring: #7fb88b; --later-tint: #223a28;
     --prep: #a4d3f5; --prep-ring: #5aa6dc; --prep-tint: #17324a;
     --urgent: #ffc8b8; --urgent-tint: #6b2314;
+    --tg-task: #f7d27e; --tg-task-t: #43340f; --tg-info: #a8e0b2; --tg-info-t: #1f3d26; --tg-question: #b0b9ff; --tg-question-t: #232945; --tg-answer: #8fdcd6; --tg-answer-t: #133d3b; --tg-assignment: #c8b8ff; --tg-assignment-t: #33296a; --tg-trip: #a4d3f5; --tg-trip-t: #17324a; --tg-holiday: #f6a9d0; --tg-holiday-t: #4a1a33; --tg-nexo: #c3cad6; --tg-nexo-t: #2c323c; --tg-meeting: #ffc19e; --tg-meeting-t: #4a2616; --tg-class: #e4e38a; --tg-class-t: #3a3a12;
 }
 :root[data-theme='light'] { color-scheme: light; }
 :root[data-theme='dark'] { color-scheme: dark; }
@@ -72,7 +76,7 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .row.band-assignment { --ring: var(--assign); --tint: var(--assign-tint); --meta: var(--assign); }
 .row.band-qa { --ring: var(--accent); --meta: var(--accent); }
 .row.band-urgent { --ring: var(--urgent); --tint: var(--urgent-tint); --meta: var(--urgent); }
-.row.band-urgent .ring { background: var(--urgent-tint); border-width: 3px; }
+.row.band-urgent .ring { background: var(--tint); border-width: 3px; }
 .row.band-overdue { --ring: var(--now); --tint: var(--now-tint); --meta: var(--now); }
 .row.band-prep { --ring: var(--prep-ring); --tint: var(--prep-tint); --meta: var(--prep); }
 .row.band-other { --ring: var(--later-ring); --tint: var(--later-tint); --meta: var(--later); }
@@ -263,6 +267,10 @@ section + section .band-title { border-top: 1px solid var(--line); padding-top: 
 .qchip:active { background: var(--chip); }
 .thread { padding-bottom: calc(300px + env(safe-area-inset-bottom)); }
 .tagchip { padding: 1px 7px; border-radius: 6px; background: var(--chip); color: var(--muted); font: 600 11px/18px var(--mono); letter-spacing: .04em; }
+.tagchip.tag-task { background: var(--tg-task-t); color: var(--tg-task); } .tagchip.tag-info { background: var(--tg-info-t); color: var(--tg-info); } .tagchip.tag-question { background: var(--tg-question-t); color: var(--tg-question); } .tagchip.tag-answer { background: var(--tg-answer-t); color: var(--tg-answer); } .tagchip.tag-assignment { background: var(--tg-assignment-t); color: var(--tg-assignment); } .tagchip.tag-trip { background: var(--tg-trip-t); color: var(--tg-trip); } .tagchip.tag-holiday { background: var(--tg-holiday-t); color: var(--tg-holiday); } .tagchip.tag-nexo { background: var(--tg-nexo-t); color: var(--tg-nexo); } .tagchip.tag-meeting { background: var(--tg-meeting-t); color: var(--tg-meeting); } .tagchip.tag-class { background: var(--tg-class-t); color: var(--tg-class); } 
+/* the Done ring takes the tag colour; a TASK keeps its band colour (ringClass in cardmeta.ts adds no class for it) */
+.row.tag-info { --ring: var(--tg-info); --tint: var(--tg-info-t); } .row.tag-question { --ring: var(--tg-question); --tint: var(--tg-question-t); } .row.tag-answer { --ring: var(--tg-answer); --tint: var(--tg-answer-t); } .row.tag-assignment { --ring: var(--tg-assignment); --tint: var(--tg-assignment-t); } .row.tag-trip { --ring: var(--tg-trip); --tint: var(--tg-trip-t); } .row.tag-holiday { --ring: var(--tg-holiday); --tint: var(--tg-holiday-t); } .row.tag-nexo { --ring: var(--tg-nexo); --tint: var(--tg-nexo-t); } .row.tag-meeting { --ring: var(--tg-meeting); --tint: var(--tg-meeting-t); } .row.tag-class { --ring: var(--tg-class); --tint: var(--tg-class-t); } 
+.tagchips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .pin { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-family: var(--sans); font-weight: 500; max-width: 12em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* relays */

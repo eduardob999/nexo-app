@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { cardTags, holidayLine, placeLabel, placeUrl } from './cardmeta';
+import { cardTags, holidayLine, placeLabel, placeUrl, ringClass, tagKey } from './cardmeta';
 import { isHis, nexoSection, SECTION_LABEL, SECTION_ORDER } from './nexo';
 import { NexoPanel } from './NexoPanel';
 import { Nearby } from './Nearby';
@@ -137,7 +137,7 @@ function Row({ onFude, card, now, onDone, onLater, hasDraft, closeable = false, 
   const heat = band === 'assignment' ? assignmentHeat(card, now) : null;
   const approaching = !!heat && (heat.level === 'soon' || heat.level === 'critical' || heat.level === 'overdue');
   return (
-    <li className={`row band-${band}${heat ? ` heat-${heat.level}` : ''}${approaching ? ' approaching' : ''}${isNewCard(card) ? ' is-new' : ''}${pick.picked ? ' picked' : ''}`}>
+    <li className={`row band-${band}${ringClass(card)}${heat ? ` heat-${heat.level}` : ''}${approaching ? ' approaching' : ''}${isNewCard(card) ? ' is-new' : ''}${pick.picked ? ' picked' : ''}`}>
       {pick.selecting
         ? <input type="checkbox" className="pickbox" checked={pick.picked} aria-label={`Select: ${title}`} onChange={() => pick.onPick(card)} />
         : <button className="ring" aria-label={`Mark done: ${title}`} onClick={() => onDone(card)} />}
@@ -146,7 +146,7 @@ function Row({ onFude, card, now, onDone, onLater, hasDraft, closeable = false, 
           {approaching ? <span className="deadline-kicker">{heat?.level === 'overdue' ? 'Overdue' : 'Due soon'}</span> : null}
           <span className="row-title">{isNewCard(card) ? <i className="new-dot" aria-label="New message from Nexo" /> : null}{title}</span>
           <span className="row-meta">
-            {cardTags(card).map((t) => <span key={t} className="tagchip">{t}</span>)}
+            {cardTags(card).map((t) => <span key={t} className={`tagchip tag-${tagKey(t)}`}>{t}</span>)}
             {mins !== null ? <span className="countdown">{countdownText(mins)}</span> : null}
             {heat ? <span className={`heat-chip heat-${heat.level}${approaching ? ' big' : ''}`}>{heat.label}</span> : null}
             <CalendarIcon />{dueText(card, now)}

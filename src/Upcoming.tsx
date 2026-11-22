@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Card } from './types';
 import { bandOf, dueText } from './urgency';
+import { ringClass } from './cardmeta';
 
 interface Props {
   cards: Card[];
@@ -68,7 +69,7 @@ export function Upcoming({ cards, now, onDone }: Props) {
           <h2 className="day-title">{label(k)}</h2>
           <ul className="rows panel-flat">
             {(byDay.get(k) ?? []).map((c) => (
-              <li key={c.id} className={`row band-${bandOf(c, now)}`}>
+              <li key={c.id} className={`row band-${bandOf(c, now)}${ringClass(c)}`}>
                 <button className="ring" aria-label={`Mark done: ${c.title ?? c.id}`} onClick={() => onDone(c)} />
                 <a className="row-main link" href={`#/card/${c.id}`}>
                   <span className="row-title">{c.title ?? c.id}</span>
@@ -84,7 +85,7 @@ export function Upcoming({ cards, now, onDone }: Props) {
           <h2 className="day-title">No date</h2>
           <ul className="rows panel-flat">
             {undated.map((c) => (
-              <li key={c.id} className="row band-later">
+              <li key={c.id} className={`row band-later${ringClass(c)}`}>
                 <button className="ring" aria-label={`Mark done: ${c.title ?? c.id}`} onClick={() => onDone(c)} />
                 <a className="row-main link" href={`#/card/${c.id}`}><span className="row-title">{c.title ?? c.id}</span></a>
               </li>
