@@ -8,7 +8,7 @@ import { atHm, dayKey, dayStart, DAY, hm, JST, MIN } from './time';
  */
 
 const GRID = 15 * MIN;
-export const NEEDS_REASON: Reason[] = ['not_needed', 'no_time', 'not_enough', 'other'];
+export const NEEDS_REASON: Reason[] = ['not_needed', 'no_time', 'not_enough', 'dislike', 'other'];
 
 /** A dismissal must say why: a preset, or `other` with some words. */
 export function reasonValid(reason: Reason | null, text: string): boolean {
@@ -46,6 +46,8 @@ export function skipsFromLog(log: LogEvent[], now: number, tz = JST): Skip[] {
   const from = dayStart(now, tz);
   for (const e of log) {
     if (typeof e.plannedStart !== 'number' || e.plannedStart < from) continue;
+    // "I dislike it" does not cancel the chore: it still has to be done, so the planner hands it to someone else that day (karma.ts)
+    if (e.kind === 'dismissed' && e.reason === 'dislike') continue;
     if (e.kind === 'dismissed') out.push({ taskId: e.taskId, day: dayKey(e.plannedStart, tz), at: e.plannedStart, reason: e.reason ?? 'other' });
     else if (e.kind === 'rescheduled' && typeof e.newStart === 'number' && dayKey(e.newStart, tz) !== dayKey(e.plannedStart, tz)) out.push({ taskId: e.taskId, day: dayKey(e.plannedStart, tz), at: e.plannedStart, reason: 'moved' });
   }
@@ -54,7 +56,7 @@ export function skipsFromLog(log: LogEvent[], now: number, tz = JST): Skip[] {
 
 /** When a chore was last settled without being done: dismissed because it was not needed (not merely not today), so the next one counts from there. */
 export function dismissedAt(log: LogEvent[], taskId: string): number {
-  return log.filter((e) => e.taskId === taskId && e.kind === 'dismissed' && e.reason !== 'no_time' && typeof e.plannedStart === 'number')
+  return log.filter((e) => e.taskId === taskId && e.kind === 'dismissed' && e.reason !== 'no_time' && e.reason !== 'dislike' && typeof e.plannedStart === 'number')
     .reduce((m, e) => Math.max(m, e.plannedStart as number), 0);
 }
 

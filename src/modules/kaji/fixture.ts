@@ -35,12 +35,15 @@ export function kajiFixture(now = NOW): { data: KajiData; actions: KajiActions }
     a: [{ start: atHm(dayStart(now) + DAY, '11:00'), end: atHm(dayStart(now) + DAY, '13:00'), place: '園山大弓場' }, { start: atHm(dayStart(now) + 3 * DAY, '10:00'), end: atHm(dayStart(now) + 3 * DAY, '19:00'), place: 'Uji campus' }],
     b: [{ start: atHm(dayStart(now) + 2 * DAY, '17:00'), end: atHm(dayStart(now) + 2 * DAY, '21:00'), label: 'Class' }],
   };
-  const out = plan({ now, horizonDays: 7, tasks: SEED, members, estimates, log, busy, existing: [], settings: DEFAULT_SETTINGS });
+  // Carla pressed Go out at 17:35, so the Today screen shows both states and dinner is planned for one
+  const presence = { b: { until: now + 3 * 3_600_000, out: true, at: now - 30 * MIN } };
+  const away = { b: presence.b.until };
+  const out = plan({ now, horizonDays: 7, tasks: SEED, members, estimates, log, busy, existing: [], settings: DEFAULT_SETTINGS, presence, awayUntil: away });
   const data: KajiData = {
     hid: 'h', me: 'a', house: { name: 'Casa', members: { a: 'owner', b: 'member' }, createdAt: now - 30 * DAY, names: { a: 'Eduardo', b: 'Carla' } },
-    members, tasks: SEED, log, survey, settings: DEFAULT_SETTINGS, away: {}, busy, plan: out.items, unplaced: out.unplaced, swaps: [], estimates, now,
+    members, tasks: SEED, log, survey, settings: DEFAULT_SETTINGS, away, presence, busy, plan: out.items, unplaced: out.unplaced, swaps: [], estimates, now,
   };
   const noop = async () => {};
-  return { data, actions: { logDone: noop, rate: noop, undo: noop, notToday: noop, reschedule: noop, dismiss: noop, move: noop, askSwap: noop, answerSwap: noop, saveTask: noop, saveSettings: noop, saveSurvey: noop, setAway: noop, invite: noop, ask: noop } };
+  return { data, actions: { logDone: noop, rate: noop, undo: noop, notToday: noop, reschedule: noop, dismiss: noop, move: noop, askSwap: noop, answerSwap: noop, saveTask: noop, saveSettings: noop, saveSurvey: noop, setAway: noop, setPresence: noop, invite: noop, ask: noop } };
 }
 export { MIN };

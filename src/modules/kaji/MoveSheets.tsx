@@ -49,7 +49,7 @@ export function RescheduleSheet({ lang, task, item, now, settings, nexo = null, 
           <span className="kaji-row"><input type="datetime-local" value={custom} min={`${dayKey(now)}T00:00`} max={`${dayKey(now + 6 * DAY)}T23:59`} onChange={(e) => setCustom(e.target.value)} />
             <button type="button" className="chip-btn" disabled={!customOk} onClick={() => go(customMs)}>{t(lang, 'setTime')}</button></span></label>
         <p className="mut sheet-sub">{t(lang, 'whyOptional')}</p>
-        <Chips lang={lang} value={reason} onPick={setReason} list={REASONS} />
+        <Chips lang={lang} value={reason} onPick={setReason} list={REASONS.filter((r) => r !== 'dislike')} />
         {reason === 'other' ? <input className="kaji-text" maxLength={200} value={note} placeholder={t(lang, 'reasonText')} onChange={(e) => setNote(e.target.value)} /> : null}
         <div className="sheet-foot"><button type="button" className="chip-btn" onClick={onCancel}>{t(lang, 'cancel')}</button></div>
       </div>
@@ -70,6 +70,7 @@ export function DismissSheet({ lang, task, onConfirm, onCancel }: { lang: Lang; 
         <p className="mut sheet-sub">{t(lang, 'dismissAbout')}</p>
         <p className="mut sheet-sub">{t(lang, 'dismissWhy')}</p>
         <Chips lang={lang} value={reason} onPick={setReason} list={REASONS} />
+        {reason === 'dislike' ? <p className="mut sheet-sub" role="note">{t(lang, 'karmaNote')}</p> : null}
         <input className="kaji-text" maxLength={200} value={note} placeholder={t(lang, 'reasonText')} onChange={(e) => setNote(e.target.value)} />
         <div className="sheet-foot">
           <button type="button" className="chip-btn" onClick={onCancel}>{t(lang, 'cancel')}</button>

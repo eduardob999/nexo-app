@@ -21,7 +21,8 @@ export type Swap = SwapRecord;
 export interface PlanDoc { items: PlannedItem[]; at: number; by: string; v?: number }
 export interface BusyDoc { events: Record<string, Interval[]>; at: number }
 export interface SurveyDoc { answers: Record<string, number>; at: number }
-export interface AwayDoc { until: number }
+/** Also the Go out / Back home press (home.ts Presence): `out`, `home` and `at` beside `until`. The rules already let members write any field here. */
+export interface AwayDoc { until: number; out?: boolean; home?: boolean; at?: number }
 
 /** Security rules read the household a moment after it is written, so a write or read made at once can be refused for a split second.
  * Found by testing the live rules with throwaway users: same call, 1.5 seconds later, allowed. Retry only that error. */
@@ -97,6 +98,10 @@ export function watchSurvey(hid: string, on: (s: Record<string, Record<string, n
 export function watchAway(hid: string, on: (a: Record<string, number>) => void): () => void {
   return onSnapshot(sub(hid, 'away'), (s) => on(Object.fromEntries(s.docs.map((d) => [d.id, (d.data() as AwayDoc).until]))), () => on({}));
 }
+/** The whole away documents, for who is home: the planner's away-until map is derived from these. */
+export function watchAwayDocs(hid: string, on: (a: Record<string, AwayDoc>) => void): () => void {
+  return onSnapshot(sub(hid, 'away'), (s) => on(Object.fromEntries(s.docs.map((d) => [d.id, d.data() as AwayDoc]))), () => on({}));
+}
 export function watchSwaps(hid: string, on: (s: Swap[]) => void): () => void {
   return onSnapshot(sub(hid, 'swaps'), (s) => on(s.docs.map((d) => d.data() as Swap)), () => on([]));
 }
@@ -133,6 +138,8 @@ export const addNotToday = (hid: string, uid: string, taskId: string, day: strin
   setDoc(doc(sub(hid, 'requests'), `nt-${uid}-${taskId}-${day}`), { kind: 'notToday', uid, taskId, day, at: Date.now() });
 export const setAway = (hid: string, uid: string, until: number) => setDoc(doc(sub(hid, 'away'), uid), { until });
 export const clearAway = (hid: string, uid: string) => deleteDoc(doc(sub(hid, 'away'), uid));
+/** Go out or Back home, for either person: whoever is at the phone can press it for the other too. */
+export const setPresence = (hid: string, uid: string, p: AwayDoc) => setDoc(doc(sub(hid, 'away'), uid), clean(p));
 
 export async function proposeSwap(hid: string, item: PlannedItem, toUid: string): Promise<void> {
   const id = newId();

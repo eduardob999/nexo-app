@@ -53,7 +53,7 @@ export function BalanceScreen({ data, lang }: { data: KajiData; lang: Lang }) {
         <div className="kaji-cols">
           {data.members.map((m, i) => (
             <div key={m.uid}><i className="kaji-dot" style={{ background: memberColor(i) }} /> <b>{m.name}</b>
-              <small className="mut">{Math.round((b.perUid[m.uid]?.minutes ?? 0))} {t(lang, 'minutes')} · {t(lang, 'credit')} {(b.perUid[m.uid]?.credit ?? 0).toFixed(1)}</small></div>
+              <small className="mut">{Math.round((b.perUid[m.uid]?.minutes ?? 0))} {t(lang, 'minutes')} · {t(lang, 'credit')} {(b.perUid[m.uid]?.credit ?? 0).toFixed(1)}{(b.perUid[m.uid]?.karma ?? 0) > 0.05 ? ` · ${t(lang, 'karma')} ${(b.perUid[m.uid]?.karma ?? 0).toFixed(1)}` : ''}</small></div>
           ))}
         </div>
       </div>

@@ -32,6 +32,16 @@ export interface TaskType {
   windows?: { from: string; to: string }[];
   /** Done after another chore: starts `delayMin` minutes after that one ends. */
   after?: { taskId: string; delayMin: number };
+  /**
+   * Meals this chore follows (0 breakfast, 1 lunch, 2 dinner): an occurrence is planned only when that meal is eaten at home by someone.
+   * With `windows`, occurrence k follows meal `meals[k]`. His request, 2026-11-21: "we eat 3 times a day", no wash for a meal eaten out.
+   */
+  meals?: number[];
+  /**
+   * Planned the morning after a day on which this other chore happened, inside `window`, never the same evening. The dish rack, his
+   * words 2026-11-21: "Clear the dishes rack should be done the next day, so nothing left for me."
+   */
+  morningAfter?: string;
   /** Uids allowed to do it. Empty or absent means anyone. */
   who?: string[];
   /** Replaces the learned difficulty when set. */
@@ -73,8 +83,8 @@ export interface LogEvent {
 }
 
 /** Why a chore was dismissed or moved. `other` carries free text in `note`. */
-export type Reason = 'not_needed' | 'no_time' | 'not_enough' | 'other';
-export const REASONS: Reason[] = ['not_needed', 'no_time', 'not_enough', 'other'];
+export type Reason = 'not_needed' | 'no_time' | 'not_enough' | 'dislike' | 'other';
+export const REASONS: Reason[] = ['not_needed', 'no_time', 'not_enough', 'dislike', 'other'];
 
 export interface Settings {
   /** Share of total burden each member should carry, by uid. Equal when absent. */
@@ -92,12 +102,27 @@ export interface Settings {
   quiet: { from: string; to: string };
   /** Data questions: a person's spot-check rate floor. */
   askFloor: number;
+  /** When each of the three meals is eaten (breakfast, lunch, dinner). A person out of home across the middle of one eats it out. */
+  meals?: { from: string; to: string }[];
+  /** "Go out" with no return time: assumed back after this many minutes, unless "Back home" is pressed first. */
+  outDefaultMin?: number;
+  /** Karma: a skip only because the chore is disliked owes this share of its weight, doubled per repeat inside `karmaRepeatDays`. */
+  karmaShare?: number;
+  karmaRepeatDays?: number;
+  /** Doublings stop here, so one chore can never owe more than 2^this times the first penalty. */
+  karmaMaxDoublings?: number;
+  /** Tama a person may run ahead of the fair split in the plan before the plan stops keeping chores where they were and rebalances. */
+  rebalanceTama?: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   windowDays: 28, burdenA: 0.6, burdenB: 0.2, bufferMin: 15, freezeMin: 120,
   slot: { from: '17:30', to: '21:30' }, lunch: { from: '12:15', to: '13:00' },
   sleep: { from: '23:30', to: '07:00' }, quiet: { from: '22:30', to: '07:30' }, askFloor: 0.1,
+  // Assumptions, 2026-11-22, to be corrected on More or by him: meal times, a four-hour outing, and the karma he proposed (50%, doubling
+  // inside 14 days). The doubling cap (5, so at most 32 times) and the 3 tama tolerance are not his numbers.
+  meals: [{ from: '07:00', to: '08:30' }, { from: '12:15', to: '13:00' }, { from: '19:00', to: '20:00' }],
+  outDefaultMin: 240, karmaShare: 0.5, karmaRepeatDays: 14, karmaMaxDoublings: 5, rebalanceTama: 3,
 };
 
 /** Learned numbers for one task type. */

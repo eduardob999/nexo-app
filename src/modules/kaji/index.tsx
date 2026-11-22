@@ -11,8 +11,9 @@ import { DEFAULT_SETTINGS, type Interval, type Lang, type LogEvent, type Planned
 import { applySwaps, plan as makePlan, type Unplaced } from './planner';
 import { SettingsScreen } from './SettingsScreen';
 import { Setup } from './Setup';
-import { addNotToday, answerSwap, clearAway, createHousehold, invite, join, logEvent, members as membersOf, proposeSwap, rateEvent, sendAsk, saveSettings, saveSurvey, savePlan, saveTask, setAway,
-  watchAway, watchBusy, watchHousehold, watchLog, watchMyHousehold, watchNotToday, watchPlan, watchSettings, watchSurvey, watchSwaps, watchTasks,
+import { backHome, goOut, type Presence } from './home';
+import { addNotToday, answerSwap, clearAway, createHousehold, invite, join, logEvent, members as membersOf, proposeSwap, rateEvent, sendAsk, saveSettings, saveSurvey, savePlan, saveTask, setAway, setPresence,
+  watchAwayDocs, watchBusy, watchHousehold, watchLog, watchMyHousehold, watchNotToday, watchPlan, watchSettings, watchSurvey, watchSwaps, watchTasks,
   type BusyDoc, type HouseholdDoc, type NotToday, type PlanDoc, type Swap } from './store';
 import { dayKey, MIN, weekday } from './time';
 import { TodayScreen } from './TodayScreen';
@@ -57,7 +58,9 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
   const [log, setLog] = useState<LogEvent[]>([]);
   const [survey, setSurvey] = useState<Record<string, Record<string, number>>>({});
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [away, setAwayState] = useState<Record<string, number>>({});
+  const [awayDocs, setAwayDocs] = useState<Record<string, Presence>>({});
+  // the planner's away-until map and the Go out / Back home presses come from the same documents
+  const away = useMemo(() => Object.fromEntries(Object.entries(awayDocs).map(([u, d]) => [u, d.until ?? 0])), [awayDocs]);
   const [busy, setBusy] = useState<BusyDoc | null>(null);
   const [planDoc, setPlanDoc] = useState<PlanDoc | null>(null);
   const [swaps, setSwaps] = useState<Swap[]>([]);
@@ -67,7 +70,7 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
   useEffect(() => { const i = window.setInterval(() => setSlot(Math.floor(Date.now() / (5 * MIN))), 60_000); return () => window.clearInterval(i); }, []);
   useEffect(() => {
     if (!hid) return undefined;
-    const subs = [watchHousehold(hid, setHouse), watchTasks(hid, setTasks), watchLog(hid, setLog), watchSurvey(hid, setSurvey), watchSettings(hid, setSettings), watchAway(hid, setAwayState),
+    const subs = [watchHousehold(hid, setHouse), watchTasks(hid, setTasks), watchLog(hid, setLog), watchSurvey(hid, setSurvey), watchSettings(hid, setSettings), watchAwayDocs(hid, setAwayDocs),
       watchBusy(hid, setBusy), watchPlan(hid, setPlanDoc), watchSwaps(hid, setSwaps), watchNotToday(hid, setNotToday)];
     return () => subs.forEach((u) => u());
   }, [hid]);
@@ -95,13 +98,13 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
       const busyBy: Record<string, Interval[]> = busy?.events ?? {};
       const today = dayKey(now);
       const declines = swaps.filter((s) => s.state === 'declined').map((s) => ({ uid: s.toUid, taskId: s.taskId, dow: weekday(s.start) }));
-      const out = makePlan({ now, horizonDays: 7, tasks, members, estimates, log, busy: busyBy, existing: existing.current, settings, swaps, awayUntil: away, notToday: notToday.filter((n) => n.day >= today), declines });
+      const out = makePlan({ now, horizonDays: 7, tasks, members, estimates, log, busy: busyBy, existing: existing.current, settings, swaps, awayUntil: away, presence: awayDocs, notToday: notToday.filter((n) => n.day >= today), declines });
       setComputed({ items: out.items, unplaced: out.unplaced });
       const sig = JSON.stringify(out.items.map((i) => [i.id, i.uid, i.start, i.pinned ? 1 : 0]));
       if (sig !== lastSaved.current && sig !== JSON.stringify(existing.current.map((i) => [i.id, i.uid, i.start, i.pinned ? 1 : 0]))) { lastSaved.current = sig; void savePlan(hid, uid, out.items); }
     }, 1200);
     return () => window.clearTimeout(handle);
-  }, [hid, house, tasks, members, estimates, log, busy, settings, away, swaps, notToday, slot, uid]);
+  }, [hid, house, tasks, members, estimates, log, busy, settings, away, awayDocs, swaps, notToday, slot, uid]);
 
   const actions = useMemo<KajiActions | null>(() => {
     if (!hid) return null;
@@ -132,14 +135,15 @@ export function useKaji(uid: string): { hid: string | null | undefined; data: Ka
       saveSettings: async (s) => saveSettings(hid, uid, s, settings),
       saveSurvey: async (a) => saveSurvey(hid, uid, a),
       setAway: async (until) => (until === null ? clearAway(hid, uid) : setAway(hid, uid, until)),
+      setPresence: async (who, out) => setPresence(hid, who, out ? goOut(Date.now(), settings) : backHome(Date.now())),
       invite: async (email) => invite(hid, email, uid),
       ask: async (kind, text, when) => sendAsk(hid, { kind, text, when, by: uid, byName: membersOf(house).find((m) => m.uid === uid)?.name ?? '' }),
     };
   }, [hid, uid, settings, house]);
 
   const data = useMemo<KajiData | null>(() => (hid && house && members.length ? {
-    hid, me: uid, house, members, tasks, log, survey, settings, away, busy: busy?.events ?? {}, plan: computed.items, unplaced: computed.unplaced, swaps, estimates, now: slot * 5 * MIN,
-  } : null), [hid, house, members, tasks, log, survey, settings, away, busy, computed, swaps, estimates, slot, uid]);
+    hid, me: uid, house, members, tasks, log, survey, settings, away, presence: awayDocs, busy: busy?.events ?? {}, plan: computed.items, unplaced: computed.unplaced, swaps, estimates, now: slot * 5 * MIN,
+  } : null), [hid, house, members, tasks, log, survey, settings, away, awayDocs, busy, computed, swaps, estimates, slot, uid]);
   return { hid, data, actions };
 }
 

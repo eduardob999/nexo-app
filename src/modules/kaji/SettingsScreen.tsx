@@ -4,7 +4,7 @@ import { learnShifts } from './reschedule';
 import { watchHistory, type HistoryEntry } from './store';
 import { InviteCard } from './Setup';
 import { t } from './i18n';
-import type { Lang, Settings } from './model';
+import { DEFAULT_SETTINGS, type Lang, type Settings } from './model';
 import { DAY } from './time';
 import type { KajiActions, KajiData } from './ui';
 
@@ -34,6 +34,19 @@ export function SettingsScreen({ data, actions, lang, link }: { data: KajiData; 
         <div className="setting"><span>{t(lang, 'quiet')}</span><span className="kaji-row"><input type="time" value={s.quiet.from} onChange={(e) => save({ quiet: { ...s.quiet, from: e.target.value } })} /><input type="time" value={s.quiet.to} onChange={(e) => save({ quiet: { ...s.quiet, to: e.target.value } })} /></span></div>
         <label className="setting kaji-slider"><span>{t(lang, 'burden')}: ×{(s.burdenA + s.burdenB * 5).toFixed(1)}</span>
           <input type="range" min={0} max={0.4} step={0.05} value={s.burdenB} onChange={(e) => { const b = Number(e.target.value); save({ burdenB: b, burdenA: Math.round((1.2 - 3 * b) * 100) / 100 }); }} aria-label={t(lang, 'burden')} /></label>
+      </div>
+      <h2 className="group-title">{t(lang, 'assumptions')}</h2>
+      <p className="mut kaji-line">{t(lang, 'assumptionsAbout')}</p>
+      <div className="panel settings secret-form">
+        {(s.meals ?? DEFAULT_SETTINGS.meals ?? []).map((w, k, all) => (
+          <div className="setting" key={k}><span>{t(lang, ['breakfast', 'lunch', 'dinner'][k] ?? '')}</span><span className="kaji-row">
+            <input type="time" value={w.from} onChange={(e) => save({ meals: all.map((x, j) => (j === k ? { ...x, from: e.target.value } : x)) })} />
+            <input type="time" value={w.to} onChange={(e) => save({ meals: all.map((x, j) => (j === k ? { ...x, to: e.target.value } : x)) })} /></span></div>
+        ))}
+        <label className="setting"><span>{t(lang, 'outDefault')}</span><input inputMode="numeric" value={s.outDefaultMin ?? 240} onChange={(e) => save({ outDefaultMin: num(e.target.value, 240) })} style={{ maxWidth: 80 }} /></label>
+        <label className="setting"><span>{t(lang, 'karmaShareLabel')}</span><input inputMode="numeric" value={Math.round((s.karmaShare ?? 0.5) * 100)} onChange={(e) => save({ karmaShare: num(e.target.value, 50) / 100 })} style={{ maxWidth: 80 }} /></label>
+        <label className="setting"><span>{t(lang, 'karmaDays')}</span><input inputMode="numeric" value={s.karmaRepeatDays ?? 14} onChange={(e) => save({ karmaRepeatDays: num(e.target.value, 14) })} style={{ maxWidth: 80 }} /></label>
+        <label className="setting"><span>{t(lang, 'rebalanceLabel')}</span><input inputMode="numeric" value={s.rebalanceTama ?? 3} onChange={(e) => save({ rebalanceTama: num(e.target.value, 3) })} style={{ maxWidth: 80 }} /></label>
       </div>
       <h2 className="group-title">{t(lang, 'away')}</h2>
       <div className="panel settings secret-form">

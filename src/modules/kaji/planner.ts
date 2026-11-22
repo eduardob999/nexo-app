@@ -1,5 +1,6 @@
 import { balance, burdenOf, weightOf } from './burden';
 import type { Estimate, Interval, LogEvent, Member, PlannedItem, Settings, SwapRecord, TaskType } from './model';
+import { afterBackHome, mealsAtHome, outIntervals, type Presence } from './home';
 import { applyLearned, dismissedAt, skipsFromLog } from './reschedule';
 import { atHm, dayKey, dayStart, DAY, hm, JST, MIN, overlaps, weekday } from './time';
 
@@ -33,18 +34,21 @@ export interface PlanInput {
   swaps?: SwapRecord[];
   /** Minutes added each side of an event that has a place other than home. */
   travelMin?: number;
+  /** The last Go out / Back home press per person (home.ts). Back home ends the calendar outing it interrupted; meals follow both. */
+  presence?: Record<string, Presence>;
 }
 
 export interface Unplaced { taskId: string; ideal: number; reason: string }
 export interface PlanOutput { items: PlannedItem[]; unplaced: Unplaced[]; moved: { id: string; fromUid: string; toUid: string; from: number; to: number }[] }
 
-interface Occ { key: string; task: TaskType; window?: { from: string; to: string }; ideal: number; earliest: number; latest: number; minutes: number; parent?: PlannedItem }
+/** `eaters`: for a chore that follows a meal, who ate it at home; they are preferred for it. */
+interface Occ { key: string; task: TaskType; window?: { from: string; to: string }; ideal: number; earliest: number; latest: number; minutes: number; parent?: PlannedItem; eaters?: string[] }
 
 const GRID = 15 * MIN;
 const HOME = /^home$/i;
 
 /** Bump when the shape or meaning of a stored plan changes: the service re-plans any plan with another version. */
-export const PLAN_VERSION = 3;
+export const PLAN_VERSION = 4;      // 4, 2026-11-22: rack the next morning, washes and cooking only for meals eaten at home
 
 /** The planned item a swap is about: the same id, or, when a re-plan changed the id, the same chore of either person closest in time (within 12 hours). */
 export function swapItem(items: PlannedItem[], s: Pick<SwapRecord, 'itemId' | 'taskId' | 'fromUid' | 'toUid' | 'start'>): PlannedItem | undefined {
@@ -87,7 +91,7 @@ export function plan(input: PlanInput): PlanOutput {
   const blocked: Record<string, Interval[]> = {};
   for (const uid of uids) {
     const list: Interval[] = [];
-    for (const e of input.busy[uid] ?? []) {
+    for (const e of afterBackHome(input.busy[uid], input.presence?.[uid])) {
       const pad = buffer + (e.place && !HOME.test(e.place.trim()) ? travel : 0);
       list.push({ start: e.start - pad, end: e.end + pad });
     }
@@ -106,11 +110,24 @@ export function plan(input: PlanInput): PlanOutput {
 
   // ---- load so far: burden already done in the window, plus what is planned in this run
   const bal = balance(log, tasks, estimates, members, now, s);
-  const load: Record<string, number> = Object.fromEntries(uids.map((u) => [u, bal.perUid[u]?.burden ?? 0]));
+  // karma is work owed, so it counts against what a person has done (karma.ts)
+  const load: Record<string, number> = Object.fromEntries(uids.map((u) => [u, (bal.perUid[u]?.burden ?? 0) - (bal.perUid[u]?.karma ?? 0)]));
   const dayLoad: Record<string, number> = {};
   const target = bal.target;
   const dislikeOf = (task: TaskType, uid: string) => estimates[task.id]?.dislike[uid] ?? 3;
   const weight = (task: TaskType) => weightOf(task, estimates[task.id]);
+  // "make sure to balance Kaji as required, when required" (his words, 2026-11-21). When the plan on file would leave someone more than
+  // `rebalanceTama` past the fair split, that person's chores stop being kept where they were, so the balance term can move them.
+  const overloaded = overloadedBy(load, existingIn.filter((e) => e.end > now), tById, weight, dislikeOf, target, s);
+  // "I dislike it" hands the chore on for that day instead of cancelling it (karma.ts charges for it)
+  const notToday = [...(input.notToday ?? []), ...log.filter((e) => e.kind === 'dismissed' && e.reason === 'dislike' && typeof e.plannedStart === 'number' && e.plannedStart >= dayStart(now, tz))
+    .map((e) => ({ uid: e.uid, taskId: e.taskId, day: dayKey(e.plannedStart as number, tz) }))];
+  const mealCache = new Map<number, ReturnType<typeof mealsAtHome>>();
+  const mealsOn = (d: number) => {
+    let m = mealCache.get(d);
+    if (!m) { m = mealsAtHome(d, members, input.busy, input.presence, s, tz); mealCache.set(d, m); }
+    return m;
+  };
 
   // ---- 1. frozen: already started or starting inside the freeze window, kept exactly
   const frozen = existingIn.filter((e) => e.frozen || e.pinned || (e.start <= now + s.freezeMin * MIN && e.end > now - 5 * MIN));
@@ -140,7 +157,7 @@ export function plan(input: PlanInput): PlanOutput {
   const occs: Occ[] = [];
   const today = dayStart(now, tz);
   for (const task of tasks) {
-    if (!task.active || task.freq.adhoc || task.after) continue;
+    if (!task.active || task.freq.adhoc || task.after || task.morningAfter) continue;
     const interval = task.freq.perDays / Math.max(1, task.freq.times);
     if (task.freq.perDays <= 1) {
       const wins = task.windows && task.windows.length === task.freq.times ? task.windows : undefined;
@@ -159,12 +176,20 @@ export function plan(input: PlanInput): PlanOutput {
           ideals.forEach((id, k) => { if (!cancelled.has(k) && (bestK < 0 || Math.abs(id - sk.at) < Math.abs((ideals[bestK] as number) - sk.at))) bestK = k; });
           if (bestK >= 0) cancelled.add(bestK);
         }
+        // a chore that follows a meal is planned only when someone eats that meal at home (Go out / Back home, or the calendars)
+        const eatersOf = (k: number): string[] | undefined => {
+          if (!task.meals || !task.meals.length) return undefined;
+          const meal = task.meals[k] ?? task.meals[0] as number;
+          return mealsOn(d)[meal]?.home ?? uids;
+        };
         for (let k = already; k < task.freq.times; k++) {
           if (cancelled.has(k)) continue;
+          const eaters = eatersOf(k);
+          if (eaters && eaters.length === 0) continue;
           const win = wins ? (wins[k] as { from: string; to: string }) : undefined;
           const region = regionFor(win ? { ...task, window: win } : task, d, s, tz);
           if (region.to <= now) continue;
-          occs.push({ key: `${task.id}@${dayKey(d, tz)}#${k}`, task, ...(win ? { window: win } : {}), ideal: Math.max(ideals[k] as number, now), earliest: d, latest: d + DAY - 1, minutes: minutesOf(task) });
+          occs.push({ key: `${task.id}@${dayKey(d, tz)}#${k}`, task, ...(win ? { window: win } : {}), ...(eaters ? { eaters } : {}), ideal: Math.max(ideals[k] as number, now), earliest: d, latest: d + DAY - 1, minutes: minutesOf(task) });
         }
       }
     } else {
@@ -222,7 +247,7 @@ export function plan(input: PlanInput): PlanOutput {
         const end = start + o.minutes * MIN;
         for (const m of members) {
           if (task.who && task.who.length && !task.who.includes(m.uid)) continue;
-          if (input.notToday?.some((n) => n.uid === m.uid && n.taskId === task.id && n.day === dayKey(start, tz))) continue;
+          if (notToday.some((n) => n.uid === m.uid && n.taskId === task.id && n.day === dayKey(start, tz))) continue;
           if (!free(m.uid, start, end)) continue;
           const mine = placed.filter((p) => p.uid === m.uid && dayKey(p.start, tz) === dayKey(start, tz));
           let score = Math.abs(dayStart(start, tz) - dayStart(o.ideal, tz)) / DAY * 3 + Math.abs(start - o.ideal) / DAY * 0.5;
@@ -238,9 +263,14 @@ export function plan(input: PlanInput): PlanOutput {
           }
           if (task.mode === 'measured' && start % DAY >= 0 && new Date(start + tz * MIN).getUTCHours() >= 21) score += 1;
           if ((dayLoad[m.uid + dayKey(start, tz)] ?? 0) + bur > 12) score += 3;
+          // the fair split on the day as well as over the window, gently: whoever has carried less today is preferred
+          const dk = dayKey(start, tz);
+          const dayTotal = uids.reduce((a, u) => a + (dayLoad[u + dk] ?? 0), 0) + bur;
+          score += 0.8 * ((dayLoad[m.uid + dk] ?? 0) + bur - (target[m.uid] ?? 0.5) * dayTotal) / 5;
+          if (o.eaters && !o.eaters.includes(m.uid)) score += 2;
           if (input.declines?.some((d) => d.uid === m.uid && d.taskId === task.id && d.dow === weekday(start, tz))) score += 3;
           if (parentItem && parentItem.uid === m.uid) score -= 1;
-          if (prev && prev.uid === m.uid) score -= prev.start === start ? 2.5 : dayKey(prev.start, tz) === dayKey(start, tz) ? 1 : 0;
+          if (prev && prev.uid === m.uid && !overloaded.has(m.uid)) score -= prev.start === start ? 2.5 : dayKey(prev.start, tz) === dayKey(start, tz) ? 1 : 0;
           if (!best || score < best.score - 1e-9) best = { uid: m.uid, start, score };
         }
       }
@@ -275,12 +305,76 @@ export function plan(input: PlanInput): PlanOutput {
   }
   for (const o of children.sort(order)) if (!heldBy(o) && !placed.some((p) => p.taskId === o.task.id && p.start >= o.earliest && p.start <= o.latest)) place(o);
 
+  // ---- 5. the morning after: the rack is cleared the day after a wash, in its morning window, never the same evening
+  const mornings: Occ[] = [];
+  for (const task of tasks) {
+    if (!task.active || !task.morningAfter) continue;
+    const src = task.morningAfter;
+    const happened = (d: number) => log.some((e) => e.taskId === src && e.kind === 'done' && e.at >= d - DAY && e.at < d)
+      || placed.some((p) => p.taskId === src && p.start >= d - DAY && p.start < d) || existingIn.some((p) => p.taskId === src && p.start >= d - DAY && p.start < d);
+    for (let d = today; d < horizonEnd; d += DAY) {
+      if (doneToday(task.id, d) || !happened(d)) continue;
+      if (skips.some((q) => q.taskId === task.id && q.day === dayKey(d, tz))) continue;
+      const region = regionFor(task, d, s, tz);
+      if (region.to <= now) continue;
+      mornings.push({ key: `${task.id}@${dayKey(d, tz)}#0`, task, ideal: Math.max(region.from, now), earliest: d, latest: d + DAY - 1, minutes: minutesOf(task) });
+    }
+  }
+  for (const o of mornings.sort(order)) if (!heldBy(o)) place(o);
+
   const items = placed.sort((a, b) => a.start - b.start || (a.id < b.id ? -1 : 1));
   const moved = items.filter((i) => !i.frozen).flatMap((i) => {
     const old = existingIn.find((e) => e.id === i.id);
     return old && (old.uid !== i.uid || old.start !== i.start) ? [{ id: i.id, fromUid: old.uid, toUid: i.uid, from: old.start, to: i.start }] : [];
   });
   return { items, unplaced, moved };
+}
+
+/** Who would end up past the fair split by more than the tolerance if the plan on file were carried out as it stands. */
+function overloadedBy(load: Record<string, number>, future: PlannedItem[], tById: Map<string, TaskType>, weight: (t: TaskType) => number,
+  dislikeOf: (t: TaskType, uid: string) => number, target: Record<string, number>, s: Settings): Set<string> {
+  const proj = { ...load };
+  for (const e of future) {
+    const t = tById.get(e.taskId);
+    if (t) proj[e.uid] = (proj[e.uid] ?? 0) + burdenOf(weight(t), dislikeOf(t, e.uid), s);
+  }
+  const total = Object.values(proj).reduce((a, b) => a + b, 0);
+  const tol = s.rebalanceTama ?? 3;
+  return new Set(Object.keys(proj).filter((u) => (proj[u] ?? 0) - (target[u] ?? 0) * total > tol));
+}
+
+/**
+ * Why the plan on file no longer holds, empty when it does: a chore given to someone not allowed to do it, a chore while its person is
+ * out or busy, a wash for a meal nobody eats at home any more, or the split off by more than the tolerance. The service re-plans at once
+ * when this is not empty, instead of waiting for the plan to age (his words, 2026-11-21: "balance Kaji as required, when required").
+ */
+export function planBreaks(input: PlanInput): string[] {
+  const { now, members, estimates, log, settings: s } = input;
+  const tz = input.tz ?? JST;
+  const tasks = applyLearned(input.tasks, log, now, s, tz);
+  const tById = new Map(tasks.map((t) => [t.id, t]));
+  const future = input.existing.filter((e) => e.start > now + s.freezeMin * MIN && !e.pinned);
+  const out = new Set<string>();
+  for (const e of future) {
+    const t = tById.get(e.taskId);
+    if (!t) continue;
+    if (t.who && t.who.length && !t.who.includes(e.uid)) out.add('who');
+    const busy = afterBackHome(input.busy[e.uid], input.presence?.[e.uid]);
+    if (busy.some((b) => overlaps(e.start, e.end, b.start - s.bufferMin * MIN, b.end + s.bufferMin * MIN))) out.add('busy');
+    const away = input.awayUntil?.[e.uid];
+    if ((away && away > e.start) || outIntervals([], input.presence?.[e.uid]).some((b) => overlaps(e.start, e.end, b.start, b.end))) out.add('out');
+    if (t.meals && t.meals.length) {
+      const wins = t.windows && t.windows.length === t.freq.times ? t.windows : [t.window ?? s.slot];
+      const k = Math.max(0, wins.findIndex((w) => e.start >= atHm(dayStart(e.start, tz), w.from) && e.start < atHm(dayStart(e.start, tz), w.to)));
+      const meal = t.meals[k] ?? t.meals[0] as number;
+      if ((mealsAtHome(e.start, members, input.busy, input.presence, s, tz)[meal]?.home.length ?? 1) === 0) out.add('meal');
+    }
+  }
+  const bal = balance(log, tasks, estimates, members, now, s);
+  const load = Object.fromEntries(members.map((m) => [m.uid, (bal.perUid[m.uid]?.burden ?? 0) - (bal.perUid[m.uid]?.karma ?? 0)]));
+  const dislikeOf = (t: TaskType, uid: string) => estimates[t.id]?.dislike[uid] ?? 3;
+  if (overloadedBy(load, input.existing.filter((e) => e.end > now), tById, (t) => weightOf(t, estimates[t.id]), dislikeOf, bal.target, s).size) out.add('balance');
+  return [...out];
 }
 
 /** The allowed part of a day for a chore, in epoch milliseconds, plus the window start as minutes for ideals. */

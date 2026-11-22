@@ -6,6 +6,7 @@ import { AskButton } from './AskSheet';
 import { HowLongSheet, KindSheet, LogSheet, RateSheet } from './Sheets';
 import { customTask, eventFromTimer, isOpenTimer, startOpenTimer, type Kind } from './quicklog';
 import { DismissSheet, RescheduleSheet } from './MoveSheets';
+import { HomeStrip } from './HomeStrip';
 import { clockText, elapsedMin, loadTimer, recentAnswers, saveTimer, type Running } from './timer';
 import { nexoPick, swapItem } from './planner';
 import { clockLabel } from './time';
@@ -47,7 +48,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
     try { await actions.askSwap(item, to); setUndo({ id: '', label: `${taskName(byId.get(item.taskId), lang, item.taskId)} · ${t(lang, 'swapSent')} ${nameOf(to)}` }); } catch { setSwapErr(true); }
     setSendingSwap(null);
   };
-  const nexoSlot = (item: PlannedItem) => nexoPick({ now: Math.max(Date.now(), data.now), horizonDays: 7, tasks: data.tasks, members: data.members, estimates: data.estimates, log: data.log, busy: data.busy, existing: data.plan, settings: data.settings, awayUntil: data.away }, item);
+  const nexoSlot = (item: PlannedItem) => nexoPick({ now: Math.max(Date.now(), data.now), horizonDays: 7, tasks: data.tasks, members: data.members, estimates: data.estimates, log: data.log, busy: data.busy, existing: data.plan, settings: data.settings, awayUntil: data.away, presence: data.presence }, item);
 
   const start = (item: PlannedItem) => { const r = { taskId: item.taskId, itemId: item.id, start: Date.now() }; saveTimer(r); setRunning(r); };
   const startOpen = () => { const r = startOpenTimer(Date.now()); saveTimer(r); setRunning(r); };
@@ -160,6 +161,8 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
           })}
         </ul>
       )}
+      <h2 className="group-title">{t(lang, 'home')}</h2>
+      <HomeStrip data={data} actions={actions} lang={lang} />
       {theirs.length ? (
         <>
           <h2 className="group-title">{t(lang, 'theirChores')}</h2>

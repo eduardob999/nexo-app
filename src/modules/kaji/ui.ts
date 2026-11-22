@@ -12,6 +12,8 @@ export interface KajiData {
   survey: Record<string, Record<string, number>>;
   settings: Settings;
   away: Record<string, number>;
+  /** The last Go out / Back home press per person (home.ts). */
+  presence: Record<string, import('./home').Presence>;
   busy: Record<string, Interval[]>;
   plan: PlannedItem[];
   unplaced: Unplaced[];
@@ -40,6 +42,8 @@ export interface KajiActions {
   saveSettings: (s: Settings) => Promise<void>;
   saveSurvey: (answers: Record<string, number>) => Promise<void>;
   setAway: (until: number | null) => Promise<void>;
+  /** Go out (true) or Back home (false), for this person. */
+  setPresence: (uid: string, out: boolean) => Promise<void>;
   invite: (email: string) => Promise<void>;
   ask: (kind: import('./asks').AskKind, text: string, when: number | null) => Promise<void>;
 }
