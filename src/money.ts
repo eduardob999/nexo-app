@@ -1,4 +1,4 @@
-import type { Alloc, Receipt } from './types';
+import type { Alloc, Market, Receipt } from './types';
 
 /** The month in Japan, YYYY-MM, whatever the phone's own zone. */
 export function jstMonth(d: Date): string {
@@ -10,13 +10,33 @@ export function allocMonth(a: Alloc): string {
   return a.month || (a.ts ? jstMonth(new Date(a.ts)) : '');
 }
 
-export interface MonthSummary { lines: Alloc[]; total: number; left: number; doneCount: number }
+export interface MonthSummary { lines: Alloc[]; total: number; left: number; doneCount: number; hidden: Alloc[] }
 
+/** A dismissed line ("Cantina" this month, his request of 2026-11-22) leaves the list and the totals; it is kept in `hidden` so it can be restored. */
 export function summarise(all: Alloc[], month: string): MonthSummary {
-  const lines = all.filter((a) => allocMonth(a) === month);
+  const inMonth = all.filter((a) => allocMonth(a) === month);
+  const lines = inMonth.filter((a) => !a.dismissed);
   const total = lines.reduce((s, a) => s + a.amount, 0);
   const left = lines.filter((a) => !a.done).reduce((s, a) => s + a.amount, 0);
-  return { lines, total, left, doneCount: lines.filter((a) => a.done).length };
+  return { lines, total, left, doneCount: lines.filter((a) => a.done).length, hidden: inMonth.filter((a) => a.dismissed) };
+}
+
+/**
+ * The lines a new month starts with: last month's repeating lines, unticked, minus any dismissed for good. The same rule as the
+ * sync service's seed (relaunch/sync_core.py); used where no service seeds, which is a household member's own list.
+ */
+export function seedLines(all: Alloc[], month: string, ts: string): Alloc[] {
+  const last = [...new Set(all.map(allocMonth).filter((m) => m && m < month))].sort().pop();
+  if (!last || all.some((a) => allocMonth(a) === month)) return [];
+  return all.filter((a) => allocMonth(a) === last && a.recurring !== false && a.dismissed !== 'forever')
+    .map((a, n) => ({ id: `a${month}-${n}`, label: a.label, amount: a.amount, done: false, recurring: true, month, ts, ...(a.tag ? { tag: a.tag } : {}) }));
+}
+
+/** The household copy of his market and receipts (relaunch/share_core.py writes it), back into the shapes the Money screen takes. */
+export function fromShare(docs: { part?: string; items?: Market['items']; log?: Market['log']; receipts?: Receipt[] }[]): { market: Market | null; receipts: Receipt[] } {
+  const m = docs.find((d) => d.part === 'market');
+  const receipts = docs.filter((d) => d.part === 'receipts').flatMap((d) => d.receipts ?? []).sort((a, b) => b.ts.localeCompare(a.ts));
+  return { market: m ? { items: m.items ?? [], log: m.log ?? [] } : null, receipts };
 }
 
 /** True when this month has no lines but an earlier one does, so the month should be seeded. */

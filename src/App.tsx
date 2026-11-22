@@ -11,6 +11,8 @@ import { doneCutoff } from './shelf';
 import type { RestRec } from './restmodel';
 import { isFirebaseConfigured, reconnect } from './firebase';
 import { Money } from './Money';
+import { GuestMoney } from './GuestMoney';
+import { dismissAlloc, restoreAlloc } from './moneystore';
 import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
@@ -289,6 +291,8 @@ function OwnerApp() {
           market={market} receipts={receipts} onLog={(i) => { void logPurchase(user.uid, i); }} onAddItem={(n) => { void addMarketItem(user.uid, n); }} onReceipt={(r) => { void addReceipt(user.uid, r); }}
           onUndo={(id) => { if (market) void undoPurchase(user.uid, market, id); }} onDeleteReceipt={(r) => { void deleteReceipt(user.uid, r.id); flash('Receipt deleted'); }}
           watchPhotos={(id, on) => watchReceiptFiles(user.uid, id, on)}
+          onDismiss={(a, sc) => { void dismissAlloc(user.uid, a, sc); flash(sc === 'month' ? `${a.label} dismissed for this month` : `${a.label} dismissed for good`); }}
+          onRestore={(a) => { void restoreAlloc(user.uid, a); flash(`${a.label} restored`); }}
           onAttachReceipt={async (r, files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(user.uid, { receiptId: r.id }, up, thumb); } flash('Photo attached'); }} />
       ) : tab === 'notes' ? (
         <Notes memos={memos} onKeep={(t, g) => { void addMemo(user.uid, t, g); }} onDelete={(m) => { void deleteMemo(user.uid, m.id); flash('Note deleted'); }} />
@@ -388,6 +392,23 @@ export function App() {
   useEffect(() => watchAuthState((u) => setUid(u ? u.uid : null)), []);
   const role = useRole(uid);
   if (uid && role === 'unknown') return <main className="screen"><p className="empty">…</p></main>;
-  if (uid && role === 'guest') return <GuestApp uid={uid} />;
+  if (uid && role === 'guest') return <GuestRoot uid={uid} />;
   return <OwnerApp />;
+}
+
+/**
+ * The guest app, plus his Money layout at #/money (GuestMoney): her own set-aside list beside his market and receipts.
+ * The guest app's own tabs live in the Kaji module (GuestApp.tsx); its Money tab is where the way in to this belongs.
+ */
+function GuestRoot({ uid }: { uid: string }) {
+  const route = useRoute();
+  if (route.name === 'money') {
+    return (
+      <>
+        <GuestMoney uid={uid} />
+        <p className="screen"><a className="chip-btn link" href="#/">Back</a></p>
+      </>
+    );
+  }
+  return <GuestApp uid={uid} />;
 }

@@ -20,10 +20,16 @@ interface Props {
   onDeleteReceipt?: ((r: Receipt) => void) | undefined;
   onAttachReceipt?: ((r: Receipt, files: File[]) => Promise<void>) | undefined;
   watchPhotos?: ((receiptId: string, on: (f: CardFile[]) => void) => () => void) | undefined;
+  /** Hide a line for this month or for good (his request, 2026-11-22, "Cantina"), and bring it back. */
+  onDismiss?: ((a: Alloc, scope: 'month' | 'forever') => void) | undefined;
+  onRestore?: ((a: Alloc) => void) | undefined;
+  /** Shown above the market and receipts when they are someone else's, shared with this person. */
+  sharedNote?: string | undefined;
 }
 
-function Line({ a, onToggle, onEdit, onRepeat }: { a: Alloc } & Pick<Props, 'onToggle' | 'onEdit' | 'onRepeat'>) {
+function Line({ a, onToggle, onEdit, onRepeat, onDismiss }: { a: Alloc } & Pick<Props, 'onToggle' | 'onEdit' | 'onRepeat' | 'onDismiss'>) {
   const [editing, setEditing] = useState<'label' | 'amount' | 'tag' | null>(null);
+  const [asking, setAsking] = useState(false);
   const [val, setVal] = useState('');
   const begin = (f: 'label' | 'amount' | 'tag') => { setEditing(f); setVal(f === 'amount' ? String(a.amount) : f === 'label' ? a.label : a.tag ?? ''); };
   const save = () => {
@@ -45,14 +51,22 @@ function Line({ a, onToggle, onEdit, onRepeat }: { a: Alloc } & Pick<Props, 'onT
           {field('amount', yen(a.amount), 'al-amt')}
           {field('tag', a.tag ? `#${a.tag}` : '+ tag', 'al-tag')}
           <button className="al-field" aria-pressed={a.recurring !== false} onClick={() => onRepeat(a)}>{a.recurring === false ? 'once' : 'repeats'}</button>
+          {onDismiss && !asking ? <button className="al-field" aria-label={`Dismiss ${a.label}`} onClick={() => setAsking(true)}>dismiss</button> : null}
         </span>
+        {onDismiss && asking ? (
+          <span className="al-meta" role="group" aria-label={`Dismiss ${a.label}`}>
+            <button className="chip-btn small" onClick={() => { setAsking(false); onDismiss(a, 'month'); }}>This month</button>
+            <button className="chip-btn small" onClick={() => { setAsking(false); onDismiss(a, 'forever'); }}>For good</button>
+            <button className="chip-btn small" onClick={() => setAsking(false)}>Cancel</button>
+          </span>
+        ) : null}
       </div>
     </li>
   );
 }
 
 /** The month's set-aside checklist. A new month seeds itself from the last one's repeating lines. */
-export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt, onUndo, onDeleteReceipt, onAttachReceipt, watchPhotos }: Props) {
+export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt, onUndo, onDeleteReceipt, onAttachReceipt, watchPhotos, onDismiss, onRestore, sharedNote }: Props) {
   const month = jstMonth(new Date());
   const seeded = useRef(false);
   useEffect(() => {
@@ -79,7 +93,15 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, 
         <p className="al-total"><b>{yen(s.left)}</b> left <span className="mut">of {yen(s.total)} · {s.doneCount} of {s.lines.length} done</span></p>
         <div className="np-bar" role="progressbar" aria-label="Set aside" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><i style={{ width: `${pct}%` }} /></div>
         {s.lines.length === 0 ? <p className="mut">Nothing set aside yet this month.</p> : null}
-        <ul className="al-list">{s.lines.map((a) => <Line key={a.id} a={a} onToggle={onToggle} onEdit={onEdit} onRepeat={onRepeat} />)}</ul>
+        <ul className="al-list">{s.lines.map((a) => <Line key={a.id} a={a} onToggle={onToggle} onEdit={onEdit} onRepeat={onRepeat} onDismiss={onDismiss} />)}</ul>
+        {s.hidden.length ? (
+          <details className="shelf-sub"><summary>Dismissed <span className="mut">{s.hidden.length}</span></summary>
+            <ul className="res-list">{s.hidden.map((a) => (
+              <li key={a.id} className="res done"><span>{a.label} · {yen(a.amount)}</span><span className="mut">{a.dismissed === 'forever' ? 'for good' : 'this month'}</span>
+                {onRestore ? <button className="chip-btn small" onClick={() => onRestore(a)}>Restore</button> : null}</li>
+            ))}</ul>
+          </details>
+        ) : null}
         <form className="al-add" onSubmit={(e) => { e.preventDefault(); submit(); }}>
           <input className="search-input" placeholder="What for" value={label} onChange={(e) => setLabel(e.target.value)} aria-label="What for" />
           <input className="search-input" placeholder="Yen" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Yen" />
@@ -88,6 +110,7 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, 
         </form>
         {msg ? <p className="notice" role="status">{msg}</p> : null}
       </section>
+      {sharedNote && (market || receipts.length) ? <p className="notice">{sharedNote}</p> : null}
       <MarketBlock market={market} onLog={onLog} onAddItem={onAddItem} onUndo={onUndo} />
       <Charts receipts={receipts} />
       <ReceiptsBlock receipts={receipts} onReceipt={onReceipt} onDeleteReceipt={onDeleteReceipt} onAttachReceipt={onAttachReceipt} watchPhotos={watchPhotos} />
@@ -108,7 +131,7 @@ const CATS = ['food', 'transport', 'supplies', 'health', 'fees', 'other'];
 function MarketBlock({ market, onLog, onAddItem, onUndo }: Pick<Props, 'market' | 'onLog' | 'onAddItem' | 'onUndo'>) {
   const [q, setQ] = useState('');
   const [name, setName] = useState('');
-  if (!market || !onLog) return null;
+  if (!market) return null;
   const counts = marketCounts(market.log, Date.now());
   const shown = market.items.filter((i) => !q.trim() || i.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
@@ -117,7 +140,8 @@ function MarketBlock({ market, onLog, onAddItem, onUndo }: Pick<Props, 'market' 
       <input className="search-input" type="search" placeholder="Find an item" aria-label="Find an item" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="mk-chips">
         {shown.map((i) => (
-          <button key={i.id} className="qchip mk" onClick={() => onLog(i)}>
+          // With no onLog the market is someone else's, shown to read: the same chips, nothing to press.
+          <button key={i.id} className="qchip mk" disabled={!onLog} onClick={() => onLog?.(i)}>
             {i.name}{counts.get(i.id) ? <small>{counts.get(i.id)?.n}× · {counts.get(i.id)?.last}</small> : null}
           </button>
         ))}

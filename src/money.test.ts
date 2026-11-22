@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allTimeTotals, allocMonth, earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, summarise, topBars, yen } from './money';
+import { allTimeTotals, allocMonth, earlierMonths, fromShare, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, seedLines, summarise, topBars, yen } from './money';
 import type { Alloc } from './types';
 
 const a = (id: string, amount: number, done: boolean, extra: Partial<Alloc> = {}): Alloc => ({ id, label: id, amount, done, ...extra });
@@ -55,5 +55,31 @@ describe('allTimeTotals', () => {
     expect(t.total).toBe(1400);
     expect(t.cats).toEqual([{ cat: 'fees', sum: 900 }, { cat: 'food', sum: 500 }]);
     expect(t.months).toBe(2);
+  });
+});
+
+describe('dismissing a line', () => {
+  it('leaves a dismissed line out of the list and the totals, and keeps it to restore', () => {
+    const s = summarise([a('rent', 100, false, { month: '2026-11' }), a('cantina', 50, false, { month: '2026-11', dismissed: 'month' })], '2026-11');
+    expect(s).toMatchObject({ total: 100, left: 100, doneCount: 0 });
+    expect(s.lines.map((x) => x.id)).toEqual(['rent']);
+    expect(s.hidden.map((x) => x.id)).toEqual(['cantina']);
+  });
+  it('seeds a line dismissed for the month again next month, and never one dismissed for good', () => {
+    const all = [a('rent', 100, true, { month: '2026-11', tag: 'home' }), a('cantina', 50, false, { month: '2026-11', dismissed: 'month' }),
+      a('gym', 70, false, { month: '2026-11', dismissed: 'forever', recurring: false }), a('once', 9, false, { month: '2026-11', recurring: false })];
+    const seeded = seedLines(all, '2026-12', 'T');
+    expect(seeded.map((x) => [x.label, x.done, x.tag, x.dismissed])).toEqual([['rent', false, 'home', undefined], ['cantina', false, undefined, undefined]]);
+    expect(seedLines([...all, ...seeded], '2026-12', 'T')).toEqual([]);
+  });
+});
+
+describe('the household copy of the market and receipts', () => {
+  it('rebuilds the market and joins the months newest first', () => {
+    const r = (id: string, ts: string) => ({ id, amount: 1, cat: 'food', vendor: '', ts });
+    const out = fromShare([{ part: 'market', items: [{ id: 'i', name: 'Rice' }], log: [] }, { part: 'receipts', receipts: [r('a', '2026-10-01')] }, { part: 'receipts', receipts: [r('b', '2026-11-01')] }]);
+    expect(out.market?.items[0]?.name).toBe('Rice');
+    expect(out.receipts.map((x) => x.id)).toEqual(['b', 'a']);
+    expect(fromShare([]).market).toBeNull();
   });
 });

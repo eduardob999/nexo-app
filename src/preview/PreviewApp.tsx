@@ -300,7 +300,10 @@ export function PreviewApp() {
       { id: '2', label: 'Rent and utilities', amount: 20000, done: true, month },
       { id: '3', label: 'Carla (debt)', amount: 5500, done: false, month, tag: 'Carla' },
       { id: '4', label: 'Motorcycle lessons', amount: 11000, done: false, month, recurring: false },
+      { id: '6', label: 'Cantina', amount: 4000, done: false, month },
+      { id: '7', label: 'Gym', amount: 3000, done: false, month, dismissed: 'forever', recurring: false },
       { id: '5', label: 'Old', amount: 9000, done: true, month: '2026-09' }]}
+      onDismiss={() => {}} onRestore={() => {}}
       onLog={() => {}} onAddItem={() => {}} onReceipt={() => {}} onUndo={() => {}} onDeleteReceipt={() => {}} onAttachReceipt={async () => {}} watchPhotos={(_id, on) => { on([{ id: 'p1', thumb: PHOTO }]); return () => {}; }}
       market={{ items: [{ id: 'a', name: 'Rice' }, { id: 'b', name: 'Eggs' }, { id: 'c', name: 'Milk' }], log: [{ id: 'l1', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 3 * 3_600_000).toISOString() }, { id: 'l2', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 2 * 86_400_000).toISOString() }] }}
       receipts={[{ id: 'r1', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: new Date().toISOString(), files: [{ id: 'p1', name: 'receipt.jpg', viewUrl: 'https://example.org' }] }, { id: 'r2', amount: 299, cat: 'food', vendor: 'Shop (milk cocoa)', ts: new Date().toISOString() }, { id: 'r3', amount: 439, cat: 'food', vendor: 'Shop (granola)', ts: new Date().toISOString() }, { id: 'r4', amount: 120, cat: 'supplies', vendor: 'Daiso (bag)', ts: new Date().toISOString() }]} /><TabBar current="browse" draftCount={0} /></>);
@@ -334,6 +337,15 @@ export function PreviewApp() {
       closed={[{ id: 'P-011', status: 'closed', topic: 'Driving test day logistics' }]}
       resources={[{ id: 'a', kind: 'deck', title: 'Whiteboard, one slide', url: 'https://example.org/deck', note: 'The version for the meeting.' }, { id: 'b', kind: 'file', title: 'Residence card scan', url: '/home/me/docs/card.pdf' }, { id: 'c', kind: 'link', title: 'Old link', url: 'https://example.org', archived: true }]}
       onAdd={() => {}} onArchive={() => {}} onClearDone={() => {}} /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which === 'money-guest') {
+    // A household member's Money (GuestMoney): her own list, his market and household receipts to read.
+    const month = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }).slice(0, 7);
+    return (<><Money onAdd={() => {}} onToggle={() => {}} onEdit={() => {}} onRepeat={() => {}} onSeed={() => {}} onDismiss={() => {}} onRestore={() => {}}
+      allocations={[{ id: 'g1', label: 'Phone', amount: 3000, done: false, month }, { id: 'g2', label: 'Gym', amount: 5000, done: true, month }]}
+      sharedNote="Market and receipts are Eduardo's, shared with you to see. Your set-aside list above is yours alone."
+      market={{ items: [{ id: 'a', name: 'Rice' }, { id: 'b', name: 'Eggs' }, { id: 'c', name: 'Milk' }], log: [{ id: 'l1', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 3 * 3_600_000).toISOString() }] }}
+      receipts={[{ id: 'r1', amount: 1840, cat: 'food', vendor: 'Fresco', ts: new Date().toISOString(), lines: [{ name: 'Rice 5kg', amount: 1580 }, { name: 'Eggs', amount: 260 }] }, { id: 'r4', amount: 330, cat: 'supplies', vendor: 'Daiso (oil coagulant)', ts: new Date().toISOString() }]} /></>);
   }
   if (which === 'money-all') {
     const rs = Array.from({ length: 30 }, (_, i) => ({ id: `m${i}`, amount: 200 + i * 10, cat: i % 3 ? 'food' : 'transport', vendor: `Shop ${i}`, ts: new Date(Date.now() - i * 3_600_000).toISOString() }))
