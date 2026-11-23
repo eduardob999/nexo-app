@@ -32,9 +32,11 @@ export function Sky({ state, dark, mode, still }: { state: SkyState; dark: boole
     const el = canvas.current;
     if (!el || particle === 'none') return undefined;
     const w = el.clientWidth || 390, h = el.clientHeight || 400;
-    el.width = w; el.height = h;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    el.width = Math.round(w * dpr); el.height = Math.round(h * dpr);
     const ctx = el.getContext('2d');
     if (!ctx) return undefined;
+    ctx.scale(dpr, dpr);
     const rand = Math.random;
     let ps = make(particle, countFor(particle, intensity, w, h), w, h, rand);
     if (reduce) { draw(ctx, particle, ps, w, h); return undefined; }
@@ -60,11 +62,17 @@ export function Sky({ state, dark, mode, still }: { state: SkyState; dark: boole
   return (
     <div className="sky" aria-hidden="true" style={{ opacity: 1 }}>
       <div className="sky-grad" style={{ background: `linear-gradient(180deg, ${top} 0%, ${mid} 55%, ${low} 100%)`, opacity: alpha }} />
-      <svg className="sky-svg" viewBox="0 0 100 60" preserveAspectRatio="none" style={{ opacity: Math.min(1, alpha * 1.6) }}>
-        {state.sun ? <circle cx={sunX} cy={sunY * 0.9} r="3.4" fill="#fff3c4" /> : null}
-        {moon ? <><circle cx={8 + moon.x * 84} cy={(62 - moon.y * 44) * 0.9} r="2.8" fill="#f2f0e4" /><circle cx={8 + moon.x * 84 + (moon.phase < 0.5 ? 1.4 : -1.4) * (1 - Math.abs(moon.phase - 0.5) * 2)} cy={(62 - moon.y * 44) * 0.9} r="2.6" fill={mid} /></> : null}
-        {state.horizon ? <path d="M0 55 L12 54 L24 55 L40 53.5 L56 55 L72 54 L100 55" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="0.6" fill="none" strokeDasharray="1.2 1.2" /> : null}
-      </svg>
+      {state.sun ? <div className="sky-orb" style={{ left: `${sunX}%`, top: `${(sunY * 0.9 / 60) * 100}%`, width: 26, height: 26, background: '#fff3c4' }} /> : null}
+      {moon ? (() => {
+        const mx = 8 + moon.x * 84, my = (62 - moon.y * 44) * 0.9 / 60 * 100, off = (moon.phase < 0.5 ? 1 : -1) * (1 - Math.abs(moon.phase - 0.5) * 2) * 10;
+        return <>
+          <div className="sky-orb" style={{ left: `${mx}%`, top: `${my}%`, width: 22, height: 22, background: '#f2f0e4' }} />
+          <div className="sky-orb" style={{ left: `${mx}%`, top: `${my}%`, width: 20, height: 20, background: mid, transform: `translate(calc(-50% + ${off}px), -50%)` }} />
+        </>;
+      })() : null}
+      {state.horizon ? <svg className="sky-svg" viewBox="0 0 100 60" preserveAspectRatio="none" style={{ opacity: Math.min(1, alpha * 1.6) }}>
+        <path d="M0 55 L12 54 L24 55 L40 53.5 L56 55 L72 54 L100 55" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="1.2" vectorEffect="non-scaling-stroke" fill="none" strokeDasharray="4 4" />
+      </svg> : null}
       {particle !== 'none' ? <canvas ref={canvas} className="sky-canvas" /> : null}
       {state.edge ? <div className="sky-edge" style={{ boxShadow: `inset 0 0 ${14 + state.edge.strength * 40}px ${2 + state.edge.strength * 8}px ${state.edge.color}`, opacity: 0.18 + state.edge.strength * 0.5 }} /> : null}
       {dark && state.dim > 0 ? <div className="sky-dim" style={{ background: `rgba(0,0,0,${state.dim})` }} /> : null}

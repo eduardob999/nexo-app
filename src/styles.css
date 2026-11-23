@@ -843,6 +843,7 @@ a.icon-btn { color: inherit; text-decoration: none; }
 /* the live sky: behind everything, never takes a tap */
 .sky { position: fixed; top: 0; left: 0; right: 0; height: 52vh; z-index: -1; pointer-events: none; overflow: hidden; -webkit-mask-image: linear-gradient(#000 45%, transparent); mask-image: linear-gradient(#000 45%, transparent); }
 .sky-grad, .sky-svg, .sky-canvas, .sky-edge { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sky-orb { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); }
 .sky-dim { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
 .sky-edge { inset: 0; border-radius: 0; }
 .sunarc { max-width: 640px; margin: 0 auto 4px; padding: 0 16px; }
