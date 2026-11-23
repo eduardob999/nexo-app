@@ -8,7 +8,7 @@ const en: Dict = {
   setupAbout: 'Kaji splits the housework by how much each of you minds it, not only by minutes. Everything is editable.',
   inviteTitle: 'Invite the other person', inviteAbout: 'Type the Google address they sign in with. They open Nexo and tap Join.', invite: 'Invite', invited: 'Invited',
   joinTitle: 'You are invited', joinAbout: 'Join this household to see and share the chores.',
-  start: 'Start', done: 'Done', stop: 'Stop', notToday: 'Not today', swap: 'Swap', later: 'Later', undo: 'Undo',
+  start: 'Start', done: 'Done', stop: 'Stop', pause: 'Pause', resume: 'Resume', paused: 'Paused', notToday: 'Not today', swap: 'Swap', later: 'Later', undo: 'Undo',
   nothingToday: 'Nothing left for you today.', nothingTodayHelp: 'Enjoy it. Anything you do anyway can be logged with the plus.',
   yourChores: 'Your chores', theirChores: 'Their chores', running: 'Running', minutes: 'min', tama: 'tama',
   logAChore: 'Log a chore', logAbout: 'Anything you did, planned or not.', howLong: 'How long, about?', whichOne: 'Which chore?',

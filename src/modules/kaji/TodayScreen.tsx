@@ -7,7 +7,7 @@ import { HowLongSheet, KindSheet, LogSheet, RateSheet } from './Sheets';
 import { customTask, eventFromTimer, isOpenTimer, startOpenTimer, type Kind } from './quicklog';
 import { DismissSheet, RescheduleSheet } from './MoveSheets';
 import { HomeStrip } from './HomeStrip';
-import { clockText, elapsedMin, loadTimer, recentAnswers, saveTimer, type Running } from './timer';
+import { clockText, elapsedMin, endAt, loadTimer, pauseTimer, recentAnswers, resumeTimer, saveTimer, type Running } from './timer';
 import { bundleSplit, nexoPick, swapItem } from './planner';
 import { clockLabel } from './time';
 import type { KajiActions, KajiData, Ratings } from './ui';
@@ -64,13 +64,14 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
     maybeRate(task, null, ev.minutes, 1, r.start);
   };
   const stop = () => { saveTimer(null); setRunning(null); };
+  const togglePause = () => { if (!running) return; const r = running.pausedAt === undefined ? pauseTimer(running, Date.now()) : resumeTimer(running, Date.now()); saveTimer(r); setRunning(r); };
 
   const finish = (task: TaskType, item: PlannedItem | null, startedAt?: number) => {
     const est = data.estimates[task.id];
     const mat = est ? maturity(est, task, data.log, data.now) : 'new';
     const rates = askRates(mat, drifted(data.log, task.id), task, data.settings);
     const timed = startedAt !== undefined && running?.taskId === task.id;
-    if (timed) { stop(); maybeRate(task, item, elapsedMin(startedAt as number, Date.now()), 1, startedAt); return; }       // he asked: finishing a timed chore always opens the form
+    if (timed) { stop(); maybeRate(task, item, elapsedMin(startedAt as number, endAt(running, Date.now())), 1, startedAt); return; }       // he asked: finishing a timed chore always opens the form
     // a wash that carried the sink: the planned length of both is the guess, and the split happens on commit
     const both = item?.with?.length ? Math.round((item.end - item.start) / 60000) : undefined;
     if (task.mode === 'measured' && shouldAsk(rates.timer, rand)) { setFlow({ step: 'minutes', task, item, ...(both ? { est: both } : {}) }); return; }
@@ -102,17 +103,19 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
     <>
       {open && running ? (
         <div className="panel kaji-run" role="status">
-          <div><small className="mut">{t(lang, 'running')}</small><b>{t(lang, 'quickRunning')}</b></div>
-          <span className="kaji-clock">{clockText(tick - running.start)}</span>
-          <button className="copy-main" onClick={() => setFlow({ step: 'kind', start: running.start, end: Date.now() })}>{t(lang, 'finish')}</button>
+          <div><small className="mut">{running.pausedAt === undefined ? t(lang, 'running') : t(lang, 'paused')}</small><b>{t(lang, 'quickRunning')}</b></div>
+          <span className="kaji-clock">{clockText(endAt(running, tick) - running.start)}</span>
+          <button className="copy-main" onClick={() => setFlow({ step: 'kind', start: running.start, end: endAt(running, Date.now()) })}>{t(lang, 'finish')}</button>
+          <button className="chip-btn" onClick={togglePause}>{running.pausedAt === undefined ? t(lang, 'pause') : t(lang, 'resume')}</button>
           <button className="chip-btn" onClick={stop}>{t(lang, 'discard')}</button>
         </div>
       ) : null}
       {running && runTask ? (
         <div className="panel kaji-run" role="status">
-          <div><small className="mut">{t(lang, 'running')}</small><b>{runTask.icon} {taskName(runTask, lang)}</b></div>
-          <span className="kaji-clock">{clockText(tick - running.start)}</span>
+          <div><small className="mut">{running.pausedAt === undefined ? t(lang, 'running') : t(lang, 'paused')}</small><b>{runTask.icon} {taskName(runTask, lang)}</b></div>
+          <span className="kaji-clock">{clockText(endAt(running, tick) - running.start)}</span>
           <button className="copy-main" onClick={() => finish(runTask, mine.find((i) => i.id === running.itemId) ?? null, running.start)}>{t(lang, 'finish')}</button>
+          <button className="chip-btn" onClick={togglePause}>{running.pausedAt === undefined ? t(lang, 'pause') : t(lang, 'resume')}</button>
           <button className="chip-btn" onClick={stop}>{t(lang, 'stop')}</button>
         </div>
       ) : null}

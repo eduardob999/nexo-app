@@ -1,7 +1,7 @@
 import type { LogEvent } from './model';
 
 /** One running timer per device. Kept in localStorage so a reload does not lose it. */
-export interface Running { taskId: string; itemId?: string | undefined; start: number }
+export interface Running { taskId: string; itemId?: string | undefined; start: number; pausedAt?: number | undefined }
 const KEY = 'kaji.timer';
 
 export function loadTimer(): Running | null {
@@ -12,6 +12,21 @@ export function loadTimer(): Running | null {
 }
 export function saveTimer(r: Running | null): void {
   try { if (r) window.localStorage.setItem(KEY, JSON.stringify(r)); else window.localStorage.removeItem(KEY); } catch { /* private mode */ }
+}
+
+/** The instant the clock reads up to: frozen at the pause while paused, otherwise now. */
+export const endAt = (r: Running, now: number): number => r.pausedAt ?? now;
+
+/** Freeze the clock. Pausing a paused timer changes nothing. */
+export function pauseTimer(r: Running, now: number): Running {
+  return r.pausedAt === undefined ? { ...r, pausedAt: now } : r;
+}
+
+/** Unfreeze it: the start moves forward by the break, so the elapsed time never counts it. */
+export function resumeTimer(r: Running, now: number): Running {
+  if (r.pausedAt === undefined) return r;
+  const { pausedAt, ...rest } = r;
+  return { ...rest, start: r.start + Math.max(0, now - pausedAt) };
 }
 
 /** Whole minutes, at least one. */
