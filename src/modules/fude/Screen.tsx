@@ -491,7 +491,7 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
   const b = lint.budget;
   const flowOn = isFlow(doc) && !!flowApi;
   const [step, setStep] = useState(() => (flowOn ? (doc.flow?.submittedAt ? LAST_STEP : doc.flow?.step ? clampStep(storedStep(doc.flow)) : firstOpenStep(doc)) : 6));
-  const goStep = (n: number) => { setStep(n); window.scrollTo(0, 0); flowApi?.save(doc, { step: n, v: 2 }); };
+  const goStep = (n: number, pass?: boolean) => { setStep(n); window.scrollTo(0, 0); const passed = pass && step < n ? [...new Set([...(doc.flow?.passed ?? []), step])] : undefined; flowApi?.save(doc, { step: n, v: 2, ...(passed ? { passed } : {}) }); };
   const show6 = !flowOn || step === 6;
   return (
     <main className={`screen hw${flowOn ? ' flow' : ''}`}>

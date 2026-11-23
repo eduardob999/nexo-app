@@ -60,12 +60,12 @@ export function StepHead({ step }: { step: number }) {
   );
 }
 
-export function StepNav({ doc, step, onGo, nextLabel }: { doc: FudeDoc; step: number; onGo: (n: number) => void; nextLabel?: string }) {
+export function StepNav({ doc, step, onGo, nextLabel }: { doc: FudeDoc; step: number; onGo: (n: number, pass?: boolean) => void; nextLabel?: string }) {
   const here = stepDone(doc, step);
   return (
     <div className="flow-nav">
       {step > 1 ? <button type="button" className="tool-chip" onClick={() => onGo(step - 1)}>Back</button> : <span />}
-      {step < LAST_STEP ? <button type="button" className={`flow-next${here ? ' ready' : ''}`} onClick={() => onGo(step + 1)}>{nextLabel ?? (here ? 'Next step' : 'Skip to next')}</button> : null}
+      {step < LAST_STEP ? <button type="button" className={`flow-next${here ? ' ready' : ''}`} onClick={() => onGo(step + 1, true)}>{nextLabel ?? (here ? 'Next step' : 'Skip to next')}</button> : null}
     </div>
   );
 }

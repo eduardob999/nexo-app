@@ -55,6 +55,8 @@ export interface Flow {
   naturalized?: string;
   /** He passed the naturalizing step (or chose to skip it). */
   naturalizeDone?: boolean;
+  /** Steps he moved past with the forward button: a step whose work is only copying (a prompt) or that he chose to skip counts as done. */
+  passed?: number[];
   /** He read the university's generative-AI rules for this course before submitting. */
   aiRulesChecked?: boolean;
   sources?: ContextSources;
@@ -140,6 +142,7 @@ export function japaneseLengthOk(d: { requirements?: string; translationDraft?: 
 /** Whether a step has what it needs. Used for the dots on the step bar and for the "next" nudge; never to block him. */
 export function stepDone(d: FlowDoc, n: number): boolean {
   const f = d.flow;
+  if (n < LAST_STEP && f?.passed?.includes(n)) return true;
   switch (n) {
     case 1: return hasText(d.requirements);
     case 2: return !!f?.contextSkipped || (chosenContext(f).length > 0 && missingOwnInput(d).length === 0);

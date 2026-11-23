@@ -26,6 +26,9 @@ describe('steps', () => {
     expect(stepDone({ ...base, requirements: 'r' }, 1)).toBe(true);
     expect(stepDone({ ...base, flow: {} }, 2)).toBe(false);
     expect(stepDone({ ...base, flow: { contextSkipped: true } }, 2)).toBe(true);
+    expect(stepDone({ ...base, flow: { passed: [3, 5] } }, 3)).toBe(true);
+    expect(stepDone({ ...base, flow: { passed: [3, 5] } }, 4)).toBe(false);
+    expect(stepDone({ ...base, flow: { passed: [10] } }, 10)).toBe(false);
     expect(stepDone({ ...base, flow: { contextItems: [item({})] } }, 2)).toBe(true);
   });
   it('the writing step is done only when the assignment check judged this exact text', () => {
