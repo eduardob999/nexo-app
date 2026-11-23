@@ -7,7 +7,7 @@ import { newTaskFrom, type Kind } from './quicklog';
 import type { Ratings } from './ui';
 
 /** Three faces, each optional, and one tap to skip them all. */
-export function RateSheet({ lang, task, onSave, onSkip, initial, later }: { lang: Lang; task: TaskType; onSave: (r: Ratings) => void; onSkip: () => void; initial?: Ratings; later?: boolean }) {
+export function RateSheet({ lang, task, onSave, onSkip, initial, later, minutes, onMinutes }: { lang: Lang; task: TaskType; onSave: (r: Ratings) => void; onSkip: () => void; initial?: Ratings; later?: boolean; minutes?: number; onMinutes?: (m: number) => void }) {
   const [r, setR] = useState<Ratings>(initial ?? {});
   const row = (key: keyof Ratings, label: string, scale: 'facesHard' | 'facesMind' | 'facesLike') => (
     <div>
@@ -25,6 +25,10 @@ export function RateSheet({ lang, task, onSave, onSkip, initial, later }: { lang
       <div className="sheet kaji-sheet" role="dialog" aria-label={t(lang, 'rateTitle')} onClick={(e) => e.stopPropagation()}>
         <span className="grab" />
         <b className="sheet-title">{task.icon} {task.names[lang]}</b>
+        {minutes !== undefined && onMinutes ? (
+          <label className="kaji-field"><span>{t(lang, 'tookMin')} ({t(lang, 'minutes')}) · {t(lang, 'fixClock')}</span>
+            <input inputMode="numeric" pattern="[0-9]*" value={minutes} aria-label={t(lang, 'minutes')} onChange={(e) => { const m = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10); onMinutes(Number.isFinite(m) ? Math.min(m, 1440) : 1); }} style={{ width: 96 }} /></label>
+        ) : null}
         {row('effort', t(lang, 'effort'), 'facesHard')}
         {row('dislike', t(lang, 'mind'), 'facesMind')}
         {row('enjoyment', t(lang, 'enjoy'), 'facesLike')}

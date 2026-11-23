@@ -227,7 +227,7 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
           onConfirm={(reason, note) => { void actions.dismiss(flow.item, reason, note); setFlow(null); setUndo({ id: '', label: `${taskName(flow.task, lang)} · ${t(lang, 'dismissed')}` }); }} />
       ) : null}
       {flow?.step === 'rate' ? (
-        <RateSheet lang={lang} task={flow.task} onSkip={() => void commit(flow.task, flow.item, flow.minutes, {}, flow.start)} onSave={(r) => void commit(flow.task, flow.item, flow.minutes, r, flow.start)} />
+        <RateSheet lang={lang} task={flow.task} minutes={flow.minutes} onMinutes={(m) => setFlow({ ...flow, minutes: Math.max(1, m), ...(flow.start !== undefined ? { start: Date.now() - Math.max(1, m) * 60_000 } : {}) })} onSkip={() => void commit(flow.task, flow.item, flow.minutes, {}, flow.start)} onSave={(r) => void commit(flow.task, flow.item, flow.minutes, r, flow.start)} />
       ) : null}
     </>
   );
