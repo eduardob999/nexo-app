@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmButton } from '../../ConfirmButton';
 import {
-  blankListing, COST_KEYS, docProgress, helpRequest, monthly, overCap, overdue, parseYenText, seedAll, sourceProblem, split, stepProgress, upfront, upfrontMonths, visaRisk,
+  blankListing, COST_KEYS, docProgress, helpRequest, listingAsk, monthly, overCap, overdue, parseYenText, seedAll, sourceProblem, split, stepProgress, upfront, upfrontMonths, visaRisk,
   type Chip, type Cohab, type CostKey, type DocPerson, type HAny, type HBrief, type HDoc, type HListing, type HSource, type HStep, type ListingStatus, type Owner, type StepStatus,
 } from './housing';
 import { yen } from './ledger';
@@ -70,6 +70,10 @@ export function HousingScreen({ data, actions, preview }: { data: KajiData; acti
     try { await actions.ask('other', helpRequest(s, myName), null); setToast(`Sent to Nexo. It lands on ${names.eduardo}'s board as a card.`); } catch { setToast('Not sent. Try again.'); }
   };
 
+  const askListing = async (l: HListing, q: string) => {
+    try { await actions.ask('other', listingAsk(l, q, myName), null); setToast(`Sent to Nexo. It lands on ${names.eduardo}'s board as a card.`); return true; } catch { setToast('Not sent. Try again.'); return false; }
+  };
+
   return (
     <>
       <p className="notice">The shared-house search. Both of you see and edit everything here, and changes show up for the other person as they happen.</p>
@@ -79,7 +83,7 @@ export function HousingScreen({ data, actions, preview }: { data: KajiData; acti
         {SECTIONS.map((s) => <button key={s.id} role="tab" aria-pressed={section === s.id} onClick={() => setSection(s.id)} style={{ textTransform: 'none' }}>{s.label}</button>)}
       </div>
       {section === 'steps' ? <Steps steps={st.steps} api={api} names={names} today={today} onAsk={askNexo} /> : null}
-      {section === 'listings' ? <Listings listings={st.listings} brief={brief} api={api} by={data.me} now={data.now} /> : null}
+      {section === 'listings' ? <Listings listings={st.listings} brief={brief} api={api} by={data.me} now={data.now} onAskListing={askListing} /> : null}
       {section === 'costs' ? <Costs listings={st.listings} brief={brief} api={api} /> : null}
       {section === 'docs' ? <Docs docs={st.docs} api={api} names={names} /> : null}
       {section === 'sources' ? <Sources sources={st.sources} api={api} by={data.me} nameOf={(u) => data.members.find((m) => m.uid === u)?.name ?? ''} /> : null}
@@ -106,7 +110,7 @@ function RiskBanner({ brief }: { brief: HBrief }) {
   return (
     <div className="panel kaji-hs-risk" role="note">
       <b>Visa shorter than the lease</b>
-      <p>Both visas expire {fmtDate(brief.visaExpiry)}. Moving in {fmtMonth(brief.moveIn)} leaves about {r.months} months, shorter than a {brief.leaseYears}-year lease ({r.leaseMonths} months).
+      <p>Both visas expire {fmtDate(brief.visaExpiry)}. Moving in {fmtMonth(brief.moveIn)}{brief.fallback ? ` (${fmtMonth(brief.fallback)} as fallback)` : ''} leaves about {r.months} months, shorter than a {brief.leaseYears}-year lease ({r.leaseMonths} months).
         Ask for a contract that ends, or can be ended, before then, expect the guarantor company to ask about renewal, and plan the renewal before applying.</p>
     </div>
   );
@@ -161,18 +165,20 @@ function ChipSheet({ chip, isNew, onSave, onRemove, onClose }: { chip: Chip; isN
 function NumbersSheet({ brief, onSave, onClose }: { brief: HBrief; onSave: (p: Partial<HBrief>) => void; onClose: () => void }) {
   const [cap, setCap] = useState(String(brief.rentCap));
   const [moveIn, setMoveIn] = useState(brief.moveIn);
+  const [fallback, setFallback] = useState(brief.fallback ?? '');
   const [visa, setVisa] = useState(brief.visaExpiry);
   const [lease, setLease] = useState(String(brief.leaseYears));
   const capN = parseYenText(cap);
   const leaseN = Number(lease);
-  const ok = capN !== null && /^\d{4}-\d{2}$/.test(moveIn) && /^\d{4}-\d{2}-\d{2}$/.test(visa) && leaseN > 0;
+  const ok = capN !== null && /^\d{4}-\d{2}$/.test(moveIn) && (fallback === '' || /^\d{4}-\d{2}$/.test(fallback)) && /^\d{4}-\d{2}-\d{2}$/.test(visa) && leaseN > 0;
   return (
     <div className="scrim" onClick={onClose}>
-      <form className="sheet kaji-sheet" role="dialog" aria-label="Dates and cap" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (ok) onSave({ rentCap: capN!, moveIn, visaExpiry: visa, leaseYears: leaseN }); }}>
+      <form className="sheet kaji-sheet" role="dialog" aria-label="Dates and cap" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); if (ok) onSave({ rentCap: capN!, moveIn, fallback, visaExpiry: visa, leaseYears: leaseN }); }}>
         <span className="grab" />
         <b className="sheet-title">Dates and cap</b>
         <label className="kaji-field"><span>Rent cap a month, all in (yen)</span><input inputMode="numeric" value={cap} onChange={(e) => setCap(e.target.value)} /></label>
         <label className="kaji-field"><span>Move-in month</span><input type="month" value={moveIn} onChange={(e) => setMoveIn(e.target.value)} /></label>
+        <label className="kaji-field"><span>Fallback month, if the first does not work</span><input type="month" value={fallback} onChange={(e) => setFallback(e.target.value)} /></label>
         <label className="kaji-field"><span>Visa expiry (the earlier of the two)</span><input type="date" value={visa} onChange={(e) => setVisa(e.target.value)} /></label>
         <label className="kaji-field"><span>Lease length (years)</span><input inputMode="decimal" value={lease} onChange={(e) => setLease(e.target.value)} /></label>
         <div className="sheet-foot"><button type="button" className="chip-btn" onClick={onClose}>Cancel</button><button type="submit" className="copy-main" disabled={!ok}>Save</button></div>
@@ -208,7 +214,18 @@ function Steps({ steps, api, names, today, onAsk }: { steps: HStep[]; api: Api; 
   );
 }
 
-function Listings({ listings, brief, api, by, now }: { listings: HListing[]; brief: HBrief; api: Api; by: string; now: number }) {
+function AskRow({ onSend }: { onSend: (q: string) => Promise<boolean> }) {
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <form className="kaji-chips" style={{ margin: '8px 0' }} onSubmit={(e) => { e.preventDefault(); if (!q.trim() || busy) return; setBusy(true); void onSend(q).then((ok) => { if (ok) setQ(''); setBusy(false); }); }}>
+      <input style={{ flex: 1, minWidth: 0 }} value={q} maxLength={300} aria-label="Ask Nexo about this listing" placeholder="Ask Nexo about this listing" onChange={(e) => setQ(e.target.value)} />
+      <button type="submit" className="chip-btn small" disabled={!q.trim() || busy}>Ask Nexo</button>
+    </form>
+  );
+}
+
+function Listings({ listings, brief, api, by, now, onAskListing }: { listings: HListing[]; brief: HBrief; api: Api; by: string; now: number; onAskListing: (l: HListing, q: string) => Promise<boolean> }) {
   const [edit, setEdit] = useState<HListing | null>(null);
   return (
     <>
@@ -237,6 +254,7 @@ function Listings({ listings, brief, api, by, now }: { listings: HListing[]; bri
               <div><dt>Viewing</dt><dd><Field type="date" value={l.viewing} label="Viewing date" onSave={(v) => api.patch(l.id, { viewing: v })} /></dd></div>
             </dl>
             {l.note ? <p className="kaji-hs-line">{l.note}</p> : null}
+            <AskRow onSend={(q) => onAskListing(l, q)} />
             <div className="kaji-chips"><button className="chip-btn small" onClick={() => setEdit(l)}>Edit</button><ConfirmButton label="Remove" onConfirm={() => api.remove(l.id)} /></div>
           </div>
         );

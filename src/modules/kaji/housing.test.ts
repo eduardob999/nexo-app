@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blankListing, COST_KEYS, docProgress, helpRequest, monthly, monthsBetween, overCap, overdue, parseCost, parseYenText, SEED_BRIEF, SEED_DOCS, SEED_STEPS, seedAll, sourceProblem, split, stepProgress, upfront, upfrontMonths, visaRisk, type HListing } from './housing';
+import { blankListing, COST_KEYS, docProgress, helpRequest, listingAsk, monthly, monthsBetween, overCap, overdue, parseCost, parseYenText, SEED_BRIEF, SEED_DOCS, SEED_STEPS, seedAll, sourceProblem, split, stepProgress, upfront, upfrontMonths, visaRisk, type HListing } from './housing';
 
 const L = (p: Partial<HListing>): HListing => ({ ...blankListing('l1', 'a', 1), ...p });
 
@@ -74,7 +74,8 @@ describe('housing: monthly and up-front costs', () => {
 describe('housing: the visa and the lease', () => {
   it('counts 16 months from a March 2027 move-in to the 2028-07-07 expiry, shorter than 2 years', () => {
     expect(monthsBetween('2027-03', '2028-07-07')).toBe(16);
-    expect(visaRisk(SEED_BRIEF)).toEqual({ months: 16, leaseMonths: 24, short: true });
+    expect(visaRisk({ ...SEED_BRIEF, moveIn: '2027-03' })).toEqual({ months: 16, leaseMonths: 24, short: true });
+    expect(visaRisk(SEED_BRIEF)).toEqual({ months: 17, leaseMonths: 24, short: true });
     expect(visaRisk({ ...SEED_BRIEF, visaExpiry: '2029-09-30' })?.short).toBe(false);
     expect(visaRisk({ ...SEED_BRIEF, moveIn: 'March' })).toBeNull();
   });
@@ -124,5 +125,12 @@ describe('housing: seed and progress', () => {
   it('has no em dash in any seeded text', () => {
     const all = JSON.stringify(seedAll());
     expect(all.includes('—')).toBe(false);
+  });
+});
+
+describe('housing: asking Nexo about one listing', () => {
+  it('names the listing and the question', () => {
+    expect(listingAsk({ name: 'Tofukuji A', url: 'https://suumo.jp/x', area: '' }, ' Is cohabiting allowed? ', 'Carla'))
+      .toBe('Housing listing Tofukuji A https://suumo.jp/x: Is cohabiting allowed? (asked by Carla)');
   });
 });

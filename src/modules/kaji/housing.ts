@@ -15,7 +15,7 @@ export type DocPerson = 'eduardo' | 'carla' | 'both';
 
 /** A must-have. `firm` true: cannot give; false: can give; null: not decided yet. */
 export interface Chip { id: string; text: string; firm: boolean | null }
-export interface HBrief { part: 'brief'; id: string; chips: Chip[]; rentCap: number; moveIn: string; visaExpiry: string; leaseYears: number }
+export interface HBrief { part: 'brief'; id: string; chips: Chip[]; rentCap: number; moveIn: string; visaExpiry: string; leaseYears: number; /** YYYY-MM, used if the first move-in month does not work out. */ fallback?: string }
 export interface HStep { part: 'step'; id: string; n: number; title: string; detail: string; status: StepStatus; owner: Owner; due: string; note: string }
 export const COST_KEYS = ['deposit', 'keyMoney', 'agentFee', 'firstMonth', 'guarantor', 'insurance', 'keyExchange'] as const;
 export type CostKey = (typeof COST_KEYS)[number];
@@ -170,10 +170,18 @@ export function helpRequest(s: Pick<HStep, 'n' | 'title'>, who: string): string 
   return out.length > 400 ? out.slice(0, 397) + '...' : out;
 }
 
+/** One free-text question about one listing, sent to Nexo as one request. */
+export function listingAsk(l: Pick<HListing, 'name' | 'url' | 'area'>, question: string, who: string): string {
+  const q = question.trim();
+  const what = [l.name || l.area || 'a listing', l.url].filter(Boolean).join(' ');
+  const out = `Housing listing ${what}: ${q}${who ? ` (asked by ${who})` : ''}`;
+  return out.length > 400 ? out.slice(0, 397) + '...' : out;
+}
+
 // ---- the seed, from the brief of 2026-11-24
 
 export const SEED_BRIEF: HBrief = {
-  part: 'brief', id: 'housing-brief', rentCap: 60_000, moveIn: '2027-03', visaExpiry: '2028-07-07', leaseYears: 2,
+  part: 'brief', id: 'housing-brief', rentCap: 60_000, moveIn: '2027-02', fallback: '2027-03', visaExpiry: '2028-07-07', leaseYears: 2,
   chips: [
     { id: 'stay', text: 'Stay at least 2 years', firm: null },
     { id: 'keihan', text: 'Near the Keihan main line', firm: null },
@@ -181,7 +189,7 @@ export const SEED_BRIEF: HBrief = {
     { id: 'rent', text: 'Rent at most ¥60,000 a month', firm: null },
     { id: 'pets', text: 'No pets', firm: true },
     { id: 'cohab', text: 'Two unmarried people (二人入居可 or 同棲可)', firm: true },
-    { id: 'movein', text: 'Move in March 2027', firm: true },
+    { id: 'movein', text: 'Move in February 2027, March as fallback', firm: true },
   ],
 };
 
