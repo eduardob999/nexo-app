@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ownInputNeeds, ownInputTitle, missingOwnInput, DEFAULT_HEADER, headerFor, jaBudgetOf, LECTURE_STYLE, GENERAL_STYLE, styleFor, submitLang, decodeText, chosenContext, compileContext, currentStep, draftPrompt, factSheet, firstOpenStep, meBlock, meJaRule, researchPrompt, stepDone, type FlowDoc, type ContextItem } from './flow';
+import { ownInputNeeds, ownInputTitle, missingOwnInput, DEFAULT_HEADER, headerFor, jaBudgetOf, LECTURE_STYLE, GENERAL_STYLE, styleFor, submitLang, decodeText, chosenContext, compileContext, currentStep, LAST_STEP, STEPS, SUBMIT_STEP, draftPrompt, factSheet, firstOpenStep, meBlock, meJaRule, researchPrompt, stepDone, type FlowDoc, type ContextItem } from './flow';
 
 const item = (o: Partial<ContextItem>): ContextItem => ({ id: 'a', source: 'gmail', title: 'Nov 11 notes', text: 'x', on: true, ...o });
 const base: FlowDoc = { title: '高橋 report', text: '' };
@@ -51,8 +51,8 @@ describe('steps', () => {
     expect(firstOpenStep({ ...base, requirements: 'r', flow: {} })).toBe(2);
     expect(firstOpenStep({ ...base, requirements: 'r', flow: { contextSkipped: true } })).toBe(3);
   });
-  it('a submitted document sits on the last step, and a bad stored step is clamped', () => {
-    expect(currentStep({ ...base, flow: { submittedAt: 'now', step: 2 } })).toBe(10);
+  it('a submitted document opens on the last step, the feedback, and a bad stored step is clamped', () => {
+    expect(currentStep({ ...base, flow: { submittedAt: 'now', step: 2 } })).toBe(11);
     expect(currentStep({ ...base, flow: { step: 99 } })).toBe(1);
     expect(currentStep({ ...base, flow: { step: 4 } })).toBe(4);
   });
@@ -168,3 +168,21 @@ describe('own input at step 2 and the length gate at step 9', () => {
   });
 });
 
+
+describe('feedback step', () => {
+  it('is the last step and does not move the submit button', () => {
+    expect(LAST_STEP).toBe(11);
+    expect(STEPS[10]?.key).toBe('feedback');
+    expect(SUBMIT_STEP).toBe(10);
+    expect(STEPS[SUBMIT_STEP - 1]?.key).toBe('submit');
+  });
+  it('is done by sending feedback or saying there is none, never by moving on', () => {
+    expect(stepDone({ ...base, flow: {} }, 11)).toBe(false);
+    expect(stepDone({ ...base, flow: { passed: [11] } }, 11)).toBe(false);
+    expect(stepDone({ ...base, flow: { feedbackNone: true } }, 11)).toBe(true);
+    expect(stepDone({ ...base, flow: { feedback: [{ id: 'a', at: 'x', step: 7, kind: 'idea', text: 't' }] } }, 11)).toBe(true);
+  });
+  it('a submitted document opens on the feedback step', () => {
+    expect(currentStep({ ...base, flow: { submittedAt: '2026-11-24T05:00:00Z' } })).toBe(11);
+  });
+});

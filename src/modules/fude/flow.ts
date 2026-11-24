@@ -4,6 +4,7 @@
  */
 import type { Budget } from './profiles';
 import { englishWordTarget, lengthVerdict, parseJaBudget } from './lengths';
+import type { FeedbackEntry } from './feedback';
 
 export interface StepDef { n: number; key: string; label: string; hint: string }
 export const STEPS: StepDef[] = [
@@ -17,8 +18,11 @@ export const STEPS: StepDef[] = [
   { n: 8, key: 'translate', label: 'Translation prompt', hint: 'Paste this into any model to translate. Skip for English-only work.' },
   { n: 9, key: 'tcheck', label: 'Translation check', hint: 'Paste the Japanese, check its length, and compare it with your English or with a second translation.' },
   { n: 10, key: 'submit', label: 'Submit', hint: 'Last look, then mark it submitted.' },
+  { n: 11, key: 'feedback', label: 'Feedback', hint: 'What went wrong, or what you did differently, so the workflow can change. Nexo reads it.' },
 ];
 export const LAST_STEP = STEPS.length;
+/** The step with the submit button; the feedback step comes after it. */
+export const SUBMIT_STEP = 10;
 
 export type ContextSource = 'gmail' | 'drive' | 'mailspring' | 'past' | 'paste' | 'file';
 export interface ContextItem { id: string; source: ContextSource; title: string; from?: string; date?: string; text: string; on: boolean; why?: string; /** The helper could not read this attachment: it is never ticked and the screen says so. */ unread?: boolean }
@@ -59,6 +63,10 @@ export interface Flow {
   passed?: number[];
   /** He read the university's generative-AI rules for this course before submitting. */
   aiRulesChecked?: boolean;
+  /** His reports and suggestions about the workflow itself (step 11), oldest first. */
+  feedback?: FeedbackEntry[];
+  /** He had nothing to report on this document. */
+  feedbackNone?: boolean;
   sources?: ContextSources;
   hint?: string;
   contextItems?: ContextItem[];
@@ -142,7 +150,7 @@ export function japaneseLengthOk(d: { requirements?: string; translationDraft?: 
 /** Whether a step has what it needs. Used for the dots on the step bar and for the "next" nudge; never to block him. */
 export function stepDone(d: FlowDoc, n: number): boolean {
   const f = d.flow;
-  if (n < LAST_STEP && f?.passed?.includes(n)) return true;
+  if (n !== SUBMIT_STEP && n < LAST_STEP && f?.passed?.includes(n)) return true;
   switch (n) {
     case 1: return hasText(d.requirements);
     case 2: return !!f?.contextSkipped || (chosenContext(f).length > 0 && missingOwnInput(d).length === 0);
@@ -154,6 +162,7 @@ export function stepDone(d: FlowDoc, n: number): boolean {
     case 8: return !!f?.skipTranslation || d.translationRequest?.status === 'ready';
     case 9: return !!f?.skipTranslation || (d.translationCheck?.status === 'ready' && japaneseLengthOk(d));
     case 10: return !!f?.submittedAt;
+    case 11: return !!f?.feedback?.length || !!f?.feedbackNone;
     default: return false;
   }
 }

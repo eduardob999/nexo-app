@@ -10,8 +10,8 @@ import { markAt, markRanges, segments } from './marks';
 import { AutoReview } from './autoreview';
 import { translationPrompt } from './translation';
 import { STATUS_LABEL, tally } from './assignment';
-import { clampStep, compileContext, firstOpenStep, headerFor, isFlow, jaBudgetOf, LAST_STEP, meJaRule, storedStep } from './flow';
-import { AnswerStep, CompareBox, ContextStep, EditsBox, HeaderBox, JaRequirementBox, SourcesBox, NaturalizeStep, PromptStep, RequestStep, SkipTranslation, StepBar, StepHead, StepNav, SubmitStep, type FlowApi } from './Flow';
+import { clampStep, compileContext, firstOpenStep, headerFor, isFlow, jaBudgetOf, LAST_STEP, meJaRule, storedStep, SUBMIT_STEP } from './flow';
+import { AnswerStep, CompareBox, ContextStep, EditsBox, HeaderBox, JaRequirementBox, SourcesBox, NaturalizeStep, PromptStep, RequestStep, SkipTranslation, StepBar, StepHead, StepNav, SubmitStep, FeedbackStep, type FlowApi } from './Flow';
 import { lengthVerdict } from './lengths';
 import { connectDrive, driveReady } from '../../drive';
 import { cleanProposal, orderedItems, progress, sortSets, type ChatMsg, type ExportRec, type HomeworkItem, type HomeworkSet, type ItemKind, type Question } from './model';
@@ -506,7 +506,8 @@ function DocView({ doc, notes, onSave, onMode, onFacts, onRequirements, onAssign
         {step === 4 ? <AnswerStep doc={doc} api={flowApi} /> : null}
         {step === 5 ? <PromptStep doc={doc} api={flowApi} kind="draft" /> : null}
         {step === 7 ? <NaturalizeStep doc={doc} api={flowApi} text={text} /> : null}
-        {step === LAST_STEP ? <SubmitStep doc={doc} api={flowApi} text={text} /> : null}
+        {step === SUBMIT_STEP ? <SubmitStep doc={doc} api={flowApi} text={text} /> : null}
+        {step === LAST_STEP ? <FeedbackStep doc={doc} api={flowApi} /> : null}
       </>) : null}
       {show6 && onMode ? <ModeSwitch mode={docMode(doc)} onChange={(m) => onMode(doc, m)} /> : null}
       {show6 ? <SuggestBar text={text} notes={notes} reviewing={reviewing} paused={paused} suggest={suggest} onPause={setPaused}

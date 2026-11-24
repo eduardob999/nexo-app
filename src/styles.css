@@ -779,6 +779,9 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .flow-checks { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 .flow-checks li { display: flex; gap: 10px; align-items: center; }
 .flow-checks li.ok span { color: var(--accent); font-weight: 700; } .flow-checks li.no { color: var(--muted); }
+.flow-fb { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+.flow-fb li { display: grid; gap: 4px; justify-items: start; border-top: 1px solid var(--line, rgba(0,0,0,.12)); padding-top: 10px; }
+.flow-fb p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .fude-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0 4px; }
 .fude-chip { font: 600 12px var(--mono); color: var(--muted); padding: 3px 8px; border: 1px solid var(--line, rgba(128,128,128,.35)); border-radius: 999px; }

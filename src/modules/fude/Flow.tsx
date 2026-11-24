@@ -7,6 +7,7 @@ import { CLAIM_LABEL, STATUS_LABEL, tally, unresolvedClaims } from './assignment
 import { driftWarnings, EDIT_LABEL, listItems } from './edits';
 import { editorCounterNote, englishWordTarget, enWords, jaChars, lengthVerdict } from './lengths';
 import { NATURALIZE_HEAD, naturalizePrompt } from './naturalize';
+import { addFeedback, KIND_LABEL, removeFeedback, type FeedbackKind } from './feedback';
 
 export interface FlowApi {
   /** ME.md as mirrored by the helper; empty until it arrives. */
@@ -359,6 +360,48 @@ export function SubmitStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; tex
       {err ? <p className="fude-tool-warn" role="alert">{err}</p> : null}
       <details><summary>Final text ({text.trim().split(/\s+/).filter(Boolean).length} words)</summary><pre className="flow-pre">{text}</pre></details>
       {ja ? <><details><summary>Japanese ({jaChars(ja).toLocaleString('en-GB')} characters)</summary><pre className="flow-pre" lang="ja">{ja}</pre></details><p className="mut">{editorCounterNote}</p></> : null}
+    </section>
+  );
+}
+
+/** Step 11. What he wants changed in the workflow: a problem seen, or something he did differently and would like built in. */
+export function FeedbackStep({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
+  const list = doc.flow?.feedback ?? [];
+  const [text, setText] = useState('');
+  const [kind, setKind] = useState<FeedbackKind>('idea');
+  const [about, setAbout] = useState(6);
+  const add = () => {
+    const next = addFeedback(list, { text, step: about, kind }, new Date(), `fb${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`);
+    if (next === list) return;
+    api.save(doc, { feedback: next, feedbackNone: undefined });
+    setText('');
+  };
+  return (
+    <section className="panel fude-tool" aria-label="Feedback">
+      <p className="mut">Tell Nexo what to change in this flow. For a change you already tried by hand, write what you did instead and why: paste the prompt you used, the order of the steps, what the result looked like.</p>
+      <div className="fude-tool-actions" role="group" aria-label="Kind of feedback">
+        {(Object.keys(KIND_LABEL) as FeedbackKind[]).map((k) => <button key={k} type="button" className={`tool-chip${kind === k ? ' on' : ''}`} aria-pressed={kind === k} onClick={() => setKind(k)}>{KIND_LABEL[k]}</button>)}
+      </div>
+      <label className="flow-check"><span><b>About step</b></span>
+        <select className="hw-answer" value={about} onChange={(e) => setAbout(Number(e.target.value))}>
+          {STEPS.map((s) => <option key={s.n} value={s.n}>{s.n}. {s.label}</option>)}
+        </select></label>
+      <textarea className="hw-answer fude-tool-box" rows={8} value={text} placeholder="What happened, or what you want instead" onChange={(e) => setText(e.target.value)} />
+      <div className="fude-tool-actions">
+        <button type="button" className="flow-primary" disabled={!text.trim()} onClick={add}>Send to Nexo</button>
+        {!list.length ? <button type="button" className="tool-chip" onClick={() => api.save(doc, { feedbackNone: !doc.flow?.feedbackNone })}>{doc.flow?.feedbackNone ? 'Nothing to report ✓ (tap to undo)' : 'Nothing to report'}</button> : null}
+      </div>
+      {list.length ? (
+        <ul className="flow-fb" aria-label="Sent feedback">
+          {list.map((e) => (
+            <li key={e.id}>
+              <p className="mut"><b>{KIND_LABEL[e.kind]}</b>, step {e.step} · {new Date(e.at).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+              <p>{e.text}</p>
+              <button type="button" className="tool-chip" onClick={() => api.save(doc, { feedback: removeFeedback(list, e.id) })}>Remove</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }
