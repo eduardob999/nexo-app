@@ -132,7 +132,7 @@ export function PreviewApp() {
     const fx = kajiFixture();
     const data = { ...fx.data, me: 'b' };
     const [, tab = 'today', lang = 'es'] = which.split('-');
-    const lists = { lists: [{ id: 'l1', title: 'Compras', at: 1, by: 'a' }], items: [{ id: 'i1', listId: 'l1', text: 'Leche', done: false, by: 'a', at: 1 }, { id: 'i2', listId: 'l1', text: 'Arroz', done: true, by: 'b', at: 0, doneAt: 5 }] };
+    const lists = { lists: [{ id: 'l0', title: 'Daiso', at: 0, by: 'a' }, { id: 'l1', title: 'Compras', at: 1, by: 'a' }], items: [{ id: 'd1', listId: 'l0', text: 'El coagulante para el aceite', done: false, by: 'a', at: 1, price: 110 }, { id: 'i1', listId: 'l1', text: 'Leche', done: false, by: 'a', at: 1 }, { id: 'i2', listId: 'l1', text: 'Arroz', done: true, by: 'b', at: 0, doneAt: 5 }] };
     const ledger = [{ id: 'm1', at: Date.parse('2026-11-18T12:00:00+09:00'), by: 'a', paidBy: 'a', amount: 4280, text: 'Supermercado', kind: 'expense' as const }];
     const asks = [{ id: 'q1', kind: 'plan' as const, text: 'Cena en Karasuma el sábado 28', when: 1, by: 'b', byName: 'Carla', at: 1, state: 'sent' as const }];
     return <GuestView data={data} actions={fx.actions} lang={lang as 'en' | 'es' | 'ja'} onLang={() => {}} link="" tab={tab as 'today'} onSignOut={() => {}} previewLists={lists} previewLedger={ledger} previewAsks={asks} previewHousing={housingFixture()} />;
@@ -145,7 +145,8 @@ export function PreviewApp() {
     const previewAsks = member ? [{ id: 'q1', kind: 'plan' as const, text: 'Cena en Karasuma el sábado 28', when: 1, by: 'b', byName: 'Carla', at: 1, state: 'sent' as const }, { id: 'q2', kind: 'question' as const, text: 'A qué hora es tu clase el jueves', by: 'b', byName: 'Carla', at: 0, state: 'done' as const }] : undefined;
     const tab = (which.split('-')[1] ?? 'today') as 'today' | 'week' | 'balance' | 'chores' | 'lists' | 'money' | 'house' | 'more';
     const previewLedger = [{ id: 'm1', at: Date.parse('2026-11-18T12:00:00+09:00'), by: 'a', paidBy: 'a', amount: 4280, text: 'Supermercado', kind: 'expense' as const }, { id: 'm2', at: Date.parse('2026-11-16T12:00:00+09:00'), by: 'b', paidBy: 'b', amount: 1980, text: 'Detergente y esponjas', kind: 'expense' as const }, { id: 'm3', at: Date.parse('2026-11-12T12:00:00+09:00'), by: 'b', paidBy: 'b', amount: 2500, text: 'Prestado a Eduardo', kind: 'expense' as const, split: { a: 1 } }];
-    const previewLists = { lists: [{ id: 'l1', title: 'Compras', at: 1, by: 'a' }, { id: 'l2', title: 'Trips', at: 2, by: 'b' }], items: [
+    const previewLists = { lists: [{ id: 'l0', title: 'Daiso', at: 0, by: 'a' }, { id: 'l1', title: 'Compras', at: 1, by: 'a' }, { id: 'l2', title: 'Trips', at: 2, by: 'b' }], items: [
+      { id: 'd1', listId: 'l0', text: 'El coagulante para el aceite', done: false, by: 'a', at: 1, price: 110 }, { id: 'd2', listId: 'l0', text: 'Esponjas', done: false, by: 'b', at: 2 }, { id: 'd3', listId: 'l0', text: 'Ganchos adhesivos', done: true, by: 'b', at: 0, doneAt: 3, price: 220, ledgerId: 'm9' },
       { id: 'i1', listId: 'l1', text: 'Leche', done: false, by: 'a', at: 1 }, { id: 'i2', listId: 'l1', text: 'Huevos x10', done: false, by: 'b', at: 2 }, { id: 'i3', listId: 'l1', text: 'Detergente para ropa', done: false, by: 'a', at: 3 },
       { id: 'i4', listId: 'l1', text: 'Arroz', done: true, by: 'b', at: 0, doneAt: 5 }, { id: 'i5', listId: 'l1', text: 'Jabón de platos', done: true, by: 'a', at: 0, doneAt: 4 }] };
     const lang = (which.split('-')[2] ?? 'en') as 'en' | 'es' | 'ja';

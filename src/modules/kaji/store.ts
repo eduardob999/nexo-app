@@ -153,7 +153,7 @@ export async function householdExists(hid: string): Promise<boolean> {
 
 // ---- shared lists (shopping, trips, anything the two of them keep together). One document per item, so two people editing at once never overwrite each other.
 export interface KList { id: string; title: string; at: number; by: string }
-export interface KItem { id: string; listId: string; text: string; done: boolean; by: string; at: number; doneBy?: string; doneAt?: number }
+export interface KItem { id: string; listId: string; text: string; done: boolean; by: string; at: number; doneBy?: string; doneAt?: number; /** Whole yen, optional. */ price?: number; /** The Money entry this purchase became, once logged. */ ledgerId?: string }
 export function watchLists(hid: string, on: (l: KList[]) => void): () => void {
   return onSnapshot(sub(hid, 'lists'), (s) => on(s.docs.map((d) => d.data() as KList).sort((a, b) => a.at - b.at)), () => on([]));
 }
@@ -165,10 +165,12 @@ export async function addList(hid: string, by: string, title: string): Promise<s
   await setDoc(doc(sub(hid, 'lists'), id), clean({ id, title: title.trim(), at: Date.now(), by } satisfies KList));
   return id;
 }
-export const addItem = (hid: string, by: string, listId: string, text: string) => {
+export const addItem = (hid: string, by: string, listId: string, text: string, price?: number) => {
   const id = newId();
-  return setDoc(doc(sub(hid, 'listitems'), id), clean({ id, listId, text: text.trim(), done: false, by, at: Date.now() } satisfies KItem));
+  return setDoc(doc(sub(hid, 'listitems'), id), clean({ id, listId, text: text.trim(), done: false, by, at: Date.now(), ...(price ? { price } : {}) } satisfies KItem));
 };
+export const setItemMoney = (hid: string, id: string, price: number, ledgerId?: string) =>
+  updateDoc(doc(sub(hid, 'listitems'), id), ledgerId ? { price, ledgerId } : { price });
 export const tickItem = (hid: string, by: string, id: string, done: boolean) =>
   updateDoc(doc(sub(hid, 'listitems'), id), done ? { done: true, doneBy: by, doneAt: Date.now() } : { done: false, doneBy: '', doneAt: 0 });
 export const removeItem = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'listitems'), id));
@@ -177,9 +179,10 @@ export const removeItem = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'l
 export function watchLedger(hid: string, on: (e: LedgerEntry[]) => void): () => void {
   return onSnapshot(sub(hid, 'ledger'), (s) => on(s.docs.map((d) => d.data() as LedgerEntry).sort((a, b) => b.at - a.at)), () => on([]));
 }
-export function addLedger(hid: string, e: Omit<LedgerEntry, 'id'>): Promise<void> {
+export async function addLedger(hid: string, e: Omit<LedgerEntry, 'id'>): Promise<string> {
   const id = newId();
-  return setDoc(doc(sub(hid, 'ledger'), id), clean({ ...e, id }));
+  await setDoc(doc(sub(hid, 'ledger'), id), clean({ ...e, id }));
+  return id;
 }
 export const removeLedger = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'ledger'), id));
 

@@ -17,3 +17,23 @@ describe('shared lists', () => {
     expect(splitLines('  \n ')).toEqual([]);
   });
 });
+
+describe('list prices and Money', () => {
+  it('reads a trailing price in yen, and leaves small bare counts alone', async () => {
+    const { parseItem } = await import('./lists');
+    expect(parseItem('coagulante ¥110')).toEqual({ text: 'coagulante', price: 110 });
+    expect(parseItem('leche 198円')).toEqual({ text: 'leche', price: 198 });
+    expect(parseItem('pan 1,250')).toEqual({ text: 'pan', price: 1250 });
+    expect(parseItem('Huevos x10')).toEqual({ text: 'Huevos x10' });
+    expect(parseItem('pilas 4')).toEqual({ text: 'pilas 4' });
+    expect(parseItem('El coagulante para el aceite')).toEqual({ text: 'El coagulante para el aceite' });
+  });
+  it('totals what is still to buy and counts the unpriced', async () => {
+    const { openTotal } = await import('./lists');
+    expect(openTotal([{ ...it_('a', 1), price: 110 }, it_('b', 2), { ...it_('c', 3, true), price: 500 }])).toEqual({ total: 110, unpriced: 1 });
+  });
+  it('turns a bought item into an equal-split expense paid by the buyer', async () => {
+    const { itemExpense } = await import('./lists');
+    expect(itemExpense({ ...it_('x', 1), text: 'Coagulante' }, 'Daiso', 'b', 110.4, 7)).toEqual({ at: 7, by: 'b', paidBy: 'b', amount: 110, text: 'Coagulante (Daiso)', kind: 'expense' });
+  });
+});
