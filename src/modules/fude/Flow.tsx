@@ -6,7 +6,7 @@ import { diffWords, changedWords } from './diff';
 import { CLAIM_LABEL, STATUS_LABEL, tally, unresolvedClaims } from './assignment';
 import { driftWarnings, EDIT_LABEL, listItems } from './edits';
 import { editorCounterNote, englishWordTarget, enWords, jaChars, lengthVerdict } from './lengths';
-import { NATURALIZE_HEAD, naturalizePrompt } from './naturalize';
+import { NATURALIZE_HEAD, NATURALIZE_SEQUENCE, naturalizeApplyPrompt, naturalizeCheckPrompt, naturalizeDiagnosePrompt, naturalizeExamplePrompt, naturalizePrompt } from './naturalize';
 import { addFeedback, KIND_LABEL, removeFeedback, type FeedbackKind } from './feedback';
 
 export interface FlowApi {
@@ -31,6 +31,8 @@ export interface FlowApi {
   askSourcesCheck: (doc: FudeDoc, text: string) => void;
   clearSourcesCheck: (doc: FudeDoc) => void;
   canCloseCard: boolean;
+  /** Earlier submitted reports, to take the style example from. */
+  pastFinals?: { id: string; title: string; text: string }[];
 }
 
 const dueText = (due?: string) => (due ? new Date(due).toLocaleString('en-GB', { timeZone: 'Asia/Tokyo', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : undefined);
@@ -409,6 +411,9 @@ export function FeedbackStep({ doc, api }: { doc: FudeDoc; api: FlowApi }) {
 /** Step 7. The naturalizing pass: copy the prompt, paste what came back, see what changed, and take it or leave it. */
 export function NaturalizeStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi; text: string }) {
   const safe = doc.flow?.naturalizeSafe !== false;
+  const single = doc.flow?.naturalizeMode === 'single';
+  const past = api.pastFinals ?? [];
+  const [example, setExample] = useState(doc.flow?.naturalizeExample ?? '');
   const prompt = naturalizePrompt(text, safe);
   const [back, setBack] = useState(doc.flow?.naturalized ?? '');
   useEffect(() => { if (document.activeElement?.id !== 'flow-naturalized') setBack(doc.flow?.naturalized ?? ''); }, [doc.flow?.naturalized]);
@@ -417,10 +422,34 @@ export function NaturalizeStep({ doc, api, text }: { doc: FudeDoc; api: FlowApi;
   const done = !!doc.flow?.naturalizeDone;
   return (
     <div className="fude-tools">
-      <CopyBox label="Naturalize prompt" text={prompt} blocked={text.trim() ? '' : 'The text is empty. Write or paste the draft in step 6 first.'}
-        note={`The instruction is the one you use: "${NATURALIZE_HEAD}". Paste it into ChatGPT, then paste its answer below.`} />
-      <label className="flow-check"><input type="checkbox" checked={safe} onChange={() => api.save(doc, { naturalizeSafe: !safe })} />
-        <span><b>Add the safeguards</b><small>Keeps facts, numbers, headings, paragraphs, long sentences and term explanations from being changed.</small></span></label>
+      <div className="fude-tool-actions" role="group" aria-label="Way to naturalize">
+        <button type="button" className={`tool-chip${!single ? ' on' : ''}`} aria-pressed={!single} onClick={() => api.save(doc, { naturalizeMode: 'sequence' })}>Four messages</button>
+        <button type="button" className={`tool-chip${single ? ' on' : ''}`} aria-pressed={single} onClick={() => api.save(doc, { naturalizeMode: 'single' })}>One prompt</button>
+      </div>
+      {single ? (<>
+        <CopyBox label="Naturalize prompt" text={prompt} blocked={text.trim() ? '' : 'The text is empty. Write or paste the draft in step 6 first.'}
+          note={`The instruction is the one you use: "${NATURALIZE_HEAD}". Paste it into ChatGPT, then paste its answer below.`} />
+        <label className="flow-check"><input type="checkbox" checked={safe} onChange={() => api.save(doc, { naturalizeSafe: !safe })} />
+          <span><b>Add the safeguards</b><small>Keeps facts, numbers, headings, paragraphs, long sentences and term explanations from being changed.</small></span></label>
+      </>) : (<>
+        <section className="panel fude-tool" aria-label="Style example">
+          <p className="mut">Message 1 shows the model the style you want. Take an earlier report whose paragraphs open differently, or paste one.</p>
+          {past.length ? (
+            <label className="flow-check"><span><b>Earlier report</b></span>
+              <select className="hw-answer" value="" onChange={(e) => { const hit = past.find((p) => p.id === e.target.value); if (hit) { setExample(hit.text); api.save(doc, { naturalizeExample: hit.text }); } }}>
+                <option value="">Choose one…</option>
+                {past.map((p) => <option key={p.id} value={p.id}>{p.title.slice(0, 60)}</option>)}
+              </select></label>
+          ) : null}
+          <textarea className="hw-answer fude-tool-box" rows={6} value={example} placeholder="Paste an example of the writing style you want" onChange={(e) => setExample(e.target.value)}
+            onBlur={() => { if (example !== (doc.flow?.naturalizeExample ?? '')) api.save(doc, { naturalizeExample: example }); }} />
+        </section>
+        {NATURALIZE_SEQUENCE.map((m) => {
+          const body = m.key === 'example' ? naturalizeExamplePrompt(example) : m.key === 'diagnose' ? naturalizeDiagnosePrompt(text) : m.key === 'check' ? naturalizeCheckPrompt() : naturalizeApplyPrompt();
+          const blocked = m.key === 'example' && !example.trim() ? 'Choose or paste an example above first.' : m.key === 'diagnose' && !text.trim() ? 'The text is empty. Write or paste the draft in step 6 first.' : '';
+          return <CopyBox key={m.key} label={m.label} text={body} blocked={blocked} note={`${m.label.replace(/[?.]$/, '')}: ${m.note}`} />;
+        })}
+      </>)}
       <section className="panel fude-tool" aria-label="What came back">
         <textarea id="flow-naturalized" className="hw-answer fude-tool-box" rows={10} autoCorrect="off" value={back} placeholder="Paste the naturalized version here"
           onChange={(e) => setBack(e.target.value)} onBlur={() => { if (back !== (doc.flow?.naturalized ?? '')) api.save(doc, { naturalized: back }); }} />

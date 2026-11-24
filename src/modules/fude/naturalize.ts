@@ -20,3 +20,23 @@ export function naturalizePrompt(text: string, safeguards = true): string {
   const rules = safeguards ? `\n\nConstraints:\n${NATURALIZE_SAFEGUARDS.map((r) => `- ${r}`).join('\n')}` : '';
   return `${NATURALIZE_HEAD}${rules}\n\n${text.trim()}\n`;
 }
+
+/**
+ * The four-message sequence he uses in one chat (2026-11-24), which replaced the single prompt: show an example of the style,
+ * ask where the text feels unnatural, have the suggestions checked against the safeguards, then apply what complies.
+ * Each message is sent in the same conversation, in this order.
+ */
+export const EXAMPLE_HEAD = "I don't want the repetitive paragraph starters, you can learn how to naturalize the writing from this example, you can see, no repetitive patterns at the beginning of each paragraph:";
+
+export const naturalizeExamplePrompt = (example: string): string => `${EXAMPLE_HEAD}\n\n${example.trim()}\n`;
+export const naturalizeDiagnosePrompt = (text: string): string => `Where does it feel unnatural?\n\n${text.trim()}\n`;
+export const naturalizeCheckPrompt = (): string => `Before applying those changes, do they comply with this:\n\nConstraints:\n${NATURALIZE_SAFEGUARDS.map((r) => `- ${r}`).join('\n')}\n`;
+export const naturalizeApplyPrompt = (): string => 'Apply your suggestions as much as they comply with the constraints.\n';
+
+export interface NaturalizeStepDef { key: 'example' | 'diagnose' | 'check' | 'apply'; label: string; note: string }
+export const NATURALIZE_SEQUENCE: NaturalizeStepDef[] = [
+  { key: 'example', label: '1. The style example', note: 'Send this first. Wait for the model to answer.' },
+  { key: 'diagnose', label: '2. Where does it feel unnatural?', note: 'Same chat. This carries your text.' },
+  { key: 'check', label: '3. Check against the safeguards', note: 'Same chat, after its suggestions. Read what it says before going on.' },
+  { key: 'apply', label: '4. Apply what complies', note: 'Same chat. Paste the revised text below.' },
+];

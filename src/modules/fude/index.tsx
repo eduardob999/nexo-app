@@ -37,6 +37,7 @@ export function FudeModule({ uid, openId, host }: ModuleProps) {
   useEffect(() => watchMe(uid, setMe), [uid]);
   const flowApi: FlowApi = {
     me, canCloseCard: !!host?.markCardDone,
+    pastFinals: docs.filter((d) => d.flow?.final?.english?.trim()).map((d) => ({ id: d.id, title: d.title, text: d.flow?.final?.english ?? '' })),
     save: (d, patch) => { void saveFlow(uid, d.id, patch); },
     facts: (d, facts) => { void saveDocFacts(uid, d.id, facts); },
     requirements: (d, r) => { void saveDocRequirements(uid, d.id, r); },

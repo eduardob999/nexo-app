@@ -55,6 +55,10 @@ export interface Flow {
   /** The header lines of the Japanese submission (date and lecturer, title, name, affiliation). */
   header?: string;
   naturalizeSafe?: boolean;
+  /** 'single' keeps the one-prompt pass; the four-message sequence is the default. */
+  naturalizeMode?: 'sequence' | 'single';
+  /** The example of the style wanted, for message 1 of the sequence. */
+  naturalizeExample?: string;
   /** What came back from the naturalizing model, kept until he accepts or drops it. */
   naturalized?: string;
   /** He passed the naturalizing step (or chose to skip it). */

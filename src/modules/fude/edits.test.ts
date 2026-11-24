@@ -42,3 +42,22 @@ describe('naturalizePrompt', () => {
     expect(p).toContain('Do not use em dashes');
   });
 });
+
+describe('naturalize sequence', () => {
+  it('builds the four messages in his words', async () => {
+    const m = await import('./naturalize');
+    expect(m.naturalizeExamplePrompt(' Ex. ')).toBe(`${m.EXAMPLE_HEAD}\n\nEx.\n`);
+    expect(m.naturalizeDiagnosePrompt('  T  ')).toBe('Where does it feel unnatural?\n\nT\n');
+    expect(m.naturalizeApplyPrompt()).toContain('Apply your suggestions as much as they comply with the constraints');
+  });
+  it('the check message lists every safeguard once', async () => {
+    const m = await import('./naturalize');
+    const p = m.naturalizeCheckPrompt();
+    expect(p.startsWith('Before applying those changes, do they comply with this:')).toBe(true);
+    for (const r of m.NATURALIZE_SAFEGUARDS) expect(p.split(r).length - 1).toBe(1);
+  });
+  it('is four steps in order', async () => {
+    const m = await import('./naturalize');
+    expect(m.NATURALIZE_SEQUENCE.map((s) => s.key)).toEqual(['example', 'diagnose', 'check', 'apply']);
+  });
+});
