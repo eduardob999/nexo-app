@@ -22,7 +22,7 @@ export interface KajiData {
   now: number;
 }
 
-export interface Ratings { effort?: number; dislike?: number; enjoyment?: number; note?: string }
+export interface Ratings { effort?: number; dislike?: number; enjoyment?: number; note?: string; minutes?: number }
 
 /** What the screens can do. The live module wires these to Firestore; the preview wires them to nothing. */
 export interface KajiActions {

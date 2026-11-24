@@ -207,8 +207,9 @@ export function watchHouseholdStrict(hid: string, on: (h: HouseholdDoc | null) =
 }
 
 /** The doer fills in or changes how it went, later. Only these fields can change on a log entry (the rules enforce it). */
-export function rateEvent(hid: string, id: string, r: { effort?: number; dislike?: number; enjoyment?: number; note?: string }): Promise<void> {
+export function rateEvent(hid: string, id: string, r: { effort?: number; dislike?: number; enjoyment?: number; note?: string; minutes?: number }): Promise<void> {
   const patch: Record<string, unknown> = { ratedAt: Date.now() };
+  if (typeof r.minutes === 'number' && r.minutes >= 1) patch.minutes = Math.min(Math.round(r.minutes), 1440);
   for (const k of ['effort', 'dislike', 'enjoyment'] as const) if (typeof r[k] === 'number') patch[k] = r[k];
   if (typeof r.note === 'string') patch.note = r.note.trim().slice(0, 500);
   return updateDoc(doc(sub(hid, 'log'), id), patch);

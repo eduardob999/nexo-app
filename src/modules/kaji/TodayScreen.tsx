@@ -13,7 +13,7 @@ import { clockLabel } from './time';
 import type { KajiActions, KajiData, Ratings } from './ui';
 import { latestSwap, memberColor, recentDone, swapButtonState, taskName, todayFor, withNames as withLabel } from './view';
 
-type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number; est?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'kind'; start: number; end: number } | { step: 'later'; task: TaskType; event: LogEvent } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
+type Flow = { step: 'minutes'; task: TaskType; item: PlannedItem | null; start?: number; est?: number } | { step: 'rate'; task: TaskType; item: PlannedItem | null; minutes: number; start?: number } | { step: 'log' } | { step: 'kind'; start: number; end: number } | { step: 'later'; task: TaskType; event: LogEvent; minutes?: number } | { step: 'reschedule'; task: TaskType; item: PlannedItem } | { step: 'dismiss'; task: TaskType; item: PlannedItem } | null;
 
 export function TodayScreen({ data, actions, lang, rand = Math.random, askPreview }: { data: KajiData; actions: KajiActions; lang: Lang; rand?: () => number; askPreview?: import('./asks').Ask[] }) {
   const [running, setRunning] = useState<Running | null>(() => loadTimer());
@@ -215,8 +215,8 @@ export function TodayScreen({ data, actions, lang, rand = Math.random, askPrevie
           onPick={(m) => { const est = data.estimates[flow.task.id]; const mat = est ? maturity(est, flow.task, data.log, data.now) : 'new'; maybeRate(flow.task, flow.item, m, askRates(mat, drifted(data.log, flow.task.id), flow.task, data.settings).rating); }} />
       ) : null}
       {flow?.step === 'later' ? (
-        <RateSheet lang={lang} task={flow.task} later initial={{ ...(flow.event.effort ? { effort: flow.event.effort } : {}), ...(flow.event.dislike ? { dislike: flow.event.dislike } : {}), ...(flow.event.enjoyment ? { enjoyment: flow.event.enjoyment } : {}), ...(flow.event.note ? { note: flow.event.note } : {}) }}
-          onSkip={() => setFlow(null)} onSave={(r) => { void actions.rate(flow.event.id, r); setFlow(null); }} />
+        <RateSheet lang={lang} task={flow.task} later minutes={flow.minutes ?? flow.event.minutes} onMinutes={(m) => setFlow({ ...flow, minutes: Math.max(1, m) })} initial={{ ...(flow.event.effort ? { effort: flow.event.effort } : {}), ...(flow.event.dislike ? { dislike: flow.event.dislike } : {}), ...(flow.event.enjoyment ? { enjoyment: flow.event.enjoyment } : {}), ...(flow.event.note ? { note: flow.event.note } : {}) }}
+          onSkip={() => setFlow(null)} onSave={(r) => { void actions.rate(flow.event.id, flow.minutes !== undefined && flow.minutes !== flow.event.minutes ? { ...r, minutes: flow.minutes } : r); setFlow(null); }} />
       ) : null}
       {flow?.step === 'reschedule' ? (
         <RescheduleSheet lang={lang} task={flow.task} item={flow.item} now={Date.now() > data.now ? Date.now() : data.now} settings={data.settings} nexo={pick} nexoWho={pick && pick.uid !== flow.item.uid ? nameOf(pick.uid) : ''} onCancel={() => setFlow(null)}
