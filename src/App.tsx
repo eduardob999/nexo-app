@@ -338,7 +338,7 @@ function OwnerApp() {
       ) : (
         <Today cards={cards} now={new Date()} fromCache={fromCache} onFude={(c) => { void cardContext(user.uid, c).then((full) => openForCard(user.uid, full)); }} lane={tab === 'nexo' ? 'nexo' : 'you'}
           withDraft={new Set(drafts.filter((d) => d.status !== 'sent').map((d) => d.linkedNote ?? ''))}
-          waiting={cards.filter((c) => c.last?.by === 'eduardo').length} nexo={nexo} info={info} wake={wake} sleep={sleep}
+          waiting={cards.filter((c) => c.status === 'open' && c.last?.by === 'eduardo').length} nexo={nexo} info={info} wake={wake} sleep={sleep}
           rest={rest} onRateRest={(d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); }}
           sleepActions={{
             onGoToBed: () => { void goToBed(user.uid, new Date()).then(() => flash('Good night')); },
