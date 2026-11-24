@@ -1,5 +1,6 @@
 import { estimateFor } from './adapt';
 import { CARLA_UID, migrateTasks, SEED as REAL_SEED } from './catalog';
+import { blankListing, SEED_BRIEF, SEED_DOCS, SEED_STEPS } from './housing';
 import { DEFAULT_SETTINGS, type Interval, type LogEvent, type Member } from './model';
 import { plan } from './planner';
 import type { KajiActions, KajiData } from './ui';
@@ -49,3 +50,14 @@ export function kajiFixture(now = NOW): { data: KajiData; actions: KajiActions }
   return { data, actions: { logDone: noop, rate: noop, undo: noop, notToday: noop, reschedule: noop, dismiss: noop, move: noop, askSwap: noop, answerSwap: noop, saveTask: noop, saveSettings: noop, saveSurvey: noop, setAway: noop, setPresence: noop, invite: noop, ask: noop } };
 }
 export { MIN };
+
+/** The housing tracker as it might look in a few weeks: two steps done, one under way, two candidates, a source. Invented. */
+export function housingFixture(): import('./housing').HAny[] {
+  const steps = SEED_STEPS.map((s) => (s.n <= 2 ? { ...s, status: 'done' as const } : s.n === 3 ? { ...s, status: 'doing' as const, note: 'UR first: no key money or agent fee' } : s));
+  const docs = SEED_DOCS.map((d, i) => (i === 0 || i === 1 || i === 5 ? { ...d, done: true } : d));
+  return [SEED_BRIEF, ...steps, ...docs,
+    { ...blankListing('housing-listing-a', 'a', 1), name: 'Maison Obaku 203', url: 'https://suumo.jp/chintai/jnc_000000000/', area: 'Obaku, Uji', stations: 'Keihan Obaku 6 min, JR Obaku 8 min', rent: '55000', mgmt: '3000', deposit: '1m', keyMoney: '1m', agentFee: '60500', firstMonth: '', guarantor: '29000', insurance: '', keyExchange: '16500', cohab: 'yes' as const, status: 'viewing' as const, viewing: '2027-01-23' },
+    { ...blankListing('housing-listing-b', 'b', 2), name: 'UR Momoyama', url: 'https://www.ur-net.go.jp/chintai/', area: 'Fushimi', stations: 'Keihan Momoyama-Minamiguchi 9 min, JR Momoyama 7 min', rent: '61000', mgmt: '2500', deposit: '2m', keyMoney: '0', agentFee: '0', firstMonth: '63500', guarantor: '0', insurance: '15000', keyExchange: '0', cohab: 'ask' as const, status: 'idea' as const },
+    { part: 'source' as const, id: 'housing-source-1', url: 'https://www.ur-net.go.jp/chintai/', text: 'UR rental: no key money, no agent fee, no renewal fee, no guarantor needed.', note: 'Why UR is worth a look', at: Date.parse('2026-11-24T10:00:00+09:00'), by: 'b' },
+  ];
+}

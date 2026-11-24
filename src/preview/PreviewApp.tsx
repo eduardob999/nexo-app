@@ -5,7 +5,7 @@ import { KajiView } from '../modules/kaji';
 import { GuestView } from '../modules/kaji/GuestApp';
 import { Sky } from '../sky/Sky';
 import { classify, skyState } from '../sky/sky';
-import { kajiFixture } from '../modules/kaji/fixture';
+import { housingFixture, kajiFixture } from '../modules/kaji/fixture';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
 import { Money } from '../Money';
@@ -135,7 +135,7 @@ export function PreviewApp() {
     const lists = { lists: [{ id: 'l1', title: 'Compras', at: 1, by: 'a' }], items: [{ id: 'i1', listId: 'l1', text: 'Leche', done: false, by: 'a', at: 1 }, { id: 'i2', listId: 'l1', text: 'Arroz', done: true, by: 'b', at: 0, doneAt: 5 }] };
     const ledger = [{ id: 'm1', at: Date.parse('2026-11-18T12:00:00+09:00'), by: 'a', paidBy: 'a', amount: 4280, text: 'Supermercado', kind: 'expense' as const }];
     const asks = [{ id: 'q1', kind: 'plan' as const, text: 'Cena en Karasuma el sábado 28', when: 1, by: 'b', byName: 'Carla', at: 1, state: 'sent' as const }];
-    return <GuestView data={data} actions={fx.actions} lang={lang as 'en' | 'es' | 'ja'} onLang={() => {}} link="" tab={tab as 'today'} onSignOut={() => {}} previewLists={lists} previewLedger={ledger} previewAsks={asks} />;
+    return <GuestView data={data} actions={fx.actions} lang={lang as 'en' | 'es' | 'ja'} onLang={() => {}} link="" tab={tab as 'today'} onSignOut={() => {}} previewLists={lists} previewLedger={ledger} previewAsks={asks} previewHousing={housingFixture()} />;
   }
   if (which.startsWith('kaji')) {
     const fx = kajiFixture();
@@ -143,13 +143,13 @@ export function PreviewApp() {
     const data = member ? { ...fx.data, me: 'b' } : fx.data;
     const actions = fx.actions;
     const previewAsks = member ? [{ id: 'q1', kind: 'plan' as const, text: 'Cena en Karasuma el sábado 28', when: 1, by: 'b', byName: 'Carla', at: 1, state: 'sent' as const }, { id: 'q2', kind: 'question' as const, text: 'A qué hora es tu clase el jueves', by: 'b', byName: 'Carla', at: 0, state: 'done' as const }] : undefined;
-    const tab = (which.split('-')[1] ?? 'today') as 'today' | 'week' | 'balance' | 'chores' | 'lists' | 'money' | 'more';
+    const tab = (which.split('-')[1] ?? 'today') as 'today' | 'week' | 'balance' | 'chores' | 'lists' | 'money' | 'house' | 'more';
     const previewLedger = [{ id: 'm1', at: Date.parse('2026-11-18T12:00:00+09:00'), by: 'a', paidBy: 'a', amount: 4280, text: 'Supermercado', kind: 'expense' as const }, { id: 'm2', at: Date.parse('2026-11-16T12:00:00+09:00'), by: 'b', paidBy: 'b', amount: 1980, text: 'Detergente y esponjas', kind: 'expense' as const }, { id: 'm3', at: Date.parse('2026-11-12T12:00:00+09:00'), by: 'b', paidBy: 'b', amount: 2500, text: 'Prestado a Eduardo', kind: 'expense' as const, split: { a: 1 } }];
     const previewLists = { lists: [{ id: 'l1', title: 'Compras', at: 1, by: 'a' }, { id: 'l2', title: 'Trips', at: 2, by: 'b' }], items: [
       { id: 'i1', listId: 'l1', text: 'Leche', done: false, by: 'a', at: 1 }, { id: 'i2', listId: 'l1', text: 'Huevos x10', done: false, by: 'b', at: 2 }, { id: 'i3', listId: 'l1', text: 'Detergente para ropa', done: false, by: 'a', at: 3 },
       { id: 'i4', listId: 'l1', text: 'Arroz', done: true, by: 'b', at: 0, doneAt: 5 }, { id: 'i5', listId: 'l1', text: 'Jabón de platos', done: true, by: 'a', at: 0, doneAt: 4 }] };
     const lang = (which.split('-')[2] ?? 'en') as 'en' | 'es' | 'ja';
-    return (<><KajiView data={data} actions={actions} lang={lang} onLang={() => {}} link="https://example.test/#/kaji/join-h" tab={tab} previewLists={previewLists} previewLedger={previewLedger} {...(previewAsks ? { previewAsks } : {})} /><TabBar current="browse" draftCount={0} /></>);
+    return (<><KajiView data={data} actions={actions} lang={lang} onLang={() => {}} link="https://example.test/#/kaji/join-h" tab={tab} previewLists={previewLists} previewLedger={previewLedger} previewHousing={housingFixture()} {...(previewAsks ? { previewAsks } : {})} /><TabBar current="browse" draftCount={0} /></>);
   }
   if (which.startsWith('fude-flow-')) {
     // fude-flow-<step>: the assignment flow at that step, with the fixtures of a half-finished 高橋 report.

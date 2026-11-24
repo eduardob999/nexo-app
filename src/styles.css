@@ -865,3 +865,43 @@ a.icon-btn { color: inherit; text-decoration: none; }
 .kaji-sheet .kaji-text { width: 100%; height: 44px; padding: 0 12px; border: 1px solid var(--edge); border-radius: 10px; background: transparent; color: var(--ink); font: inherit; box-sizing: border-box; }
 .kaji-acts { padding-left: 44px; gap: 5px; } .kaji-acts .chip-btn.small { padding: 0 9px; } .kaji-acts .kaji-more { padding: 0 12px; min-width: 40px; }
 .kaji-nolog { text-align: center; margin: 12px 0 0; } .kaji-form { display: grid; gap: 12px; }
+
+/* Kaji: the shared-house search (HousingScreen.tsx) */
+.tabs-6 { grid-template-columns: repeat(6, 1fr); } .tabs-6 a { padding-left: 1px; padding-right: 1px; font-size: 11px; }
+.kaji-hs-risk { padding: 12px 16px; border-color: #d9822b; background: color-mix(in srgb, #d9822b 12%, var(--surface)); } .kaji-hs-risk b { color: #a85a12; } .kaji-hs-risk p { margin: 4px 0 0; font-size: 14px; line-height: 1.4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .kaji-hs-risk b { color: #f0a85a; } }
+:root[data-theme='dark'] .kaji-hs-risk b { color: #f0a85a; }
+.kaji-hs-chips { padding: 10px 14px; display: grid; gap: 8px; } .kaji-hs-chips .kaji-chips { gap: 6px; }
+.kaji-hs-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.kaji-hs-head select, .kaji-hs-ctl select, .kaji-hs-ctl input, .kaji-hs-add select, .kaji-hs-stats input { height: 36px; padding: 0 8px; border: 1px solid var(--edge); border-radius: 10px; background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; min-width: 0; }
+.chip-btn.small { height: 36px; padding: 0 12px; font-size: 14px; }
+.kaji-hs-chip { height: auto; min-height: 36px; padding: 5px 10px; display: inline-flex; align-items: center; text-align: left; gap: 6px; font-size: 13.5px; color: var(--ink); max-width: 100%; }
+.kaji-hs-chip small { flex: none; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.kaji-hs-chip.f-firm { border-color: var(--accent); } .kaji-hs-chip.f-firm small { color: var(--accent); }
+.kaji-hs-chip.f-cangive { border-style: dashed; }
+.kaji-hs-seg button { font-size: 13px; }
+.kaji-hs-sum { margin: 10px 0 0; }
+.kaji-hs-step { align-items: flex-start; }
+.kaji-hs-n { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none; font: 600 13px var(--mono); background: var(--chip); color: var(--ink); }
+.kaji-hs-n.s-doing { background: var(--accent-tint); color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+.kaji-hs-n.s-done { background: var(--accent); color: var(--on-accent); }
+.kaji-hs-n.s-blocked { background: color-mix(in srgb, #d14343 16%, var(--surface)); color: #d14343; }
+.kaji-hs-ctl { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; padding-left: 40px; }
+.kaji-hs-ctl input[type='date'] { width: 140px; }
+.kaji-hs-late { border-color: #d14343 !important; color: #d14343 !important; }
+.kaji-hs-note { flex: 1 1 100%; margin-left: 40px; height: 34px; padding: 0 10px; border: 1px dashed var(--edge); border-radius: 10px; background: transparent; color: var(--ink); font: inherit; font-size: 14px; min-width: 0; }
+.kaji-hs-card { padding: 12px 16px; display: grid; gap: 8px; margin-top: 10px; }
+.kaji-hs-name { font-size: 16px; overflow-wrap: anywhere; } .kaji-hs-name a { color: var(--accent); }
+.kaji-hs-line { margin: 0; font-size: 14px; }
+.kaji-hs-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin: 0; }
+.kaji-hs-stats > div { display: grid; gap: 1px; min-width: 0; } .kaji-hs-stats dt { font-size: 12px; color: var(--muted); } .kaji-hs-stats dd { margin: 0; font: 600 16px var(--mono); } .kaji-hs-stats dd i { font: italic 400 14px var(--sans); color: var(--muted); } .kaji-hs-stats small { font-size: 12px; }
+.kaji-hs-stats input[type='date'] { width: 100%; font-family: var(--sans); font-weight: 400; }
+.kaji-hs-bad { color: #d14343; } .kaji-hs-good { color: #2f8f4e; }
+.kaji-hs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; } .kaji-hs-grid input { width: 100%; box-sizing: border-box; } .kaji-hs-grid small { font-size: 11.5px; }
+.kaji-hs-grid .kaji-field input { height: 38px; padding: 0 10px; border: 1px solid var(--edge); border-radius: 10px; background: transparent; color: var(--ink); font: inherit; }
+.kaji-hs-total { font: 600 18px var(--mono); }
+.kaji-hs-table { padding: 4px 0; } .kaji-hs-tr { display: grid; grid-template-columns: 1.3fr 1fr 1.2fr; gap: 8px; padding: 8px 16px; font-size: 14px; align-items: baseline; } .kaji-hs-tr + .kaji-hs-tr { border-top: 1px solid var(--line); }
+.kaji-hs-tr span { min-width: 0; overflow-wrap: anywhere; } .kaji-hs-tr span:not(:first-child) { font-family: var(--mono); } .kaji-hs-tr small { font-family: var(--sans); font-size: 11.5px; display: block; } .kaji-hs-th { font-size: 12px; color: var(--muted); } .kaji-hs-th span { font-family: var(--sans) !important; }
+.kaji-hs-add { display: flex; gap: 8px; padding: 10px 12px; flex-wrap: wrap; } .kaji-hs-add input { flex: 1 1 160px; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid var(--edge); border-radius: 10px; background: transparent; color: var(--ink); font: inherit; }
+.kaji-hs-src { padding: 12px 16px; } .kaji-hs-src input, .kaji-hs-src textarea { width: 100%; box-sizing: border-box; } .kaji-hs-src textarea { border: 1px solid var(--edge); border-radius: 10px; background: transparent; color: var(--ink); font: inherit; padding: 9px 10px; resize: vertical; }
+.kaji-hs-source { flex-wrap: nowrap; align-items: flex-start; } .kaji-hs-url { color: var(--accent); font-size: 14px; overflow-wrap: anywhere; } .kaji-hs-pre { white-space: pre-wrap; font-size: 13.5px; margin: 6px 0 0; overflow-wrap: anywhere; }

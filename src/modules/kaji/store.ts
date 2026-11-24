@@ -214,3 +214,24 @@ export function rateEvent(hid: string, id: string, r: { effort?: number; dislike
   if (typeof r.note === 'string') patch.note = r.note.trim().slice(0, 500);
   return updateDoc(doc(sub(hid, 'log'), id), patch);
 }
+
+// ---- the shared-house search (housing.ts). One document per piece in households/{hid}/settings with kind 'kaji-housing', the place and the
+// filter the household money share already uses, so the existing rules cover it and no rules change is needed.
+export function watchHousing(hid: string, on: (docs: import('./housing').HAny[], fromServer: boolean) => void): () => void {
+  const q = query(sub(hid, 'settings'), where('kind', '==', 'kaji-housing'));
+  return onSnapshot(q, (s) => on(s.docs.map((d) => d.data() as import('./housing').HAny), !s.metadata.fromCache), () => on([], false));
+}
+export function saveHousing(hid: string, d: import('./housing').HAny): Promise<void> {
+  return setDoc(doc(sub(hid, 'settings'), d.id), clean({ ...d, kind: 'kaji-housing' }));
+}
+export function patchHousing(hid: string, id: string, patch: Record<string, unknown>): Promise<void> {
+  return updateDoc(doc(sub(hid, 'settings'), id), clean(patch) as Record<string, unknown>);
+}
+export const removeHousing = (hid: string, id: string) => deleteDoc(doc(sub(hid, 'settings'), id));
+/** The seed has fixed ids, so two phones seeding at once write the same documents and nothing doubles. */
+export async function seedHousing(hid: string, all: import('./housing').HAny[]): Promise<void> {
+  const batch = writeBatch(db);
+  for (const d of all) batch.set(doc(sub(hid, 'settings'), d.id), clean({ ...d, kind: 'kaji-housing' }));
+  await batch.commit();
+}
+export const housingId = (part: string) => `housing-${part}-${newId()}`;

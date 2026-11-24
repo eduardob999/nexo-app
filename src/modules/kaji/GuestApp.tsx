@@ -7,6 +7,8 @@ import { BalanceScreen } from './BalanceScreen';
 import { ChoresScreen } from './ChoresScreen';
 import { t } from './i18n';
 import { initialLang, useKaji } from './index';
+import type { HAny } from './housing';
+import { HousingScreen } from './HousingScreen';
 import type { LedgerEntry } from './ledger';
 import { ListsScreen } from './ListsScreen';
 import { MoneyScreen } from './MoneyScreen';
@@ -19,15 +21,16 @@ import { TodayScreen } from './TodayScreen';
 import type { KajiActions, KajiData } from './ui';
 import { WeekScreen } from './WeekScreen';
 
-type Tab = 'today' | 'week' | 'lists' | 'money' | 'more';
+type Tab = 'today' | 'week' | 'lists' | 'money' | 'house' | 'more';
 const NAV: { id: Tab; d: string }[] = [
   { id: 'today', d: 'M4 4h16v16H4zM9 12l2 2 4-4' },
   { id: 'week', d: 'M4 6h16v14H4zM4 11h16M9 3v5M15 3v5' },
   { id: 'lists', d: 'M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01' },
   { id: 'money', d: 'M12 3a9 9 0 100 18 9 9 0 000-18zM9 10c0-1.4 1.3-2 3-2s3 .6 3 2-1.3 1.7-3 2-3 .6-3 2 1.3 2 3 2 3-.6 3-2' },
+  { id: 'house', d: 'M3 11l9-8 9 8M5 9.5V20h14V9.5M10 20v-6h4v6' },
   { id: 'more', d: 'M4 6h16M4 12h16M4 18h10' },
 ];
-const LABEL: Record<Tab, string> = { today: 'today', week: 'week', lists: 'lists', money: 'money', more: 'more' };
+const LABEL: Record<Tab, string> = { today: 'today', week: 'week', lists: 'lists', money: 'money', house: 'house', more: 'more' };
 
 function greeting(name: string, now: number): string {
   const h = new Date(now + 9 * 3_600_000).getUTCHours();
@@ -36,9 +39,9 @@ function greeting(name: string, now: number): string {
 }
 
 /** The screens of the guest app, with no Firebase in them: the live app and the preview both feed this. */
-export function GuestView({ data, actions, lang, link, tab: forced, onSignOut, previewLists, previewLedger, previewAsks }: {
+export function GuestView({ data, actions, lang, link, tab: forced, onSignOut, previewLists, previewLedger, previewAsks, previewHousing }: {
   data: KajiData; actions: KajiActions; lang: Lang; onLang?: (l: Lang) => void; link: string; tab?: Tab; onSignOut: () => void;
-  previewLists?: { lists: KList[]; items: KItem[] }; previewLedger?: LedgerEntry[]; previewAsks?: Ask[];
+  previewLists?: { lists: KList[]; items: KItem[] }; previewLedger?: LedgerEntry[]; previewAsks?: Ask[]; previewHousing?: HAny[];
 }) {
   const [tab, setTab] = useState<Tab>(forced ?? 'today');
   const [more, setMore] = useState<'balance' | 'chores' | 'settings'>('balance');
@@ -55,6 +58,7 @@ export function GuestView({ data, actions, lang, link, tab: forced, onSignOut, p
         {tab === 'week' ? <WeekScreen data={data} lang={lang} actions={actions} /> : null}
         {tab === 'lists' ? <ListsScreen data={data} lang={lang} {...(previewLists ? { preview: previewLists } : {})} /> : null}
         {tab === 'money' ? <MoneyScreen data={data} lang={lang} {...(previewLedger ? { preview: previewLedger } : {})} /> : null}
+        {tab === 'house' ? <HousingScreen data={data} actions={actions} lang={lang} {...(previewHousing ? { preview: previewHousing } : {})} /> : null}
         {tab === 'more' ? (
           <>
             <div className="seg kaji-tabs" role="tablist">
@@ -69,7 +73,7 @@ export function GuestView({ data, actions, lang, link, tab: forced, onSignOut, p
           </>
         ) : null}
       </main>
-      <nav className="tabs tabs-5" aria-label="Sections">
+      <nav className="tabs tabs-6" aria-label="Sections">
         {NAV.map((n) => (
           <a key={n.id} href={`#/g/${n.id}`} aria-current={tab === n.id ? 'page' : undefined} onClick={(e) => { e.preventDefault(); setTab(n.id); window.scrollTo(0, 0); }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={n.d} /></svg>

@@ -5,6 +5,7 @@ import { migrateTasks } from './catalog';
 import { BalanceScreen } from './BalanceScreen';
 import { ChoresScreen } from './ChoresScreen';
 import { ListsScreen } from './ListsScreen';
+import { HousingScreen } from './HousingScreen';
 import { MoneyScreen } from './MoneyScreen';
 import { t } from './i18n';
 import { DEFAULT_SETTINGS, type Interval, type Lang, type LogEvent, type PlannedItem, type Settings, type TaskType } from './model';
@@ -22,8 +23,8 @@ import { WeekScreen } from './WeekScreen';
 
 export { kajiManifest } from './manifest';
 
-type Tab = 'today' | 'week' | 'balance' | 'chores' | 'lists' | 'money' | 'more';
-const TABS: Tab[] = ['today', 'week', 'balance', 'chores', 'lists', 'money', 'more'];
+type Tab = 'today' | 'week' | 'balance' | 'chores' | 'lists' | 'money' | 'house' | 'more';
+const TABS: Tab[] = ['today', 'week', 'balance', 'chores', 'lists', 'money', 'house', 'more'];
 
 /** Kaji is English only. */
 export function initialLang(): Lang {
@@ -31,7 +32,7 @@ export function initialLang(): Lang {
 }
 
 /** The screens, with no Firebase in them: the live module and the preview both feed this. */
-export function KajiView({ data, actions, lang, link, tab: forced, previewLists, previewLedger, previewAsks }: { data: KajiData; actions: KajiActions; lang: Lang; onLang?: (l: Lang) => void; link: string; tab?: Tab; previewLists?: { lists: import('./store').KList[]; items: import('./store').KItem[] }; previewLedger?: import('./ledger').LedgerEntry[]; previewAsks?: import('./asks').Ask[] }) {
+export function KajiView({ data, actions, lang, link, tab: forced, previewLists, previewLedger, previewAsks, previewHousing }: { data: KajiData; actions: KajiActions; lang: Lang; onLang?: (l: Lang) => void; link: string; tab?: Tab; previewLists?: { lists: import('./store').KList[]; items: import('./store').KItem[] }; previewLedger?: import('./ledger').LedgerEntry[]; previewAsks?: import('./asks').Ask[]; previewHousing?: import('./housing').HAny[] }) {
   const [tab, setTab] = useState<Tab>(forced ?? 'today');
   return (
     <main className="screen kaji">
@@ -45,6 +46,7 @@ export function KajiView({ data, actions, lang, link, tab: forced, previewLists,
       {tab === 'chores' ? <ChoresScreen data={data} actions={actions} lang={lang} /> : null}
       {tab === 'lists' ? <ListsScreen data={data} lang={lang} {...(previewLists ? { preview: previewLists } : {})} /> : null}
       {tab === 'money' ? <MoneyScreen data={data} lang={lang} {...(previewLedger ? { preview: previewLedger } : {})} /> : null}
+      {tab === 'house' ? <HousingScreen data={data} actions={actions} lang={lang} {...(previewHousing ? { preview: previewHousing } : {})} /> : null}
       {tab === 'more' ? <SettingsScreen data={data} actions={actions} lang={lang} link={link} /> : null}
     </main>
   );
