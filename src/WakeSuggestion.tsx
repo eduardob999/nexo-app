@@ -88,8 +88,8 @@ export function WakeSuggestion({ cards, now, wake, onRecord, onAnswer, sleep = [
           </>
         ) : (
           <>
-            <span className="kicker">GOOD NIGHT</span>
-            <p className="wake-q">Good night. Bed <b className="mono">{hhmm(new Date(r.bed))}</b>. Suggested wake <b className="mono">{hhmm(plan.wakeAt)}</b>.<span className="mut">{plan.reason}</span></p>
+            <span className="kicker">{new Date(r.bed).getTime() > now.getTime() ? 'SCREENS OFF' : 'GOOD NIGHT'}</span>
+            <p className="wake-q">{new Date(r.bed).getTime() > now.getTime() ? 'Screens off until bed.' : 'Good night.'} Bed <b className="mono">{hhmm(new Date(r.bed))}</b>. Suggested wake <b className="mono">{hhmm(plan.wakeAt)}</b>.<span className="mut">{plan.reason}</span></p>
             <div className="sleep-links">{onUndoBed ? <button className="chip-btn small" onClick={() => onUndoBed(r.night)}>Undo</button> : null}{editLink()}</div>
           </>
         )}
@@ -125,7 +125,7 @@ export function WakeSuggestion({ cards, now, wake, onRecord, onAnswer, sleep = [
         </span>
         <span className="mut">{plan.reason}</span>
       </p>
-      {onGoToBed ? <button className="copy-main big" onClick={onGoToBed}>Go to bed</button> : null}
+      {onGoToBed ? <button className="copy-main big" onClick={onGoToBed}>Screens off, bed in 1 hour</button> : null}
     </section>
   );
 }

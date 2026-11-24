@@ -341,7 +341,7 @@ function OwnerApp() {
           waiting={cards.filter((c) => c.status === 'open' && c.last?.by === 'eduardo').length} nexo={nexo} info={info} wake={wake} sleep={sleep}
           rest={rest} onRateRest={(d, p) => { void rateRest(user.uid, d, p); flash('Rest saved'); }}
           sleepActions={{
-            onGoToBed: () => { void goToBed(user.uid, new Date()).then(() => flash('Good night')); },
+            onGoToBed: () => { void goToBed(user.uid, new Date()).then(() => flash('Screens off. Bed in 1 hour')); },
             onUndoBed: (n) => { void undoBed(user.uid, n); flash('Bedtime removed'); },
             onImUp: (n) => { void imUp(user.uid, n, new Date()); },
             onRate: (n, r, f, t) => { void rateSleep(user.uid, n, r, f, t); flash('Sleep saved'); },

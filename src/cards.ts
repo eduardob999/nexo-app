@@ -633,10 +633,11 @@ export function watchSleep(uid: string, on: (recs: SleepRec[]) => void, onError:
   return onSnapshot(q, (snap) => on(snap.docs.map((d) => d.data() as SleepRec)), onError);
 }
 
-/** Bedtime now. The night is the date of the bedtime from 12:00 on, else the day before. */
+/** Pressed one hour before sleep, for a screen-free hour: the bedtime recorded is one hour after `now`. The night is the date of the bedtime from 12:00 on, else the day before. */
 export function goToBed(uid: string, now: Date): Promise<string> {
-  const night = nightKey(now);
-  return setDoc(sleepDoc(uid, night), { night, bed: isoLocal(now), wake: null, rating: null, factors: {}, note: '', source: 'nexo-app', createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).then(() => night);
+  const bedAt = new Date(now.getTime() + 60 * 60_000);
+  const night = nightKey(bedAt);
+  return setDoc(sleepDoc(uid, night), { night, bed: isoLocal(bedAt), wake: null, rating: null, factors: {}, note: '', source: 'nexo-app', createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true }).then(() => night);
 }
 
 /** Undo a bedtime pressed by mistake. */

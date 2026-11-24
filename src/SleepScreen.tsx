@@ -58,7 +58,7 @@ export function SleepScreen({ recs, cards, now, wake, rest = [], restActions }: 
       </div>
       <p className="notice">Green nights felt good, orange and red felt poor, blue are not rated yet.</p>
 
-      {st.nights === 0 ? <p className="empty">No nights yet. Tap Go to bed on Today tonight.</p> : (
+      {st.nights === 0 ? <p className="empty">No nights yet. Tap "Screens off, bed in 1 hour" on Today tonight.</p> : (
         <ul className="sleep-stats">
           <li><b>{st.avgHours !== null ? fmtHours(st.avgHours) : 'n/a'}</b><small>Average sleep{bad ? ', below your need' : ''}</small></li>
           <li><b>{st.avgBed ?? 'n/a'} / {st.avgWake ?? 'n/a'}</b><small>Average bed and up</small></li>
