@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { signOutUser } from '../../auth';
+import { wantsMoney } from '../../useHash';
 import { Sky } from '../../sky/Sky';
+import { ToastHost } from '../../Toast';
 import { useSky } from '../../sky/useSky';
 import type { Ask } from './asks';
 import { BalanceScreen } from './BalanceScreen';
@@ -11,7 +13,7 @@ import type { HAny } from './housing';
 import { HousingScreen } from './HousingScreen';
 import type { LedgerEntry } from './ledger';
 import { ListsScreen } from './ListsScreen';
-import { MoneyScreen } from './MoneyScreen';
+import { MoneyTab } from './MoneyScreen';
 import type { Lang } from './model';
 import { SettingsScreen } from './SettingsScreen';
 import { Setup } from './Setup';
@@ -43,7 +45,7 @@ export function GuestView({ data, actions, lang, link, tab: forced, onSignOut, p
   data: KajiData; actions: KajiActions; lang: Lang; onLang?: (l: Lang) => void; link: string; tab?: Tab; onSignOut: () => void;
   previewLists?: { lists: KList[]; items: KItem[] }; previewLedger?: LedgerEntry[]; previewAsks?: Ask[]; previewHousing?: HAny[];
 }) {
-  const [tab, setTab] = useState<Tab>(forced ?? 'today');
+  const [tab, setTab] = useState<Tab>(forced ?? (wantsMoney() ? 'money' : 'today'));
   const [more, setMore] = useState<'balance' | 'chores' | 'settings'>('balance');
   const me = data.members.find((m) => m.uid === data.me);
   const owner = data.members.find((m) => data.house.members[m.uid] === 'owner');
@@ -57,7 +59,7 @@ export function GuestView({ data, actions, lang, link, tab: forced, onSignOut, p
         {tab === 'today' ? <TodayScreen data={data} actions={actions} lang={lang} {...(previewAsks ? { askPreview: previewAsks } : {})} /> : null}
         {tab === 'week' ? <WeekScreen data={data} lang={lang} actions={actions} /> : null}
         {tab === 'lists' ? <ListsScreen data={data} lang={lang} {...(previewLists ? { preview: previewLists } : {})} /> : null}
-        {tab === 'money' ? <MoneyScreen data={data} lang={lang} {...(previewLedger ? { preview: previewLedger } : {})} /> : null}
+        {tab === 'money' ? <MoneyTab data={data} lang={lang} {...(previewLedger ? { preview: previewLedger } : {})} /> : null}
         {tab === 'house' ? <HousingScreen data={data} actions={actions} lang={lang} {...(previewHousing ? { preview: previewHousing } : {})} /> : null}
         {tab === 'more' ? (
           <>
@@ -106,6 +108,7 @@ export function GuestApp({ uid }: { uid: string }) {
   }
   return (
     <>
+      <ToastHost />
       {sky ? <Sky state={sky} dark={dark} mode="subtle" /> : null}
       <GuestView data={data} actions={actions} lang={lang} link={link} onSignOut={() => { void signOutUser(); }} />
     </>

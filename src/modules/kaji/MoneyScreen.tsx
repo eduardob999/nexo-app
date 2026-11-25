@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { GuestMoney } from '../../GuestMoney';
+import { OwnerMoney } from '../../OwnerMoney';
 import { t } from './i18n';
 import { balances, monthTotals, parseYen, settleUp, yen, type LedgerEntry } from './ledger';
 import type { Lang } from './model';
@@ -7,6 +9,23 @@ import type { KajiData } from './ui';
 import { memberColor } from './view';
 
 /** Splitting costs between the two of them: who paid, who it was for, who owes whom, settling up. */
+export function MoneyTab({ data, lang, preview, mine }: { data: KajiData; lang: Lang; preview?: LedgerEntry[]; mine?: ReactNode }) {
+  // The preview has no Firebase, so it only has "mine" when given one.
+  const [part, setPart] = useState<'mine' | 'shared'>(preview && !mine ? 'shared' : 'mine');
+  const owner = data.house.members[data.me] === 'owner';
+  const ownerName = data.members.find((m) => data.house.members[m.uid] === 'owner')?.name;
+  const own = mine ?? (preview ? null : owner ? <OwnerMoney uid={data.me} /> : <GuestMoney uid={data.me} embedded {...(ownerName ? { ownerName } : {})} />);
+  return (
+    <>
+      <div className="seg kaji-tabs" role="tablist" aria-label="Money">
+        <button role="tab" aria-pressed={part === 'mine'} onClick={() => setPart('mine')} style={{ textTransform: 'none' }}>Mine</button>
+        <button role="tab" aria-pressed={part === 'shared'} onClick={() => setPart('shared')} style={{ textTransform: 'none' }}>Shared</button>
+      </div>
+      {part === 'mine' ? own : <MoneyScreen data={data} lang={lang} {...(preview ? { preview } : {})} />}
+    </>
+  );
+}
+
 export function MoneyScreen({ data, lang, preview }: { data: KajiData; lang: Lang; preview?: LedgerEntry[] }) {
   const [entries, setEntries] = useState<LedgerEntry[]>(preview ?? []);
   const [adding, setAdding] = useState(false);

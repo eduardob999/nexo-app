@@ -1,4 +1,3 @@
-import { PAYDAYS } from './money';
 import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
@@ -7,13 +6,10 @@ import type { SleepRec } from './sleepmodel';
 import { SleepScreen } from './SleepScreen';
 import { makeThumb, uploadToDrive, warmDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, deleteReceipt, removeItem, undoPurchase, addAlloc, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, selectTrip, addMarketItem, addReceipt, logPurchase, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editAlloc, editDraft, repeatAlloc, reviseDraft, seedAllocMonth, toggleAlloc, callNexo, cardContext, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchAllocations, watchChat, sendChat, watchMarket, watchMemos, watchReceipts, watchReceiptFiles, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, removeItem, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, selectTrip, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, cardContext, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchChat, sendChat, watchMemos, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { doneCutoff } from './shelf';
 import type { RestRec } from './restmodel';
 import { isFirebaseConfigured, reconnect } from './firebase';
-import { Money } from './Money';
-import { GuestMoney } from './GuestMoney';
-import { dismissAlloc, restoreAlloc } from './moneystore';
 import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
@@ -41,7 +37,7 @@ import { isShareLoad, takeShared, type Shared } from './share';
 import { Trips } from './Trips';
 import { Upcoming } from './Upcoming';
 import { Today } from './Today';
-import type { Alloc, Market, Receipt, Card, CardFile, Draft, Entry, Memo, NexoStatus, Relay, Resource, TodayInfo } from './types';
+import type { Card, CardFile, Draft, Entry, Memo, NexoStatus, Relay, Resource, TodayInfo } from './types';
 import { useRoute } from './useHash';
 
 function SignIn({ error, onSignIn }: { error: string; onSignIn: () => void }) {
@@ -113,9 +109,6 @@ function OwnerApp() {
   const [closedRelays, setClosedRelays] = useState<Relay[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [memos, setMemos] = useState<Memo[]>([]);
-  const [allocs, setAllocs] = useState<Alloc[]>([]);
-  const [market, setMarket] = useState<Market | null>(null);
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [syncAt, setSyncAt] = useState<number | null | undefined>(undefined);
   /** True while the heartbeat shown is the copy saved on the phone; `since` is when the app started waiting. */
   const [syncCache, setSyncCache] = useState<{ cache: boolean; since: number }>({ cache: true, since: Date.now() });
@@ -228,13 +221,6 @@ function OwnerApp() {
     return watchChat(user.uid, setChat, (e) => console.warn('[chat]', e));
   }, [user, onChat]);
 
-  const onMoney = route.name === 'money';
-  useEffect(() => {
-    if (!user || !onMoney) return undefined;
-    const stops = [watchAllocations(user.uid, setAllocs, (e) => console.warn('[money]', e)), watchMarket(user.uid, setMarket), watchReceipts(user.uid, setReceipts, (e) => console.warn('[money]', e))];
-    return () => stops.forEach((x) => x());
-  }, [user, onMoney]);
-
   const onNotes = route.name === 'notes';
   useEffect(() => {
     if (!user || !onNotes) return undefined;
@@ -286,16 +272,7 @@ function OwnerApp() {
       <UpdateBar />
       {sky ? <Sky state={sky} dark={isDark} mode={settings.sky === 'full' ? 'full' : 'subtle'} /> : null}
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
-      {tab === 'money' ? (
-        <Money paydays={PAYDAYS} allocations={allocs} onAdd={(a) => { void addAlloc(user.uid, a); }} onToggle={(a) => { void toggleAlloc(user.uid, a); }}
-          onEdit={(a, c) => { void editAlloc(user.uid, a, c); }} onRepeat={(a) => { void repeatAlloc(user.uid, a); }} onSeed={(m) => { void seedAllocMonth(user.uid, m); }}
-          market={market} receipts={receipts} onLog={(i) => { void logPurchase(user.uid, i); }} onAddItem={(n) => { void addMarketItem(user.uid, n); }} onReceipt={(r) => { void addReceipt(user.uid, r); }}
-          onUndo={(id) => { if (market) void undoPurchase(user.uid, market, id); }} onDeleteReceipt={(r) => { void deleteReceipt(user.uid, r.id); flash('Receipt deleted'); }}
-          watchPhotos={(id, on) => watchReceiptFiles(user.uid, id, on)}
-          onDismiss={(a, sc) => { void dismissAlloc(user.uid, a, sc); flash(sc === 'month' ? `${a.label} dismissed for this month` : `${a.label} dismissed for good`); }}
-          onRestore={(a) => { void restoreAlloc(user.uid, a); flash(`${a.label} restored`); }}
-          onAttachReceipt={async (r, files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); await attachFile(user.uid, { receiptId: r.id }, up, thumb); } flash('Photo attached'); }} />
-      ) : tab === 'notes' ? (
+      {tab === 'notes' ? (
         <Notes memos={memos} onKeep={(t, g) => { void addMemo(user.uid, t, g); }} onDelete={(m) => { void deleteMemo(user.uid, m.id); flash('Note deleted'); }} />
       ) : tab === 'sleep' ? (
         <SleepScreen recs={sleep} cards={cards} now={new Date()} wake={wake} rest={rest}
@@ -359,7 +336,7 @@ function OwnerApp() {
         </button>
       ) : null}
       <TabBar todayCount={cards.filter((c) => c.for === 'you' && ['urgent', 'overdue'].includes(bandOf(c, new Date()))).length + relays.length}
-        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'money' || tab === 'sleep' || tab === 'homework' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
+        browseCount={cards.filter((c) => c.for === 'nexo' && ['nexo', 'close'].includes(nexoSection(c, new Date()))).length + answeredRelays.length} current={tab === 'nexo' || tab === 'search' || tab === 'shelf' || tab === 'trips' || tab === 'notes' || tab === 'sleep' || tab === 'homework' ? 'browse' : tab} draftCount={drafts.filter((d) => d.status !== 'sent').length} />
       {shared && !addingShared ? (
         <ShareSheet shared={shared} cards={cards} busy={shareBusy} onClose={() => setShared(null)}
           onNew={() => { setAddingShared(shared); setShared(null); }}
@@ -393,23 +370,6 @@ export function App() {
   useEffect(() => watchAuthState((u) => setUid(u ? u.uid : null)), []);
   const role = useRole(uid);
   if (uid && role === 'unknown') return <main className="screen"><p className="empty">…</p></main>;
-  if (uid && role === 'guest') return <GuestRoot uid={uid} />;
+  if (uid && role === 'guest') return <GuestApp uid={uid} />;
   return <OwnerApp />;
-}
-
-/**
- * The guest app, plus his Money layout at #/money (GuestMoney): her own set-aside list beside his market and receipts.
- * The guest app's own tabs live in the Kaji module (GuestApp.tsx); its Money tab is where the way in to this belongs.
- */
-function GuestRoot({ uid }: { uid: string }) {
-  const route = useRoute();
-  if (route.name === 'money') {
-    return (
-      <>
-        <GuestMoney uid={uid} />
-        <p className="screen"><a className="chip-btn link" href="#/">Back</a></p>
-      </>
-    );
-  }
-  return <GuestApp uid={uid} />;
 }

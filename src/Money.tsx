@@ -23,8 +23,10 @@ interface Props {
   /** Hide a line for this month or for good (his request, 2026-11-22, "Cantina"), and bring it back. */
   onDismiss?: ((a: Alloc, scope: 'month' | 'forever') => void) | undefined;
   onRestore?: ((a: Alloc) => void) | undefined;
-  /** Shown above the market and receipts when they are someone else's, shared with this person. */
-  sharedNote?: string | undefined;
+  /** Someone else's market and receipts, shared with this person: a separate fold, to read only. */
+  shared?: { title: string; market: Market | null; receipts: Receipt[] } | undefined;
+  /** Drawn inside another screen (Kaji's money tab), so without its own page frame and title. */
+  embedded?: boolean | undefined;
   /** Paydays (YYYY-MM-DD) that move the list to the next month the day before. Absent: the calendar month. */
   paydays?: readonly string[] | undefined;
 }
@@ -68,7 +70,7 @@ function Line({ a, onToggle, onEdit, onRepeat, onDismiss }: { a: Alloc } & Pick<
 }
 
 /** The month's set-aside checklist. A new month seeds itself from the last one's repeating lines. */
-export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt, onUndo, onDeleteReceipt, onAttachReceipt, watchPhotos, onDismiss, onRestore, sharedNote, paydays }: Props) {
+export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt, onUndo, onDeleteReceipt, onAttachReceipt, watchPhotos, onDismiss, onRestore, shared, embedded, paydays }: Props) {
   const month = setAsideMonth(new Date(), paydays);
   const seeded = useRef(false);
   useEffect(() => {
@@ -88,9 +90,9 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, 
     onAdd({ label: label.trim(), amount: n, tag: tag.trim().replace(/^#/, ''), month });
     setLabel(''); setAmount(''); setTag(''); setMsg('');
   };
-  return (
-    <main className="screen">
-      <header className="top"><div><span className="kicker">SET ASIDE · {name.toUpperCase()}</span><h1>Money</h1></div></header>
+  const body = (
+    <>
+      {embedded ? <h3 className="group-title">Set aside · {name}</h3> : <header className="top"><div><span className="kicker">SET ASIDE · {name.toUpperCase()}</span><h1>Money</h1></div></header>}
       <section className="shelf-fold">
         <p className="al-total"><b>{yen(s.left)}</b> left <span className="mut">of {yen(s.total)} · {s.doneCount} of {s.lines.length} done</span></p>
         <div className="np-bar" role="progressbar" aria-label="Set aside" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><i style={{ width: `${pct}%` }} /></div>
@@ -112,10 +114,16 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, 
         </form>
         {msg ? <p className="notice" role="status">{msg}</p> : null}
       </section>
-      {sharedNote && (market || receipts.length) ? <p className="notice">{sharedNote}</p> : null}
       <MarketBlock market={market} onLog={onLog} onAddItem={onAddItem} onUndo={onUndo} />
       <Charts receipts={receipts} />
       <ReceiptsBlock receipts={receipts} onReceipt={onReceipt} onDeleteReceipt={onDeleteReceipt} onAttachReceipt={onAttachReceipt} watchPhotos={watchPhotos} />
+      {shared && (shared.market || shared.receipts.length) ? (
+        <details className="shelf-fold"><summary>{shared.title} <span className="mut">read only</span></summary>
+          <MarketBlock market={shared.market} />
+          <Charts receipts={shared.receipts} />
+          <ReceiptsBlock receipts={shared.receipts} />
+        </details>
+      ) : null}
       {earlierMonths(allocations, month).length ? (
         <details className="shelf-fold"><summary>Earlier months</summary>
           {earlierMonths(allocations, month).map((m) => (
@@ -123,8 +131,9 @@ export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, 
           ))}
         </details>
       ) : null}
-    </main>
+    </>
   );
+  return embedded ? <div className="money-embed">{body}</div> : <main className="screen">{body}</main>;
 }
 
 

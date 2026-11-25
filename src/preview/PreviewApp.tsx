@@ -9,6 +9,7 @@ import { housingFixture, kajiFixture } from '../modules/kaji/fixture';
 import { Drafts } from '../Drafts';
 import { Search } from '../Search';
 import { Money } from '../Money';
+import { MoneyTab } from '../modules/kaji/MoneyScreen';
 import { Notes } from '../Notes';
 import { Shelf } from '../Shelf';
 import { Trips } from '../Trips';
@@ -342,11 +343,11 @@ export function PreviewApp() {
   if (which === 'money-guest') {
     // A household member's Money (GuestMoney): her own list, his market and household receipts to read.
     const month = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }).slice(0, 7);
-    return (<><Money onAdd={() => {}} onToggle={() => {}} onEdit={() => {}} onRepeat={() => {}} onSeed={() => {}} onDismiss={() => {}} onRestore={() => {}}
+    const fx = kajiFixture();
+    return (<main className="screen kaji"><MoneyTab data={{ ...fx.data, me: 'b' }} lang="en" preview={[]} mine={<Money onAdd={() => {}} onToggle={() => {}} onEdit={() => {}} onRepeat={() => {}} onSeed={() => {}} onDismiss={() => {}} onRestore={() => {}}
       allocations={[{ id: 'g1', label: 'Phone', amount: 3000, done: false, month }, { id: 'g2', label: 'Gym', amount: 5000, done: true, month }]}
-      sharedNote="Market and receipts are Eduardo's, shared with you to see. Your set-aside list above is yours alone."
-      market={{ items: [{ id: 'a', name: 'Rice' }, { id: 'b', name: 'Eggs' }, { id: 'c', name: 'Milk' }], log: [{ id: 'l1', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 3 * 3_600_000).toISOString() }] }}
-      receipts={[{ id: 'r1', amount: 1840, cat: 'food', vendor: 'Fresco', ts: new Date().toISOString(), lines: [{ name: 'Rice 5kg', amount: 1580 }, { name: 'Eggs', amount: 260 }] }, { id: 'r4', amount: 330, cat: 'supplies', vendor: 'Daiso (oil coagulant)', ts: new Date().toISOString() }]} /></>);
+      embedded market={{ items: [{ id: 'x', name: 'Leche' }], log: [] }} receipts={[]} onLog={() => {}} onAddItem={() => {}} onReceipt={() => {}}
+      shared={{ title: "Eduardo's market and receipts", market: { items: [{ id: 'a', name: 'Rice' }, { id: 'b', name: 'Eggs' }, { id: 'c', name: 'Milk' }], log: [{ id: 'l1', itemId: 'a', name: 'Rice', ts: new Date(Date.now() - 3 * 3_600_000).toISOString() }] }, receipts: [{ id: 'r1', amount: 1840, cat: 'food', vendor: 'Fresco', ts: new Date().toISOString(), lines: [{ name: 'Rice 5kg', amount: 1580 }, { name: 'Eggs', amount: 260 }] }, { id: 'r4', amount: 330, cat: 'supplies', vendor: 'Daiso (oil coagulant)', ts: new Date().toISOString() }] }} />} /></main>);
   }
   if (which === 'money-all') {
     const rs = Array.from({ length: 30 }, (_, i) => ({ id: `m${i}`, amount: 200 + i * 10, cat: i % 3 ? 'food' : 'transport', vendor: `Shop ${i}`, ts: new Date(Date.now() - i * 3_600_000).toISOString() }))

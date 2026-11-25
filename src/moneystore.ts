@@ -1,9 +1,11 @@
-import { collection, deleteField, doc, onSnapshot, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { arrayUnion, collection, deleteField, doc, onSnapshot, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebase';
 import { fromShare, seedLines } from './money';
-import type { Alloc, Market, Receipt } from './types';
+import type { Alloc, CardFile, Market, Receipt } from './types';
 
 const allocRef = (uid: string, id: string) => doc(db, 'users', uid, 'allocations', id);
+const marketRef = (uid: string) => doc(db, 'users', uid, 'meta', 'market');
+const receiptRef = (uid: string, id: string) => doc(db, 'users', uid, 'receipts', id);
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 /**
@@ -49,6 +51,30 @@ export const guestMoney = {
     const batch = writeBatch(db);
     for (const l of lines) batch.set(allocRef(uid, l.id), l);
     await batch.commit();
+  },
+};
+
+/**
+ * A household member's own market list and receipts (his request, 2026-11-25: every feature his Money has, on her data). Same
+ * documents as his, under her uid, written directly for the same reason as guestMoney. The market document may not exist yet,
+ * so lines are merged into it.
+ */
+export const guestMarket = {
+  log: (uid: string, item: { id: string; name: string }) =>
+    setDoc(marketRef(uid), { value: { log: arrayUnion({ id: `ml${newId()}`, itemId: item.id, name: item.name, ts: new Date().toISOString(), price: null }) } }, { merge: true }),
+  addItem: (uid: string, name: string) => setDoc(marketRef(uid), { value: { items: arrayUnion({ id: `mi${newId()}`, name }) } }, { merge: true }),
+  undo: (uid: string, market: Market, logId: string) => updateDoc(marketRef(uid), { 'value.log': market.log.map((l) => (l.id === logId ? { ...l, deleted: true } : l)) }),
+  addReceipt: (uid: string, r: { amount: number; cat: string; vendor: string }) => {
+    const id = `r${newId()}`;
+    return setDoc(receiptRef(uid, id), { id, ...r, ts: new Date().toISOString() });
+  },
+  deleteReceipt: (uid: string, id: string) => updateDoc(receiptRef(uid, id), { deleted: true, deletedAt: new Date().toISOString() }),
+  /** Record a photo already uploaded to her Drive; the picture goes in the files subcollection. */
+  attach: (uid: string, receiptId: string, file: Omit<CardFile, 'thumb'>, thumb?: string) => {
+    const batch = writeBatch(db);
+    batch.update(receiptRef(uid, receiptId), { files: arrayUnion({ ...file }) });
+    if (thumb) batch.set(doc(receiptRef(uid, receiptId), 'files', file.id), { thumb });
+    return batch.commit();
   },
 };
 

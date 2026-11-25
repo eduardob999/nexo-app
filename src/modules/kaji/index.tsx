@@ -6,8 +6,9 @@ import { BalanceScreen } from './BalanceScreen';
 import { ChoresScreen } from './ChoresScreen';
 import { ListsScreen } from './ListsScreen';
 import { HousingScreen } from './HousingScreen';
-import { MoneyScreen } from './MoneyScreen';
+import { MoneyTab } from './MoneyScreen';
 import { t } from './i18n';
+import { wantsMoney } from '../../useHash';
 import { DEFAULT_SETTINGS, type Interval, type Lang, type LogEvent, type PlannedItem, type Settings, type TaskType } from './model';
 import { applySwaps, plan as makePlan, type Unplaced } from './planner';
 import { SettingsScreen } from './SettingsScreen';
@@ -33,7 +34,7 @@ export function initialLang(): Lang {
 
 /** The screens, with no Firebase in them: the live module and the preview both feed this. */
 export function KajiView({ data, actions, lang, link, tab: forced, previewLists, previewLedger, previewAsks, previewHousing }: { data: KajiData; actions: KajiActions; lang: Lang; onLang?: (l: Lang) => void; link: string; tab?: Tab; previewLists?: { lists: import('./store').KList[]; items: import('./store').KItem[] }; previewLedger?: import('./ledger').LedgerEntry[]; previewAsks?: import('./asks').Ask[]; previewHousing?: import('./housing').HAny[] }) {
-  const [tab, setTab] = useState<Tab>(forced ?? 'today');
+  const [tab, setTab] = useState<Tab>(forced ?? (wantsMoney() ? 'money' : 'today'));
   return (
     <main className="screen kaji">
       <header className="top"><div><span className="kicker">KAJI</span><h1>{t(lang, 'kajiSub')}</h1></div></header>
@@ -45,7 +46,7 @@ export function KajiView({ data, actions, lang, link, tab: forced, previewLists,
       {tab === 'balance' ? <BalanceScreen data={data} lang={lang} /> : null}
       {tab === 'chores' ? <ChoresScreen data={data} actions={actions} lang={lang} /> : null}
       {tab === 'lists' ? <ListsScreen data={data} lang={lang} {...(previewLists ? { preview: previewLists } : {})} /> : null}
-      {tab === 'money' ? <MoneyScreen data={data} lang={lang} {...(previewLedger ? { preview: previewLedger } : {})} /> : null}
+      {tab === 'money' ? <MoneyTab data={data} lang={lang} {...(previewLedger ? { preview: previewLedger } : {})} /> : null}
       {tab === 'house' ? <HousingScreen data={data} actions={actions} lang={lang} {...(previewHousing ? { preview: previewHousing } : {})} /> : null}
       {tab === 'more' ? <SettingsScreen data={data} actions={actions} lang={lang} link={link} /> : null}
     </main>
