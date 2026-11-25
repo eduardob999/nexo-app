@@ -92,6 +92,10 @@ describe('setAsideMonth', () => {
     expect(setAsideMonth(at('2026-11-30'), PAYDAYS)).toBe('2026-12');
     expect(setAsideMonth(at('2026-12-01'), PAYDAYS)).toBe('2026-12');
   });
+  it('follows the December payday into January', () => {
+    expect(setAsideMonth(at('2026-12-19'), PAYDAYS)).toBe('2026-12');
+    expect(setAsideMonth(at('2026-12-20'), PAYDAYS)).toBe('2027-01');
+  });
   it('crosses the year, and keeps the calendar month without a payday', () => {
     expect(setAsideMonth(at('2026-12-24'), ['2026-12-24'])).toBe('2027-01');
     expect(setAsideMonth(at('2026-11-24'))).toBe('2026-11');

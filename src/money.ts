@@ -8,7 +8,7 @@ export function jstMonth(d: Date): string {
 /**
  * His MEXT paydays, from the signing schedule he sent. A month with no date here keeps the calendar month.
  */
-export const PAYDAYS: readonly string[] = ['2026-10-28', '2026-11-25'];
+export const PAYDAYS: readonly string[] = ['2026-10-28', '2026-11-25', '2026-12-21', '2027-01-26', '2027-02-24', '2027-03-17'];
 
 /** The month the set-aside list shows: from the day before that month's payday it is already the next one (his request, 2026-11-25). */
 export function setAsideMonth(d: Date, paydays: readonly string[] = []): string {
