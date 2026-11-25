@@ -5,6 +5,23 @@ export function jstMonth(d: Date): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }).slice(0, 7);
 }
 
+/**
+ * His MEXT paydays, from the signing schedule he sent. A month with no date here keeps the calendar month.
+ */
+export const PAYDAYS: readonly string[] = ['2026-10-28', '2026-11-25'];
+
+/** The month the set-aside list shows: from the day before that month's payday it is already the next one (his request, 2026-11-25). */
+export function setAsideMonth(d: Date, paydays: readonly string[] = []): string {
+  const today = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Tokyo' }).slice(0, 10);
+  const month = today.slice(0, 7);
+  const payday = paydays.find((p) => p.startsWith(month));
+  if (!payday) return month;
+  const eve = new Date(Date.parse(`${payday}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
+  if (today < eve) return month;
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7);
+}
+
 /** A line with no month belongs to the month of its timestamp, which covers every line written before months existed. */
 export function allocMonth(a: Alloc): string {
   return a.month || (a.ts ? jstMonth(new Date(a.ts)) : '');

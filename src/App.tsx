@@ -1,3 +1,4 @@
+import { PAYDAYS } from './money';
 import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
@@ -286,7 +287,7 @@ function OwnerApp() {
       {sky ? <Sky state={sky} dark={isDark} mode={settings.sky === 'full' ? 'full' : 'subtle'} /> : null}
       {syncLate ? <p className="sync-warn" role="status">Sync is behind, or you are offline. Changes are saved here and reach Nexo when it catches up.</p> : null}
       {tab === 'money' ? (
-        <Money allocations={allocs} onAdd={(a) => { void addAlloc(user.uid, a); }} onToggle={(a) => { void toggleAlloc(user.uid, a); }}
+        <Money paydays={PAYDAYS} allocations={allocs} onAdd={(a) => { void addAlloc(user.uid, a); }} onToggle={(a) => { void toggleAlloc(user.uid, a); }}
           onEdit={(a, c) => { void editAlloc(user.uid, a, c); }} onRepeat={(a) => { void repeatAlloc(user.uid, a); }} onSeed={(m) => { void seedAllocMonth(user.uid, m); }}
           market={market} receipts={receipts} onLog={(i) => { void logPurchase(user.uid, i); }} onAddItem={(n) => { void addMarketItem(user.uid, n); }} onReceipt={(r) => { void addReceipt(user.uid, r); }}
           onUndo={(id) => { if (market) void undoPurchase(user.uid, market, id); }} onDeleteReceipt={(r) => { void deleteReceipt(user.uid, r.id); flash('Receipt deleted'); }}

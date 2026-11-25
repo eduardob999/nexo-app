@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { allTimeTotals, earlierMonths, jstMonth, marketCounts, moneyItems, needsSeed, qtyText, receiptMonths, receiptTotals, summarise, topBars, yen } from './money';
+import { allTimeTotals, earlierMonths, marketCounts, moneyItems, needsSeed, qtyText, receiptMonths, receiptTotals, setAsideMonth, summarise, topBars, yen } from './money';
 import { ConfirmButton } from './ConfirmButton';
 import { ReceiptPhotos } from './ReceiptPhotos';
 import type { Alloc, CardFile, Market, Receipt } from './types';
@@ -25,6 +25,8 @@ interface Props {
   onRestore?: ((a: Alloc) => void) | undefined;
   /** Shown above the market and receipts when they are someone else's, shared with this person. */
   sharedNote?: string | undefined;
+  /** Paydays (YYYY-MM-DD) that move the list to the next month the day before. Absent: the calendar month. */
+  paydays?: readonly string[] | undefined;
 }
 
 function Line({ a, onToggle, onEdit, onRepeat, onDismiss }: { a: Alloc } & Pick<Props, 'onToggle' | 'onEdit' | 'onRepeat' | 'onDismiss'>) {
@@ -66,8 +68,8 @@ function Line({ a, onToggle, onEdit, onRepeat, onDismiss }: { a: Alloc } & Pick<
 }
 
 /** The month's set-aside checklist. A new month seeds itself from the last one's repeating lines. */
-export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt, onUndo, onDeleteReceipt, onAttachReceipt, watchPhotos, onDismiss, onRestore, sharedNote }: Props) {
-  const month = jstMonth(new Date());
+export function Money({ allocations, onAdd, onToggle, onEdit, onRepeat, onSeed, market, receipts = [], onLog, onAddItem, onReceipt, onUndo, onDeleteReceipt, onAttachReceipt, watchPhotos, onDismiss, onRestore, sharedNote, paydays }: Props) {
+  const month = setAsideMonth(new Date(), paydays);
   const seeded = useRef(false);
   useEffect(() => {
     if (!seeded.current && needsSeed(allocations, month)) { seeded.current = true; onSeed(month); }

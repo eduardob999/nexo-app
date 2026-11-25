@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allTimeTotals, allocMonth, earlierMonths, fromShare, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, seedLines, summarise, topBars, yen } from './money';
+import { allTimeTotals, allocMonth, earlierMonths, fromShare, jstMonth, marketCounts, moneyItems, needsSeed, receiptMonths, seedLines, summarise, topBars, yen, PAYDAYS, setAsideMonth } from './money';
 import type { Alloc } from './types';
 
 const a = (id: string, amount: number, done: boolean, extra: Partial<Alloc> = {}): Alloc => ({ id, label: id, amount, done, ...extra });
@@ -81,5 +81,19 @@ describe('the household copy of the market and receipts', () => {
     expect(out.market?.items[0]?.name).toBe('Rice');
     expect(out.receipts.map((x) => x.id)).toEqual(['b', 'a']);
     expect(fromShare([]).market).toBeNull();
+  });
+});
+
+describe('setAsideMonth', () => {
+  const at = (s: string) => new Date(`${s}T12:00:00+09:00`);
+  it('moves to the next month the day before payday, and stays there', () => {
+    expect(setAsideMonth(at('2026-11-23'), PAYDAYS)).toBe('2026-11');
+    expect(setAsideMonth(at('2026-11-24'), PAYDAYS)).toBe('2026-12');
+    expect(setAsideMonth(at('2026-11-30'), PAYDAYS)).toBe('2026-12');
+    expect(setAsideMonth(at('2026-12-01'), PAYDAYS)).toBe('2026-12');
+  });
+  it('crosses the year, and keeps the calendar month without a payday', () => {
+    expect(setAsideMonth(at('2026-12-24'), ['2026-12-24'])).toBe('2027-01');
+    expect(setAsideMonth(at('2026-11-24'))).toBe('2026-11');
   });
 });
