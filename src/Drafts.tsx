@@ -9,8 +9,6 @@ import type { Card, CardFile, Draft, DraftAttachment, NexoStatus } from './types
 
 interface Props {
   drafts: Draft[];
-  /** Open this draft's text in Fude for a proofreading pass. */
-  onFude?: ((draft: Draft) => void) | undefined;
   onCopied: (id: string) => void;
   onSent: (id: string) => void;
   onDiscard: (id: string) => void;
@@ -73,7 +71,7 @@ function dayHm(iso?: string): string {
   return today ? hhmm(iso) : `${d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} ${hhmm(iso)}`;
 }
 
-function SentLine({ draft }: { onFude?: ((draft: Draft) => void) | undefined; draft: Draft }) {
+function SentLine({ draft }: { draft: Draft }) {
   const to = (draft.to ?? []).join(', ');
   const names = (draft.attachments ?? []).map((f) => f.name).join(', ');
   return (
@@ -197,13 +195,11 @@ function ModifyBox({ draft, onAskEdits, watchEdits, onClearEdits, onEdit }: { dr
       <label className="sr" htmlFor={`md-${draft.id}`}>Changes to make</label>
       <textarea id={`md-${draft.id}`} className="relay-answer" rows={Math.min(8, Math.max(2, list.split('\n').length + (list ? 1 : 0)))} value={list} autoCorrect="off"
         placeholder="Changes to make, e.g. 1. thank her first 2. shorter" onChange={(e) => setList(e.target.value)} />
-      {list.trim() || busy ? (
-        <div className="draft-actions">
-          {busy ? <span className="mut" role="status">{stuck ? 'No answer yet. The helper may be off; discard and try again.' : 'Applying the changes…'}</span>
-            : <button type="button" className="copy-main alt" disabled={!items.length || !text.trim()} onClick={() => { setNow(Date.now()); void onAskEdits(draft, list.trim()); }}>Apply {items.length} change{items.length === 1 ? '' : 's'}</button>}
-          {stuck ? <button type="button" className="chip-btn small" onClick={() => onClearEdits(draft.id)}>Discard</button> : null}
-        </div>
-      ) : null}
+      <div className="draft-actions">
+        {busy ? <span className="mut" role="status">{stuck ? 'No answer yet. The helper may be off; discard and try again.' : 'Applying the changes…'}</span>
+          : <button type="button" className="copy-main alt" disabled={!items.length || !text.trim()} onClick={() => { setNow(Date.now()); void onAskEdits(draft, list.trim()); }}>{items.length ? `Apply ${items.length} change${items.length === 1 ? '' : 's'}` : 'Apply changes'}</button>}
+        {stuck ? <button type="button" className="chip-btn small" onClick={() => onClearEdits(draft.id)}>Discard</button> : null}
+      </div>
       {req?.status === 'error' ? <p className="d-warn" role="alert">{req.message ?? 'That could not run. Try again.'} <button type="button" className="chip-btn small" onClick={() => onClearEdits(draft.id)}>Dismiss</button></p> : null}
       {req?.status === 'stale' || (req?.status === 'ready' && !ready) ? <p className="d-warn">The draft changed while it was working. Apply the list again. <button type="button" className="chip-btn small" onClick={() => onClearEdits(draft.id)}>Dismiss</button></p> : null}
       {ready ? (
@@ -224,7 +220,7 @@ function ModifyBox({ draft, onAskEdits, watchEdits, onClearEdits, onEdit }: { dr
   );
 }
 
-function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, cards, watchPics, onAttachExisting, onDetach, onUpload, onAskEdits, watchEdits, onClearEdits }: { draft: Draft } & Omit<Props, 'drafts'>) {
+function DraftCard({ draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, cards, watchPics, onAttachExisting, onDetach, onUpload, onAskEdits, watchEdits, onClearEdits }: { draft: Draft } & Omit<Props, 'drafts'>) {
   const card = cards?.find((c) => c.id === draft.linkedNote);
   const attachProps = { draft, card, watchPics, onAttachExisting, onDetach, onUpload };
   const nAtt = (draft.attachments ?? []).length;
@@ -328,7 +324,6 @@ function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit,
           </div>
           <div className="draft-more">
             {revising ? null : <button className="chip-btn small" onClick={() => open('edit')}>Edit</button>}
-            {revising || !onFude || !draft.text ? null : <button className="chip-btn small" onClick={() => onFude(draft)}>Edit in Fude</button>}
             {revising ? null : <button className="chip-btn small" onClick={() => open('revise')}>Ask Nexo to revise</button>}
             {draft.subject ? <CopyChip label="Copy subject" text={draft.subject} /> : null}
             {to ? <CopyChip label="Copy address" text={to} /> : null}
@@ -341,7 +336,7 @@ function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit,
   );
 }
 
-export function Drafts({ onFude, drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo, cards, watchPics, onAttachExisting, onDetach, onUpload, onAskEdits, watchEdits, onClearEdits }: Props) {
+export function Drafts({ drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo, cards, watchPics, onAttachExisting, onDetach, onUpload, onAskEdits, watchEdits, onClearEdits }: Props) {
   const [asked, setAsked] = useState(0);
   const pending = Boolean(nexo?.mailCheckSince) || Date.now() - asked < 60_000;
   const waiting = drafts.filter((d) => d.status !== 'sent');
@@ -366,7 +361,7 @@ export function Drafts({ onFude, drafts, onCopied, onSent, onDiscard, onSend, on
       ) : null}
       {waiting.length === 0 ? <p className="empty">No drafts waiting.</p> : null}
       <ul className="drafts">
-        {waiting.map((d) => <DraftCard key={d.id} onFude={onFude} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} cards={cards} watchPics={watchPics} onAttachExisting={onAttachExisting} onDetach={onDetach} onUpload={onUpload} onAskEdits={onAskEdits} watchEdits={watchEdits} onClearEdits={onClearEdits} />)}
+        {waiting.map((d) => <DraftCard key={d.id} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} cards={cards} watchPics={watchPics} onAttachExisting={onAttachExisting} onDetach={onDetach} onUpload={onUpload} onAskEdits={onAskEdits} watchEdits={watchEdits} onClearEdits={onClearEdits} />)}
         {sent.map((d) => <SentLine key={d.id} draft={d} />)}
       </ul>
       {earlier.length > 0 ? (

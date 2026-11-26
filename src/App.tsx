@@ -14,7 +14,7 @@ import { nexoSection } from './nexo';
 import { Notes } from './Notes';
 import { Search } from './Search';
 import { Shelf } from './Shelf';
-import { FudeModule, FudeCardWidget, openForCard, openForDraft } from './modules/fude';
+import { FudeModule, FudeCardWidget, openForCard } from './modules/fude';
 import { KajiModule } from './modules/kaji';
 import { GuestApp } from './modules/kaji/GuestApp';
 import { useRole } from './role';
@@ -300,7 +300,7 @@ function OwnerApp() {
         <Browse uid={user.uid} nexoCount={cards.filter((c) => c.for === 'nexo').length} draftCount={drafts.filter((d) => d.status !== 'sent').length} settings={settings} onSettings={changeSettings}
           onSleep={(until) => { void setSleep(user.uid, until); }} />
       ) : tab === 'drafts' ? (
-        <Drafts drafts={drafts} cards={cards} onFude={(d) => { void openForDraft(user.uid, d); }}
+        <Drafts drafts={drafts} cards={cards}
           watchPics={(id, on) => watchFiles(user.uid, id, on, (e) => console.warn('[files]', e))}
           onAttachExisting={(d, f) => { if (f.driveId) void attachToDraft(user.uid, d, { id: f.id, name: f.name ?? 'file', ...(f.type ? { type: f.type } : {}), driveId: f.driveId, ...(f.viewUrl ? { viewUrl: f.viewUrl } : {}) }); }}
           onDetach={(d, id) => { void detachFromDraft(user.uid, d, id); }}
