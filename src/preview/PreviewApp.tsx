@@ -28,6 +28,7 @@ import type { ChatMsg } from '../chatlogic';
 import { Today } from '../Today';
 import { TabBar } from '../TabBar';
 import type { Card, Draft, Entry, NexoStatus, TrainOption, TripStep } from '../types';
+import type { EditRequest } from '../modules/fude/edits';
 import type { TodayInfo } from '../strip';
 
 /** Invented cards, so the screens can be rendered without signing in or touching real data. */
@@ -358,6 +359,21 @@ export function PreviewApp() {
     const lane: Card[] = [{ id: 'n2', status: 'open', for: 'nexo', title: 'Look up the carrier for the lens parcel', last: { by: 'nexo', text: 'Checking the carrier site now', ts: '2026-11-02T10:00:00+09:00' } }];
     return (<><Today cards={lane} now={NOW} fromCache={false} onDone={() => {}} onLater={() => {}} onCallNexo={() => {}} lane="nexo"
       answeredRelays={[{ id: 'P-017', target: 'Perplexity', mode: 'Pro Search', status: 'answered', topic: 'Delta learning uncertainty', prompt: 'P-017\n\nWhat is delta learning?', response: 'Delta learning trains a model on the difference between two levels of theory.' }]} /><TabBar current="browse" draftCount={0} /></>);
+  }
+  if (which === 'drafts-modify') {
+    // Live edits (nmwx1kxvbox9): d1 already has a proposal; any other draft answers a press after a second, like the helper.
+    const ds = DRAFTS.filter((d) => d.id === 'd1' || d.id === 'd2');
+    const subs = new Map<string, (r: EditRequest | null) => void>();
+    const d1 = ds[0]?.text ?? '';
+    const ready: EditRequest = { status: 'ready', text: d1, instructions: '1. Say Monday 10:00\n2. Add the room number', at: new Date().toISOString(),
+      result: d1.replace('on Monday morning', 'on Monday at 10:00'),
+      items: [{ n: 1, instruction: 'Say Monday 10:00', status: 'applied', note: 'Changed "Monday morning" to "Monday at 10:00".' },
+        { n: 2, instruction: 'Add the room number', status: 'needs', note: 'The room number is not in the draft or your list; give it and apply again.' }] };
+    return (<><Drafts drafts={ds} cards={FIXTURES} onCopied={() => {}} onSent={() => {}} onDiscard={() => {}} onSend={() => {}} onEdit={(d, t) => { console.log(`edit ${d.id}: ${t}`); }} onRevise={() => {}} onAnswer={() => {}}
+      watchEdits={(id, on) => { subs.set(id, on); on(id === 'd1' ? ready : null); return () => subs.delete(id); }}
+      onAskEdits={async (d, list) => { const at = new Date().toISOString(); subs.get(d.id)?.({ status: 'working', text: d.text ?? '', instructions: list, at });
+        window.setTimeout(() => subs.get(d.id)?.({ status: 'ready', text: d.text ?? '', instructions: list, at, result: `${d.text ?? ''} Thank you again for organising it.`, items: [{ n: 1, instruction: list.slice(0, 60), status: 'applied', note: 'Added a closing thanks.' }] }), 1000); }}
+      onClearEdits={(id) => subs.get(id)?.(null)} /><TabBar current="drafts" draftCount={2} /></>);
   }
   if (which === 'drafts-meta') {
     const ds: Draft[] = [

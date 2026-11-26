@@ -1,6 +1,8 @@
 import { ConfirmButton } from './ConfirmButton';
 import { useState } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { diffWords, type Hunk } from './modules/fude/diff';
+import { driftWarnings, EDIT_LABEL, listItems, type EditRequest } from './modules/fude/edits';
 import { driveReady, connectDrive } from './drive';
 import { attachableFiles, attachmentLabel, isImage, mentionsAttachment } from './draftfiles';
 import type { Card, CardFile, Draft, DraftAttachment, NexoStatus } from './types';
@@ -26,6 +28,10 @@ interface Props {
   /** Uploads to Drive, puts the files on the linked card and attaches them to the draft. */
   onUpload?: ((draft: Draft, files: File[]) => Promise<void>) | undefined;
   nexo?: NexoStatus | null | undefined;
+  /** The Fude helper's live edits: ask with his list, watch the answer, drop it. */
+  onAskEdits?: ((draft: Draft, list: string) => Promise<void>) | undefined;
+  watchEdits?: ((draftId: string, on: (r: EditRequest | null) => void) => () => void) | undefined;
+  onClearEdits?: ((draftId: string) => void) | undefined;
 }
 
 /** Clipboard first; the textarea fallback covers browsers that refuse the async API on a plain page. */
@@ -143,7 +149,82 @@ function Attachments({ draft, card, watchPics, onAttachExisting, onDetach, onUpl
   );
 }
 
-function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, cards, watchPics, onAttachExisting, onDetach, onUpload }: { draft: Draft } & Omit<Props, 'drafts'>) {
+/** The revised text with what changed marked in place, so he reads the result and the changes together. */
+function MarkedText({ text, hunks }: { text: string; hunks: Hunk[] }) {
+  const out: React.ReactNode[] = [];
+  let pos = 0;
+  for (const h of [...hunks].sort((a, b) => a.curStart - b.curStart)) {
+    if (h.curStart > pos) out.push(text.slice(pos, h.curStart));
+    if (h.removed.trim()) out.push(<del key={`d${h.id}`} className="fude-del">{h.removed}</del>);
+    if (h.curEnd > h.curStart) out.push(<ins key={`i${h.id}`} className="fude-ins">{text.slice(h.curStart, h.curEnd)}</ins>);
+    pos = Math.max(pos, h.curEnd);
+  }
+  out.push(text.slice(pos));
+  return <div className="draft-body">{out}</div>;
+}
+
+const STUCK_MS = 120_000;
+
+/**
+ * Card nmwx1kxvbox9, his words: "I need the drafts to be modifiable on real time just like fude with an input box where I can
+ * type a list of modifications ... And the changes to be done inmediately upon pressing a button". Fude's helper applies the list
+ * in seconds; the result is a proposal and the draft only changes when he presses "Use the revised text", through the same edit
+ * path as typing it himself, so Copy and Send use it. "Ask Nexo to revise" stays for changes that need the loop's knowledge.
+ */
+function ModifyBox({ draft, onAskEdits, watchEdits, onClearEdits, onEdit }: { draft: Draft; onAskEdits: NonNullable<Props['onAskEdits']>; watchEdits: NonNullable<Props['watchEdits']>; onClearEdits: NonNullable<Props['onClearEdits']>; onEdit: Props['onEdit'] }) {
+  const [list, setList] = useState('');
+  const [req, setReq] = useState<EditRequest | null>(null);
+  const [now, setNow] = useState(Date.now());
+  // Keyed on the draft only: the host passes a fresh closure every render, and re-subscribing on each one is waste.
+  useEffect(() => watchEdits(draft.id, setReq), [draft.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const text = draft.text ?? '';
+  const busy = req?.status === 'requested' || req?.status === 'working';
+  // A helper that is down leaves the request waiting; tick the clock only then, so the page says so.
+  useEffect(() => {
+    if (!busy) return undefined;
+    const t = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(t);
+  }, [busy]);
+  const stuck = busy && now - Date.parse(req?.at ?? '') > STUCK_MS;
+  const ready = req?.status === 'ready' && req.text === text && typeof req.result === 'string';
+  const result = ready ? (req?.result as string) : '';
+  const hunks = useMemo(() => (ready ? diffWords(text, result) : []), [ready, text, result]);
+  const warns = ready ? driftWarnings(text, result).filter((w) => !w.startsWith('The length moved')) : [];
+  const items = listItems(list);
+  const accept = () => { onEdit(draft, result.trim()); onClearEdits(draft.id); setList(''); };
+  return (
+    <section className="d-modify" aria-label="Changes to this draft">
+      <label className="sr" htmlFor={`md-${draft.id}`}>Changes to make</label>
+      <textarea id={`md-${draft.id}`} className="relay-answer" rows={Math.min(8, Math.max(2, list.split('\n').length + (list ? 1 : 0)))} value={list} autoCorrect="off"
+        placeholder="Changes to make, e.g. 1. thank her first 2. shorter" onChange={(e) => setList(e.target.value)} />
+      {list.trim() || busy ? (
+        <div className="draft-actions">
+          {busy ? <span className="mut" role="status">{stuck ? 'No answer yet. The helper may be off; discard and try again.' : 'Applying the changes…'}</span>
+            : <button type="button" className="copy-main alt" disabled={!items.length || !text.trim()} onClick={() => { setNow(Date.now()); void onAskEdits(draft, list.trim()); }}>Apply {items.length} change{items.length === 1 ? '' : 's'}</button>}
+          {stuck ? <button type="button" className="chip-btn small" onClick={() => onClearEdits(draft.id)}>Discard</button> : null}
+        </div>
+      ) : null}
+      {req?.status === 'error' ? <p className="d-warn" role="alert">{req.message ?? 'That could not run. Try again.'} <button type="button" className="chip-btn small" onClick={() => onClearEdits(draft.id)}>Dismiss</button></p> : null}
+      {req?.status === 'stale' || (req?.status === 'ready' && !ready) ? <p className="d-warn">The draft changed while it was working. Apply the list again. <button type="button" className="chip-btn small" onClick={() => onClearEdits(draft.id)}>Dismiss</button></p> : null}
+      {ready ? (
+        <div className="d-proposal">
+          <span className="who">REVISED · not used yet</span>
+          <ul className="flow-edit-items" aria-label="What happened to each change">
+            {(req?.items ?? []).map((i) => <li key={i.n} className={`edit-${i.status}`}><b>{EDIT_LABEL[i.status]}</b> {i.instruction}{i.note ? <small> {i.note}</small> : null}</li>)}
+          </ul>
+          {warns.length ? <ul className="flow-warns" role="alert">{warns.map((w) => <li key={w} className="d-warn">{w}</li>)}</ul> : null}
+          {hunks.length ? <MarkedText text={result} hunks={hunks} /> : <p className="mut">The text is unchanged.</p>}
+          <div className="draft-actions">
+            <button type="button" className="copy-main" disabled={!hunks.length} onClick={accept}>Use the revised text</button>
+            <button type="button" className="chip-btn" onClick={() => onClearEdits(draft.id)}>Keep mine</button>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, cards, watchPics, onAttachExisting, onDetach, onUpload, onAskEdits, watchEdits, onClearEdits }: { draft: Draft } & Omit<Props, 'drafts'>) {
   const card = cards?.find((c) => c.id === draft.linkedNote);
   const attachProps = { draft, card, watchPics, onAttachExisting, onDetach, onUpload };
   const nAtt = (draft.attachments ?? []).length;
@@ -230,6 +311,7 @@ function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit,
       ) : (
         <>
           <div className="draft-body">{body}</div>
+          {revising || !onAskEdits || !watchEdits || !onClearEdits ? null : <ModifyBox draft={draft} onAskEdits={onAskEdits} watchEdits={watchEdits} onClearEdits={onClearEdits} onEdit={onEdit} />}
           <Attachments {...attachProps} />
           {nAtt > 0 ? <p className="d-sends">{attachmentLabel(nAtt)}</p> : mentionsAttachment(body) ? <p className="d-warn">The text mentions an attachment but none is attached.</p> : null}
           {requested ? (
@@ -259,7 +341,7 @@ function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit,
   );
 }
 
-export function Drafts({ onFude, drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo, cards, watchPics, onAttachExisting, onDetach, onUpload }: Props) {
+export function Drafts({ onFude, drafts, onCopied, onSent, onDiscard, onSend, onEdit, onRevise, onAnswer, onMailCheck, nexo, cards, watchPics, onAttachExisting, onDetach, onUpload, onAskEdits, watchEdits, onClearEdits }: Props) {
   const [asked, setAsked] = useState(0);
   const pending = Boolean(nexo?.mailCheckSince) || Date.now() - asked < 60_000;
   const waiting = drafts.filter((d) => d.status !== 'sent');
@@ -284,7 +366,7 @@ export function Drafts({ onFude, drafts, onCopied, onSent, onDiscard, onSend, on
       ) : null}
       {waiting.length === 0 ? <p className="empty">No drafts waiting.</p> : null}
       <ul className="drafts">
-        {waiting.map((d) => <DraftCard key={d.id} onFude={onFude} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} cards={cards} watchPics={watchPics} onAttachExisting={onAttachExisting} onDetach={onDetach} onUpload={onUpload} />)}
+        {waiting.map((d) => <DraftCard key={d.id} onFude={onFude} draft={d} onCopied={onCopied} onSent={onSent} onDiscard={onDiscard} onSend={onSend} onEdit={onEdit} onRevise={onRevise} onAnswer={onAnswer} cards={cards} watchPics={watchPics} onAttachExisting={onAttachExisting} onDetach={onDetach} onUpload={onUpload} onAskEdits={onAskEdits} watchEdits={watchEdits} onClearEdits={onClearEdits} />)}
         {sent.map((d) => <SentLine key={d.id} draft={d} />)}
       </ul>
       {earlier.length > 0 ? (

@@ -514,6 +514,10 @@ main.thread { padding-bottom: calc(var(--reply-h, 260px) + 24px); }
 .d-opts { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .d-sends { margin: 0; font-size: 14px; font-weight: 600; }
 .d-warn { margin: 0; font-size: 14px; color: var(--muted); }
+/* Live edits on a draft (nmwx1kxvbox9): the list box sits under the text, the proposal is set apart until he takes it. */
+.d-modify { display: grid; gap: 8px; }
+.d-proposal { display: grid; gap: 8px; padding: 10px; border: 1px dashed var(--muted); border-radius: 12px; }
+.d-proposal .draft-body { max-height: 22em; }
 
 /* add sheet attachments */
 .add-files { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }

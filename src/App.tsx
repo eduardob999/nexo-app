@@ -6,7 +6,7 @@ import type { SleepRec } from './sleepmodel';
 import { SleepScreen } from './SleepScreen';
 import { makeThumb, uploadToDrive, warmDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, removeItem, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, selectTrip, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, cardContext, discardDraft, markCopied, markDone, pendingDraftsOf, cardClosedBySend, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchChat, sendChat, watchMemos, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, removeItem, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, selectTrip, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editDraft, reviseDraft, requestDraftEdits, watchDraftEdits, clearDraftEdits, callNexo, cardContext, discardDraft, markCopied, markDone, pendingDraftsOf, cardClosedBySend, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchChat, sendChat, watchMemos, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { doneCutoff } from './shelf';
 import type { RestRec } from './restmodel';
 import { isFirebaseConfigured, reconnect } from './firebase';
@@ -312,6 +312,9 @@ function OwnerApp() {
           onSend={(d) => { void requestSend(user.uid, d); flash('Send requested. Nexo sends it on its next run.'); }}
           onEdit={(d, t) => { void editDraft(user.uid, d, t); }}
           onRevise={(d, t) => { void reviseDraft(user.uid, d, t); }}
+          onAskEdits={(d, list) => requestDraftEdits(user.uid, d, list)}
+          watchEdits={(id, on) => watchDraftEdits(user.uid, id, on)}
+          onClearEdits={(id) => { void clearDraftEdits(user.uid, id); }}
           onAnswer={(d, t) => { void answerDraft(user.uid, d, t); }} />
       ) : (
         <Today cards={cards} now={new Date()} fromCache={fromCache} onFude={(c) => { void cardContext(user.uid, c).then((full) => openForCard(user.uid, full)); }} lane={tab === 'nexo' ? 'nexo' : 'you'}

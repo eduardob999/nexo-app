@@ -6,6 +6,7 @@ import type { DraftAttachment, Alloc, Market, Receipt, Card, CardFile, Draft, En
 import { postpone, todayYmd } from './urgency';
 import { onlyDone } from './shelf';
 import type { RestRec } from './restmodel';
+import type { EditRequest } from './modules/fude/edits';
 import { mergeById } from './trips';
 import { sortChat, type ChatMsg } from './chatlogic';
 import { bedDate, isoLocal, nightKey, planDoc, wakeDate, type SleepPlan, type SleepRec } from './sleepmodel';
@@ -253,6 +254,24 @@ export function reviseDraft(uid: string, draft: Draft, instruction: string): Pro
   batch.update(draftRef(uid, draft.id), { revise: { text: instruction, at, by: 'eduardo' } });
   intent(batch, uid, { type: 'draft', action: 'revise', draftId: draft.id, text: instruction, entryId: String(Date.now()) });
   return batch.commit();
+}
+
+/**
+ * His list of modifications for a draft, applied by the Fude helper within seconds (card nmwx1kxvbox9, "just like fude").
+ * Kept in draftEdits/{draftId}, not on the draft, because sync rewrites drafts/{id} whole from state.json and would wipe it.
+ * The text travels with the request, so a draft that changes meanwhile makes the result stale instead of wrong.
+ */
+export function requestDraftEdits(uid: string, draft: Draft, instructions: string): Promise<void> {
+  return setDoc(doc(db, ...root(uid), 'draftEdits', draft.id), { status: 'requested', text: draft.text ?? '', instructions, at: new Date().toISOString() });
+}
+
+export function clearDraftEdits(uid: string, draftId: string): Promise<void> {
+  return deleteDoc(doc(db, ...root(uid), 'draftEdits', draftId));
+}
+
+/** The helper's answer for one draft, or null when nothing was asked. */
+export function watchDraftEdits(uid: string, draftId: string, on: (r: EditRequest | null) => void): () => void {
+  return onSnapshot(doc(db, ...root(uid), 'draftEdits', draftId), (snap) => on(snap.exists() ? (snap.data() as EditRequest) : null), () => on(null));
 }
 
 /** Attach a file to a draft. The preview goes on the draft at once; the loop attaches it when it sends. */
