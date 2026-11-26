@@ -174,9 +174,10 @@ function DraftCard({ onFude, draft, onCopied, onSent, onDiscard, onSend, onEdit,
     });
   };
   return (
-    <li className="draft">
+    <li className="draft" id={`draft-${draft.id}`}>
       <div className="draft-head">
         <div>
+          {card ? <a className="draft-card-link" href={`#/card/${card.id}`}>Card: {card.title ?? card.id}</a> : null}
           {to ? <span className="who">TO · {to}</span> : null}
           {draft.contact && draft.contact !== to ? <span className="who">REPLY TO · {draft.contact}</span> : null}
           <h2 className="draft-title">{draft.subject ?? draft.topic ?? draft.id}</h2>

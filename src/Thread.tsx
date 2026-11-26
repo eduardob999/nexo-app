@@ -182,7 +182,13 @@ export function Thread({ card, entries, pics = [], drafts, now, onBack, widget, 
           );
         })}
       </ol>
-      {mine.length > 0 ? <a className="draft-link" href="#/drafts">Open the draft{mine.length > 1 ? 's' : ''}</a> : null}
+      {/* nmwx0050fst8: one clickable link per draft, opening the Drafts tab scrolled to that draft. */}
+      {mine.map((d) => (
+        <a key={d.id} className="draft-link" href="#/drafts"
+          onClick={() => { window.setTimeout(() => document.getElementById(`draft-${d.id}`)?.scrollIntoView({ block: 'start' }), 120); }}>
+          Open draft: {d.subject ?? d.topic ?? d.id}{d.status === 'sent' ? ' (sent)' : d.status === 'needs-info' ? ' (needs info)' : ''}
+        </a>
+      ))}
 
       {onDelete ? <div className="thread-foot"><ConfirmButton label="Delete card" armedLabel="Tap again to delete" className="chip-btn small" onConfirm={onDelete} /></div> : null}
 

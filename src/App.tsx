@@ -6,7 +6,7 @@ import type { SleepRec } from './sleepmodel';
 import { SleepScreen } from './SleepScreen';
 import { makeThumb, uploadToDrive, warmDrive } from './drive';
 import { completeRedirectSignIn, describeAuthError, signInWithGoogle, watchAuthState } from './auth';
-import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, removeItem, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, selectTrip, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, cardContext, discardDraft, markCopied, markDone, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchChat, sendChat, watchMemos, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
+import { newCardId, reopenCard, watchCard, joinCards, clearDoneCards, deleteCard, deleteMemo, removeItem, addCard, attachFile, cyclePriority, setIncoming, addItem, tickBring, tickItem, selectTrip, addEntry, addMemo, addResource, archiveResource, answerDraft, attachToDraft, detachFromDraft, answerRelay, closeRelay, editDraft, reviseDraft, callNexo, cardContext, discardDraft, markCopied, markDone, pendingDraftsOf, cardClosedBySend, markLater, markSent, requestMailCheck, requestSend, setSleep, answerWake, recordWake, watchWake, watchSleep, goToBed, undoBed, imUp, rateSleep, editSleep, writeSleepPlan, watchDrafts, watchRest, markRestDay, undoRestDay, rateRest, watchEntries, watchFiles, watchNexo, watchClosedRelays, watchDoneCards, watchRecentDoneCards, watchDoneTrips, watchChat, sendChat, watchMemos, watchOpenCards, watchRelays, watchAnsweredRelays, watchResources, watchSync, watchTodayInfo } from './cards';
 import { doneCutoff } from './shelf';
 import type { RestRec } from './restmodel';
 import { isFirebaseConfigured, reconnect } from './firebase';
@@ -246,7 +246,7 @@ function OwnerApp() {
   if (user === null) {
     return <SignIn error={error} onSignIn={() => { signInWithGoogle().catch((e: unknown) => setError(describeAuthError(e))); }} />;
   }
-  const done = (c: Card) => { void markDone(user.uid, c.id); flash('Marked done'); };
+  const done = (c: Card) => { void markDone(user.uid, c.id, pendingDraftsOf(c.id, drafts)); flash('Marked done'); };
   const later = (c: Card) => { void markLater(user.uid, c); flash('Moved one day on'); };
   const card = route.name === 'card' ? cards.find((c) => c.id === route.id) : undefined;
 
@@ -306,7 +306,7 @@ function OwnerApp() {
           onDetach={(d, id) => { void detachFromDraft(user.uid, d, id); }}
           onUpload={async (d, files) => { for (const f of files) { const thumb = await makeThumb(f); const up = await uploadToDrive(f); if (d.linkedNote) await attachFile(user.uid, { cardId: d.linkedNote }, up, thumb); await attachToDraft(user.uid, d, up); } flash('Attached to draft'); }}
           onCopied={(id) => { void markCopied(user.uid, id); flash('Copied'); }}
-          onSent={(id) => { void markSent(user.uid, id); }}
+          onSent={(id) => { const d = drafts.find((x) => x.id === id); const close = d ? cardClosedBySend(d, drafts, cards) : undefined; void markSent(user.uid, id, close); if (close) flash('Sent, card marked done'); }}
           onDiscard={(id) => { void discardDraft(user.uid, id); }}
           nexo={nexo} onMailCheck={() => { void requestMailCheck(user.uid); }}
           onSend={(d) => { void requestSend(user.uid, d); flash('Send requested. Nexo sends it on its next run.'); }}

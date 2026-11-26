@@ -40,9 +40,16 @@ function intent(batch: ReturnType<typeof writeBatch>, uid: string, fields: Recor
   batch.set(doc(db, ...root(uid), 'outbox', id), { ...fields, at: new Date().toISOString(), applied: false });
 }
 
-export function markDone(uid: string, id: string): Promise<void> {
+export function markDone(uid: string, id: string, unsentDrafts: string[] = []): Promise<void> {
   const batch = writeBatch(db);
-  batch.update(doc(db, ...root(uid), 'cards', id), { status: 'done', doneAt: new Date().toISOString() });
+  const at = new Date().toISOString();
+  batch.update(doc(db, ...root(uid), 'cards', id), { status: 'done', doneAt: at });
+  // His words (nmwx0050fst8): actions on a card take effect on its drafts, so a closed card's unsent drafts
+  // stop showing as pending. Same fields and intent as discardDraft, so sync applies it the usual way.
+  for (const d of unsentDrafts) {
+    batch.update(draftRef(uid, d), { status: 'discarded', discardedAt: at });
+    intent(batch, uid, { type: 'draft', draftId: d, action: 'discarded' });
+  }
   intent(batch, uid, { type: 'done', cardId: id });
   return batch.commit();
 }
@@ -200,8 +207,31 @@ export function markCopied(uid: string, id: string): Promise<void> {
 }
 
 /** He sent it himself, elsewhere. The app never sends mail. */
-export function markSent(uid: string, id: string): Promise<void> {
-  return draftAction(uid, id, 'sent', { status: 'sent', sentAt: new Date().toISOString(), sentBy: 'eduardo', sentVia: 'elsewhere' });
+export function markSent(uid: string, id: string, closeCard?: string): Promise<void> {
+  const batch = writeBatch(db);
+  const at = new Date().toISOString();
+  batch.update(draftRef(uid, id), { status: 'sent', sentAt: at, sentBy: 'eduardo', sentVia: 'elsewhere' });
+  intent(batch, uid, { type: 'draft', draftId: id, action: 'sent' });
+  // nmwx0050fst8: "marking a card as sent out sending it should also mark a send draft card task as done".
+  if (closeCard) {
+    batch.update(doc(db, ...root(uid), 'cards', closeCard), { status: 'done', doneAt: at });
+    intent(batch, uid, { type: 'done', cardId: closeCard });
+  }
+  return batch.commit();
+}
+
+/** The card a sent draft closes: its linked card, only when no other draft on it is still pending and it is
+ * not an INFO or ASSIGNMENT card (a mail plus a LINE reply keeps the card open until both are out). */
+export function cardClosedBySend(draft: Draft, drafts: Draft[], cards: Card[]): string | undefined {
+  const card = cards.find((c) => c.id === draft.linkedNote);
+  if (!card || card.status !== 'open' || card.type === 'INFO' || card.type === 'ASSIGNMENT') return undefined;
+  const others = drafts.some((d) => d.id !== draft.id && d.linkedNote === card.id && (d.status === 'drafted' || d.status === 'needs-info'));
+  return others ? undefined : card.id;
+}
+
+/** Drafts still pending on a card, which closing the card retires. */
+export function pendingDraftsOf(cardId: string, drafts: Draft[]): string[] {
+  return drafts.filter((d) => d.linkedNote === cardId && (d.status === 'drafted' || d.status === 'needs-info')).map((d) => d.id);
 }
 
 export function discardDraft(uid: string, id: string): Promise<void> {
