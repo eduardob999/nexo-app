@@ -85,6 +85,13 @@ describe('chains and the daily rhythm', () => {
     const out = plan(input());
     for (const id of ['desayuno', 'cena', 'basura']) expect(new Set(out.items.filter((i) => i.taskId === id).map((i) => dayKey(i.start))).size).toBeGreaterThanOrEqual(6);
   });
+  it('keeps an unmade breakfast planned until lunch, and drops it from lunch on', () => {
+    const today = (iso: string) => { const now = Date.parse(iso); return plan(input({ now })).items.filter((i) => i.taskId === 'desayuno' && dayKey(i.start) === dayKey(now)); };
+    const late = today('2026-11-20T09:30:00+09:00');
+    expect(late.length).toBe(1);
+    expect(late[0]!.end).toBeLessThanOrEqual(Date.parse('2026-11-20T12:15:00+09:00'));
+    expect(today('2026-11-20T12:20:00+09:00').length).toBe(0);
+  });
   it('does not plan a daily chore again once it is done today', () => {
     const log: LogEvent[] = [{ id: 'x', taskId: 'basura', uid: 'a', kind: 'done', at: NOW - MIN * 30, minutes: 5, planned: true }];
     const out = plan(input({ log }));

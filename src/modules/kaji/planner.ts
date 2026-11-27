@@ -1,5 +1,5 @@
 import { balance, burdenOf, weightOf } from './burden';
-import type { Estimate, Interval, LogEvent, Member, PlannedItem, Settings, SwapRecord, TaskType } from './model';
+import { DEFAULT_SETTINGS, type Estimate, type Interval, type LogEvent, type Member, type PlannedItem, type Settings, type SwapRecord, type TaskType } from './model';
 import { afterBackHome, mealsAtHome, outIntervals, type Presence } from './home';
 import { applyLearned, dismissedAt, skipsFromLog } from './reschedule';
 import { atHm, dayKey, dayStart, DAY, hm, JST, MIN, overlaps, weekday } from './time';
@@ -187,10 +187,18 @@ export function plan(input: PlanInput): PlanOutput {
           if (cancelled.has(k)) continue;
           const eaters = eatersOf(k);
           if (eaters && eaters.length === 0) continue;
-          const win = wins ? (wins[k] as { from: string; to: string }) : undefined;
-          const region = regionFor(win ? { ...task, window: win } : task, d, s, tz);
-          if (region.to <= now) continue;
+          let win = wins ? (wins[k] as { from: string; to: string }) : undefined;
+          let region = regionFor(win ? { ...task, window: win } : task, d, s, tz);
           const meal = mealOf(k);
+          // a breakfast nobody has made stays planned until lunch starts (2026-11-27: "Someone should make the breakfast")
+          const lunchFrom = (s.meals ?? DEFAULT_SETTINGS.meals)?.[1]?.from;
+          if (region.to <= now && meal === 0 && task.mode === 'fixed' && lunchFrom) {
+            const lateWin = { from: (win ?? task.window)?.from ?? region.fromHm, to: lunchFrom };
+            const late = regionFor({ ...task, window: lateWin }, d, s, tz);
+            // only while there is still time to make it before lunch
+            if (Math.ceil(now / GRID) * GRID + minutesOf(task) * MIN <= late.to) { win = lateWin; region = late; }
+          }
+          if (region.to <= now) continue;
           occs.push({ key: `${task.id}@${dayKey(d, tz)}#${k}`, task, ...(win ? { window: win } : {}), ...(eaters ? { eaters } : {}), ...(meal !== undefined ? { meal } : {}), ideal: Math.max(ideals[k] as number, now), earliest: d, latest: d + DAY - 1, minutes: minutesOf(task) });
         }
       }
