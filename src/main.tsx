@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { Component, StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { PreviewApp } from './preview/PreviewApp';
@@ -18,7 +18,23 @@ if (!container) throw new Error('No #root element found in index.html.');
 // Compile-time constant, so the harness and its fixtures vanish from a production build.
 const previewing = import.meta.env.DEV && window.location.hash.startsWith('#/preview');
 
-createRoot(container).render(<StrictMode>{previewing ? <PreviewApp /> : <App />}</StrictMode>);
+/** A screen that throws used to leave a blank page with no clue why. Show the message instead. */
+class Guard extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidUpdate() { /* a new hash means a new screen, so try again */ }
+  render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <main className="screen center">
+        <p className="notice">This screen failed: {this.state.error.message}</p>
+        <button type="button" className="chip-btn" onClick={() => { window.location.hash = '#/'; window.location.reload(); }}>Reload</button>
+      </main>
+    );
+  }
+}
+
+createRoot(container).render(<StrictMode><Guard>{previewing ? <PreviewApp /> : <App />}</Guard></StrictMode>);
 
 ensureBaseline();
 captureInstallPrompt();
