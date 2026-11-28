@@ -1,3 +1,4 @@
+declare const __APP_VERSION__: string | undefined;
 import { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { AddSheet } from './AddSheet';
@@ -148,7 +149,8 @@ function OwnerApp() {
 
   useEffect(() => {
     if (!user) return undefined;
-    return watchOpenCards(user.uid, (c, cache) => { setCards(c); setFromCache(cache); }, (e) => setError(e.message));
+    (window as unknown as { __nexoDiag?: string }).__nexoDiag = `${typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '?'} uid …${user.uid.slice(-4)}`;
+    return watchOpenCards(user.uid, (c, cache) => { setCards(c); setFromCache(cache); }, (e) => { (window as unknown as { __nexoDiag?: string }).__nexoDiag += ` ${e.message}`; setError(e.message); });
   }, [user]);
 
   useEffect(() => {

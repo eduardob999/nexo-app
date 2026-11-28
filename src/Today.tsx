@@ -251,7 +251,7 @@ export function Today({ onFude, cards, now, fromCache, onDone, onLater, onJoin, 
       {/* Card nmw9woh8bpsx: closest combini, station, toilet, pharmacy. Its own button, nothing runs until pressed. */}
       {lane === 'you' ? <Nearby /> : null}
       {holiday && !info ? <p className="holiday">{holiday.title ?? 'Holiday today'}</p> : null}
-      {fromCache ? <p className="notice">Showing saved data. Waiting for the network.</p> : null}
+      {fromCache ? <p className="notice">Showing saved data. Waiting for the network. {(window as unknown as { __nexoDiag?: string }).__nexoDiag ?? ''}</p> : null}
       {lane === 'nexo' && sections.length > 0 ? (
         <div className="panel">
           {sections.map((g) => (
