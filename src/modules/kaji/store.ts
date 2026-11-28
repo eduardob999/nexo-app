@@ -42,7 +42,18 @@ const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slic
 
 // ---- which household is this person in
 export function watchMyHousehold(uid: string, on: (hid: string | null) => void): () => void {
-  return onSnapshot(doc(db, 'users', uid, 'meta', 'household'), (s) => on((s.data() as { id?: string } | undefined)?.id ?? null), () => on(null));
+  // A missing document read from an empty local copy is not proof that there is no household: on a fresh
+  // login the cache is empty, and answering "none" there offers to create a second household. Only the
+  // server can say there is none, so a cached "missing" waits, and an error leaves the screen loading.
+  return onSnapshot(
+    doc(db, 'users', uid, 'meta', 'household'),
+    { includeMetadataChanges: true },
+    (s) => {
+      if (!s.exists() && s.metadata.fromCache) return;
+      on((s.data() as { id?: string } | undefined)?.id ?? null);
+    },
+    () => {},
+  );
 }
 
 export async function createHousehold(uid: string, name: string, myName: string, lang: 'en' | 'es' | 'ja'): Promise<string> {
