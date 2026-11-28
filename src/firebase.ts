@@ -62,6 +62,9 @@ function createFirestore(): Firestore {
   try {
     return initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      // Some mobile networks and browsers block the streaming channel, which leaves the app
+      // on saved data forever. Auto-detect falls back to long polling when that happens.
+      experimentalAutoDetectLongPolling: true,
     });
   } catch (error) {
     resolvedPersistence = 'memory-only';
@@ -71,7 +74,7 @@ function createFirestore(): Firestore {
         'IndexedDB (private browsing) or does not support it.',
       error,
     );
-    return initializeFirestore(app, {});
+    return initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
   }
 }
 
