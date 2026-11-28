@@ -208,7 +208,16 @@ function OwnerApp() {
       cacheRef.since = Date.now();
       setSyncCache({ cache: true, since: cacheRef.since });
       window.clearTimeout(kick);
-      kick = window.setTimeout(() => { if (cacheRef.cache) void reconnect().catch(() => {}); }, 6_000);
+      // One reconnect is not always enough: a connection that stalls during its handshake stays stalled.
+      // Keep trying every 10 seconds, up to eight times, for as long as the server has not answered.
+      let tries = 0;
+      const retry = () => {
+        if (!cacheRef.cache || document.visibilityState === 'hidden' || tries >= 8) return;
+        tries += 1;
+        void reconnect().catch(() => {});
+        kick = window.setTimeout(retry, 10_000);
+      };
+      kick = window.setTimeout(retry, 6_000);
     };
     document.addEventListener('visibilitychange', wake);
     window.addEventListener('online', wake);
